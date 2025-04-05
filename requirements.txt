@@ -8,3 +8,6 @@ pydantic-settings==2.2.1
 alembic==1.12.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+langchain
+langchain-openai
+langchain-google-genai
