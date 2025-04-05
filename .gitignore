@@ -1,0 +1,42 @@
+# Node / React Frontend (inside frontend/)
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.pnp.*
+frontend/.env*
+!frontend/.env.example
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.DS_Store
+
+# Python / FastAPI Backend (inside backend/)
+backend/__pycache__/
+backend/*.py[cod]
+backend/.env*
+!backend/.env.example
+backend/venv/
+backend/.venv/
+backend/env/
+backend/instance/
+backend/*.log
+backend/.coverage*
+backend/htmlcov/
+backend/*.sqlite3
+backend/*.db
+backend/alembic/__pycache__/
+backend/alembic/versions/__pycache__/
+backend/models/__pycache__/
+backend/routers/__pycache__/*
+**/__pycache__/**
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# IDE / OS specific
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

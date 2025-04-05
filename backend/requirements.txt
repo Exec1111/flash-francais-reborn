@@ -1,0 +1,14 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.39
+# psycopg2-binary==2.9.9 # Remplacé par psycopg2-binary
+psycopg2-binary # Utiliser psycopg2-binary pour compatibilité directe avec l'import SQLAlchemy
+# psycopg[binary] # Successeur moderne de psycopg2, souvent plus facile à installer
+alembic==1.12.1
+python-dotenv==1.1.0
+pydantic[email]==2.10.6
+pydantic-settings # Ajout explicite pour la compatibilité Pydantic V2
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+requests # Ajout de la bibliothèque pour les requêtes HTTP
+python-multipart # Nécessaire pour gérer les données de formulaire dans FastAPI

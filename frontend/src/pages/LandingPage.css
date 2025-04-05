@@ -1,0 +1,382 @@
+/* CSS extrait de onboarding-page.html et adapté pour le composant React */
+
+/* Suppression de :root et body car gérés globalement */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* font-family est géré par le thème MUI */
+}
+
+/* Variables CSS (utilisées directement dans ce fichier pour l'instant) */
+:root {
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --secondary: #3730a3;
+    --accent: #38bdf8;
+    --dark-bg: #0f172a; /* Peut être redondant si body bg est déjà défini */
+    --card-bg: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
+    --transition: all 0.3s ease;
+}
+
+.landing-page-container { 
+    /* Styles pour le conteneur principal si nécessaire */
+    background-color: var(--dark-bg); /* Assurer le fond sombre */
+    color: var(--text-primary);       /* Assurer la couleur de texte par défaut */
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background-color: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 20px 0;
+    box-shadow: var(--box-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo img {
+    height: 40px;
+    /* Utiliser une vraie source ou placeholder */
+}
+
+nav ul {
+    display: flex;
+    gap: 30px;
+    list-style: none;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+nav a:hover {
+    color: var(--primary);
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: var(--primary);
+    color: white !important; /* !important pour surcharger le style de Link */
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+    text-align: center;
+    box-shadow: var(--box-shadow);
+}
+
+.btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+    color: white !important;
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary) !important; /* !important pour surcharger le style de Link */
+}
+
+.btn-outline:hover {
+    background-color: var(--primary);
+    color: white !important;
+}
+
+.hero {
+    padding: 80px 0;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-image {
+    flex: 1;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    position: relative;
+}
+
+/*
+.hero-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(56, 189, 248, 0.2));
+    pointer-events: none;
+}
+*/
+
+.hero-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+h1 {
+    font-size: 42px;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+h1 span {
+    color: var(--primary);
+}
+
+/* Pour éviter les conflits avec MUI Typography, préfixer les titres Hn */
+.landing-page-container h1,
+.landing-page-container h2,
+.landing-page-container h3,
+.landing-page-container h4,
+.landing-page-container h5,
+.landing-page-container h6 {
+    color: var(--text-primary); /* Assurer la couleur par défaut */
+    font-family: 'Inter', sans-serif; /* Redéfinir la police si MUI la surcharge */
+}
+
+.landing-page-container h1 {
+    font-size: 42px;
+    margin-bottom: 20px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.landing-page-container h2 {
+     font-size: 36px;
+     margin-bottom: 15px;
+     font-weight: 700;
+}
+
+.landing-page-container p {
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: var(--text-secondary);
+    font-weight: 400;
+    font-family: 'Inter', sans-serif; /* Redéfinir la police si MUI la surcharge */
+}
+
+.features {
+    padding: 80px 0;
+    background-color: rgba(30, 41, 59, 0.3);
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.section-title h2 {
+    font-size: 36px;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.section-title p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.feature-card {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+}
+
+.feature-icon {
+    width: 50px;
+    height: 50px;
+    background-color: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.feature-icon img {
+    width: 25px;
+    height: 25px;
+}
+
+.feature-card h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.onboarding-steps {
+    padding: 80px 0;
+}
+
+.steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    position: relative;
+    padding-left: 40px; /* Espace pour la ligne et les numéros */
+}
+
+.steps-container::before {
+    content: '';
+    position: absolute;
+    left: 15px; /* Centre sur les numéros */
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background-color: var(--border-color);
+}
+
+.step {
+    position: relative;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 25px 30px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+}
+
+.step-number {
+    position: absolute;
+    left: -40px; /* Positionner le numéro sur la ligne */
+    top: 25px;
+    width: 30px;
+    height: 30px;
+    background-color: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    z-index: 1;
+    border: 2px solid var(--dark-bg);
+}
+
+.step h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.cta-section {
+    padding: 80px 0;
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.cta-section h2 {
+    font-size: 32px;
+    margin-bottom: 15px;
+    color: white;
+    font-weight: 700;
+}
+
+.cta-section p {
+    margin-bottom: 30px;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.cta-buttons .btn {
+    padding: 12px 25px;
+    font-size: 16px;
+}
+
+.cta-buttons .btn-outline {
+    border-color: white;
+    color: white !important;
+}
+
+.cta-buttons .btn-outline:hover {
+    background-color: white;
+    color: var(--primary) !important;
+}
+
+footer {
+    padding: 40px 0;
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+footer p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
