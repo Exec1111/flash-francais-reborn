@@ -9,11 +9,11 @@ class ResourceBase(BaseModel):
     description: Optional[str] = None
     type_id: int
     sub_type_id: int
-    content: Optional[Json] = None
+    content: Optional[str] = None  # Contenu textuel de la ressource
     session_ids: Optional[List[int]] = None
 
 class ResourceCreate(ResourceBase):
-    pass
+    user_id: int
 
 class ResourceResponse(BaseModel):
     id: int

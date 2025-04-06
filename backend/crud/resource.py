@@ -5,20 +5,28 @@ from sqlalchemy import or_
 import logging
 logger = logging.getLogger(__name__)
 
-def get_resource(db: Session, resource_id: int):
-    """Récupère une ressource par son ID avec ses sessions associées."""
+def get_resource(db: Session, resource_id: int, as_model=False):
+    """Récupère une ressource par son ID.
+    
+    Args:
+        db (Session): Session de base de données
+        resource_id (int): ID de la ressource à récupérer
+        as_model (bool, optional): Si True, renvoie l'instance du modèle Resource au lieu d'une réponse formatée. Par défaut False.
+    
+    Returns:
+        Resource ou dict: Instance du modèle Resource ou dictionnaire formaté
+    """
     resource = db.query(Resource).filter(Resource.id == resource_id).first()
-    if resource:
-        return {
-            "id": resource.id,
-            "title": resource.title,
-            "description": resource.description,
-            "type": resource.type,
-            "content": resource.content,
-            "user_id": resource.user_id,
-            "session_ids": [session.id for session in resource.sessions]
-        }
-    return None
+    
+    if not resource:
+        return None
+        
+    if as_model:
+        return resource
+    
+    # Utiliser le schéma ResourceResponse pour formater la réponse
+    from schemas.resource import ResourceResponse
+    return ResourceResponse.from_resource(resource, db)
 
 def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     """Récupère une liste des ressources appartenant à un utilisateur spécifique."""
@@ -85,17 +93,22 @@ def create_resource(db: Session, resource: ResourceCreate):
         if not db_user:
             raise ValueError(f"User with id {resource.user_id} not found")
 
-    # Vérifier si les sessions existent
-    if resource.session_ids:
-        db_sessions = db.query(Session).filter(Session.id.in_(resource.session_ids)).all()
-        if len(db_sessions) != len(resource.session_ids):
-            raise ValueError("One or more sessions not found")
+    # Vérifier si les sessions existent (si spécifiées)
+    db_sessions = []
+    if resource.session_ids and len(resource.session_ids) > 0:
+        # Filtrer les IDs de session qui ne sont pas None ou 0
+        valid_session_ids = [sid for sid in resource.session_ids if sid is not None and sid != 0]
+        if valid_session_ids:
+            db_sessions = db.query(Session).filter(Session.id.in_(valid_session_ids)).all()
+            if len(db_sessions) != len(valid_session_ids):
+                raise ValueError("One or more sessions not found")
 
     # Créer la ressource
     db_resource = Resource(
         title=resource.title,
         description=resource.description,
-        type=resource.type,
+        type_id=resource.type_id,
+        sub_type_id=resource.sub_type_id,
         content=resource.content,
         user_id=resource.user_id
     )
@@ -105,25 +118,16 @@ def create_resource(db: Session, resource: ResourceCreate):
     db.commit()
     db.refresh(db_resource)
     
-    # Ajouter les relations avec les sessions
-    if resource.session_ids:
-        for session_id in resource.session_ids:
-            db_resource.sessions.append(db.query(Session).get(session_id))
+    # Ajouter les relations avec les sessions (si spécifiées)
+    if db_sessions:
+        for session in db_sessions:
+            db_resource.sessions.append(session)
         db.commit()
         db.refresh(db_resource)
     
-    # Créer la réponse avec les IDs des sessions
-    response_data = {
-        "id": db_resource.id,
-        "title": db_resource.title,
-        "description": db_resource.description,
-        "type": db_resource.type,
-        "content": db_resource.content,
-        "user_id": db_resource.user_id,
-        "session_ids": [session.id for session in db_resource.sessions]
-    }
-    
-    return response_data
+    # Utiliser le schéma ResourceResponse pour formater la réponse
+    from schemas.resource import ResourceResponse
+    return ResourceResponse.from_resource(db_resource, db)
 
 def update_resource(db: Session, resource_id: int, resource_update: ResourceUpdate):
     """Met à jour une ressource existante."""
@@ -153,20 +157,14 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
     db.commit()
     db.refresh(db_resource)
 
-    # Retourner la ressource mise à jour avec ses sessions sous forme de dictionnaire
-    return {
-        "id": db_resource.id,
-        "title": db_resource.title,
-        "description": db_resource.description,
-        "type": db_resource.type,
-        "content": db_resource.content,
-        "user_id": db_resource.user_id,
-        "session_ids": [session.id for session in db_resource.sessions]
-    }
+    # Utiliser le schéma ResourceResponse pour formater la réponse
+    from schemas.resource import ResourceResponse
+    return ResourceResponse.from_resource(db_resource, db)
 
 def delete_resource(db: Session, resource_id: int):
     """Supprime une ressource par son ID."""
-    db_resource = get_resource(db, resource_id=resource_id)
+    # Récupérer directement l'instance du modèle Resource
+    db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
     if db_resource is None:
         return None # Ou False
     db.delete(db_resource)

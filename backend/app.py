@@ -21,6 +21,7 @@ from routers.progression import progression_router
 from routers.sequence import sequence_router
 from routers.session import session_router
 from routers.resource import resource_router
+from routers.resource_type import resource_type_router
 from routers.objective import objective_router
 from routers.user import user_router
 from routers import ai_router  # Importation du routeur AI
@@ -68,6 +69,10 @@ app = FastAPI(
         {
             "name": "resources",
             "description": "Opérations de ressource"
+        },
+        {
+            "name": "resource_types",
+            "description": "Opérations de types et sous-types de ressource"
         },
         {
             "name": "objectives",
@@ -137,6 +142,13 @@ app.include_router(
     resource_router,
     prefix="/api/v1/resources",
     tags=["resources"]
+)
+
+# Inclusion des routes de types de ressource
+app.include_router(
+    resource_type_router,
+    prefix="/api/v1/resource-types",
+    tags=["resource_types"]
 )
 
 # Inclusion des routes d'objectif

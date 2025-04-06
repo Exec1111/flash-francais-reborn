@@ -45,6 +45,16 @@ from crud.resource import (
     delete_resource
 )
 
+# Exposer les fonctions du module resource_type
+from crud.resource_type import (
+    get_resource_types,
+    get_resource_type,
+    get_resource_type_by_key,
+    get_resource_subtypes,
+    get_resource_subtype,
+    get_resource_subtype_by_key
+)
+
 # Imports for Objective
 from .objective import (
     get_objective,
@@ -88,10 +98,17 @@ __all__ = [
     "get_resource",
     "get_resources",
     "get_resources_by_session",
-    "get_standalone_resources",
+    "get_resources_standalone",
     "create_resource",
     "update_resource",
     "delete_resource",
+    # Resource Type exports
+    "get_resource_types",
+    "get_resource_type",
+    "get_resource_type_by_key",
+    "get_resource_subtypes",
+    "get_resource_subtype",
+    "get_resource_subtype_by_key",
     # Objective exports
     "get_objective",
     "get_objective_by_title",
