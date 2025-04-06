@@ -138,20 +138,30 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
 
     update_data = resource_update.model_dump(exclude_unset=True)
 
-    # Vérifier si les sessions existent et mettre à jour la relation
-    if 'session_ids' in update_data and update_data['session_ids'] is not None:
-        # D'abord vérifier que toutes les sessions existent
-        db_sessions = db.query(Session).filter(Session.id.in_(update_data['session_ids'])).all()
-        if len(db_sessions) != len(update_data['session_ids']):
-            raise ValueError("One or more sessions not found")
+    # Mettre à jour les sessions si spécifiées
+    if "session_ids" in update_data and update_data["session_ids"] is not None:
+        # Supprimer toutes les associations existantes
+        db_resource.sessions = []
         
-        # Mettre à jour la relation avec les sessions
-        db_resource.sessions = db_sessions
+        # Filtrer les IDs de session qui ne sont pas None ou 0
+        valid_session_ids = [sid for sid in update_data["session_ids"] if sid is not None and sid != 0]
+        
+        if valid_session_ids:
+            # Vérifier que toutes les sessions existent
+            db_sessions = db.query(Session).filter(Session.id.in_(valid_session_ids)).all()
+            if len(db_sessions) != len(valid_session_ids):
+                raise ValueError("One or more sessions not found")
+                
+            # Ajouter les nouvelles associations
+            for session in db_sessions:
+                db_resource.sessions.append(session)
+        
+        # Supprimer session_ids de update_data pour éviter les conflits
+        del update_data["session_ids"]
 
     # Mettre à jour les autres champs
     for key, value in update_data.items():
-        if key != 'session_ids':
-            setattr(db_resource, key, value)
+        setattr(db_resource, key, value)
 
     db.add(db_resource)
     db.commit()

@@ -61,7 +61,7 @@ class ResourceUpdate(BaseModel):
     description: Optional[str] = None
     type_id: Optional[int] = None
     sub_type_id: Optional[int] = None
-    content: Optional[Json] = None
+    content: Optional[str] = None  # Contenu textuel de la ressource
     session_ids: Optional[List[int]] = None
 
     class Config:

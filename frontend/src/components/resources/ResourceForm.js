@@ -66,15 +66,32 @@ const ResourceForm = ({
   const navigate = useNavigate();
   
   // Initialiser le formulaire avec les données existantes en mode édition
+  // seulement après que les types ont été chargés
   useEffect(() => {
-    if (initialData) {
+    if (initialData && resourceTypes.length > 0) {
+      // Convertir les types en chaînes pour éviter les erreurs de comparaison
+      const typeId = initialData.type_id ? String(initialData.type_id) : '';
+      
       setFormData({
         ...initialData,
-        // S'assurer que les champs requis sont présents
+        // S'assurer que les champs requis sont présents et correctement formatés
+        type_id: typeId,
+        sub_type_id: initialData.sub_type_id ? String(initialData.sub_type_id) : '',
         session_ids: initialData.session_ids || []
       });
+      
+      // Déclencher le chargement des sous-types si nécessaire
+      if (typeId) {
+        resourceTypeService.getSubtypesByType(typeId)
+          .then(subTypes => {
+            setResourceSubTypes(subTypes);
+          })
+          .catch(err => {
+            console.error('Erreur lors du chargement des sous-types:', err);
+          });
+      }
     }
-  }, [initialData]);
+  }, [initialData, resourceTypes]);
 
   // Charger les types de ressources au chargement du composant
   useEffect(() => {
@@ -296,16 +313,18 @@ const ResourceForm = ({
 
         <Grid item xs={12} sm={6}>
           <FormControl fullWidth>
-            <InputLabel>Type de ressource</InputLabel>
+            <InputLabel id="type-label">Type de ressource</InputLabel>
             <Select
+              labelId="type-label"
               name="type_id"
-              value={formData.type_id}
+              value={formData.type_id || ''}
               onChange={handleInputChange}
               label="Type de ressource"
+              required
               disabled={loading || resourceTypes.length === 0 || submitting}
             >
               {resourceTypes.map((type) => (
-                <MenuItem key={type.id} value={type.id}>
+                <MenuItem key={type.id} value={String(type.id)}>
                   {type.value}
                 </MenuItem>
               ))}
@@ -315,16 +334,18 @@ const ResourceForm = ({
         
         <Grid item xs={12} sm={6}>
           <FormControl fullWidth>
-            <InputLabel>Sous-type de ressource</InputLabel>
+            <InputLabel id="subtype-label">Sous-type de ressource</InputLabel>
             <Select
+              labelId="subtype-label"
               name="sub_type_id"
-              value={formData.sub_type_id}
+              value={formData.sub_type_id || ''}
               onChange={handleInputChange}
               label="Sous-type de ressource"
+              required
               disabled={loading || !formData.type_id || resourceSubTypes.length === 0 || submitting}
             >
               {resourceSubTypes.map((subType) => (
-                <MenuItem key={subType.id} value={subType.id}>
+                <MenuItem key={subType.id} value={String(subType.id)}>
                   {subType.value}
                 </MenuItem>
               ))}
