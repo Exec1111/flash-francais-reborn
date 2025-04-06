@@ -37,7 +37,7 @@ class Resource(Base):
     description = Column(Text, nullable=True)
     type_id = Column(Integer, ForeignKey("resource_types.id"), nullable=False)
     sub_type_id = Column(Integer, ForeignKey("resource_subtypes.id"), nullable=False)
-    content = Column(JSON, nullable=True)
+    content = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     # Relations

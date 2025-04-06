@@ -21,7 +21,7 @@ class ResourceResponse(BaseModel):
     description: Optional[str] = None
     type_id: int
     sub_type_id: Optional[int] = None
-    content: Optional[Json] = None
+    content: Optional[str] = None
     user_id: int
     type: Optional[Dict] = None
     sub_type: Optional[Dict] = None
@@ -32,24 +32,13 @@ class ResourceResponse(BaseModel):
         # Log type and value of resource.content before processing
         logging.info(f"Resource ID: {resource.id}, Raw Content Type: {type(resource.content)}, Raw Content Value: {repr(resource.content)}")
 
-        content_for_pydantic = None
-        if isinstance(resource.content, dict):
-            # Si SQLAlchemy a donné un dict, le ré-encoder en string JSON
-            content_for_pydantic = json.dumps(resource.content)
-            logging.info(f"Resource ID: {resource.id}, Encoded content to JSON string for Pydantic.")
-        elif isinstance(resource.content, str):
-             # Si c'est déjà une string (ou None), on la passe telle quelle
-             content_for_pydantic = resource.content
-        # Si c'est None, content_for_pydantic reste None
-
         return cls(
             id=resource.id,
             title=resource.title,
             description=resource.description,
             type_id=resource.type_id,
             sub_type_id=resource.sub_type_id,
-            # Passer la string JSON (ou None)
-            content=content_for_pydantic,
+            content=resource.content,
             user_id=resource.user_id,
             type={
                 "id": resource.type.id,
