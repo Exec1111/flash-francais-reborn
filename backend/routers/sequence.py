@@ -5,6 +5,8 @@ from typing import List
 from database import get_db
 import crud
 from schemas.sequence import SequenceCreate, SequenceRead, SequenceUpdate
+from models.user import User
+from security import get_current_active_user
 
 sequence_router = APIRouter(
     # prefix="/sequences", # Supprimé car géré dans app.py
@@ -21,17 +23,43 @@ def create_sequence_endpoint(sequence: SequenceCreate, db: Session = Depends(get
     return crud.create_sequence(db=db, sequence=sequence)
 
 @sequence_router.get("/", response_model=List[SequenceRead])
-def read_sequences_route(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    sequences = crud.get_sequences(db, skip=skip, limit=limit)
+def read_sequences_route(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Récupère la liste des séquences de l'utilisateur connecté."""
+    sequences = crud.get_sequences(db, user_id=current_user.id, skip=skip, limit=limit)
     return sequences
 
 @sequence_router.get("/by_progression/{progression_id}", response_model=List[SequenceRead])
-def read_sequences_by_progression_route(progression_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_sequences_by_progression_route(
+    progression_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la progression parente existe
     db_progression = crud.get_progression(db, progression_id=progression_id)
     if db_progression is None:
         raise HTTPException(status_code=404, detail=f"Progression with id {progression_id} not found")
-    sequences = crud.get_sequences_by_progression(db, progression_id=progression_id, skip=skip, limit=limit)
+    
+    # Vérifier si l'utilisateur a accès à cette progression
+    if db_progression.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous n'avez pas l'autorisation d'accéder aux séquences de cette progression"
+        )
+    
+    sequences = crud.get_sequences_by_progression(
+        db,
+        progression_id=progression_id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
     return sequences
 
 @sequence_router.get("/{sequence_id}", response_model=SequenceRead)

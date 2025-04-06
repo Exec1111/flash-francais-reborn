@@ -4,7 +4,7 @@ from typing import List
 
 from database import get_db
 import crud
-from schemas.resource import ResourceCreate, ResourceResponse, ResourceUpdate
+from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse
 from models.user import User
 from security import get_current_active_user
 import logging
@@ -43,12 +43,32 @@ def read_resources_standalone_route(skip: int = 0, limit: int = 100, db: Session
     return resources
 
 @resource_router.get("/by_session/{session_id}", response_model=List[ResourceResponse])
-def read_resources_by_session_route(session_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_resources_by_session_route(
+    session_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la session parente existe
     db_session = crud.get_session(db, session_id=session_id)
     if db_session is None:
         raise HTTPException(status_code=404, detail=f"Session with id {session_id} not found")
-    resources = crud.get_resources_by_session(db, session_id=session_id, skip=skip, limit=limit)
+    
+    # Vérifier si l'utilisateur a accès à cette session ou à sa séquence parente
+    if db_session.user_id != current_user.id and db_session.sequence.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous n'avez pas l'autorisation d'accéder aux ressources de cette session"
+        )
+    
+    resources = crud.get_resources_by_session(
+        db,
+        session_id=session_id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
     return resources
 
 @resource_router.get("/{resource_id}", response_model=ResourceResponse)

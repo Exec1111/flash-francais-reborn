@@ -7,21 +7,34 @@ def get_sequence(db: Session, sequence_id: int):
     """Récupère une séquence par son ID."""
     return db.query(Sequence).filter(Sequence.id == sequence_id).first()
 
-def get_sequences(db: Session, skip: int = 0, limit: int = 100):
-    """Récupère une liste de séquences."""
-    return db.query(Sequence).offset(skip).limit(limit).all()
+def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 100):
+    """Récupère une liste de séquences.
+    
+    Args:
+        db (Session): La session de base de données
+        user_id (int, optional): ID de l'utilisateur pour filtrer les séquences
+        skip (int, optional): Nombre d'éléments à sauter. Defaults to 0.
+        limit (int, optional): Nombre maximum d'éléments à retourner. Defaults to 100.
+    """
+    query = db.query(Sequence)
+    if user_id is not None:
+        query = query.filter(Sequence.user_id == user_id)
+    return query.offset(skip).limit(limit).all()
 
-def get_sequences_by_progression(db: Session, progression_id: int, skip: int = 0, limit: int = 100):
-    """Récupère les séquences appartenant à une progression spécifique."""
-    # Utilise selectinload pour charger efficacement les objectifs liés
-    return (
-        db.query(Sequence)
-        .options(selectinload(Sequence.objectives)) # Charge les objectifs associés
-        .filter(Sequence.progression_id == progression_id)
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+def get_sequences_by_progression(db: Session, progression_id: int, user_id: int = None, skip: int = 0, limit: int = 100):
+    """Récupère les séquences appartenant à une progression spécifique.
+    
+    Args:
+        db (Session): La session de base de données
+        progression_id (int): ID de la progression
+        user_id (int, optional): ID de l'utilisateur pour filtrer les séquences
+        skip (int, optional): Nombre d'éléments à sauter. Defaults to 0.
+        limit (int, optional): Nombre maximum d'éléments à retourner. Defaults to 100.
+    """
+    query = db.query(Sequence).filter(Sequence.progression_id == progression_id)
+    if user_id is not None:
+        query = query.filter(Sequence.user_id == user_id)
+    return query.options(selectinload(Sequence.objectives)).offset(skip).limit(limit).all()
 
 def create_sequence(db: Session, sequence: SequenceCreate):
     """Crée une nouvelle séquence."""

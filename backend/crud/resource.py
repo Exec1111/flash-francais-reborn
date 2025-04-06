@@ -42,13 +42,13 @@ def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     # Retourner directement les objets SQLAlchemy
     return resources
 
-def get_resources_by_session(db: Session, session_id: int, skip: int = 0, limit: int = 100):
-    """Récupère les ressources appartenant à une session spécifique."""
+def get_resources_by_session(db: Session, session_id: int, user_id: int, skip: int = 0, limit: int = 100):
+    """Récupère les ressources appartenant à une session spécifique et à un utilisateur donné."""
     from models.resource import Resource
     from models.association_tables import session_resource_association
     
     try:
-        logger.info(f"Recherche des ressources pour la session {session_id}")
+        logger.info(f"Recherche des ressources pour la session {session_id} et l'utilisateur {user_id}")
         
         # Récupérer d'abord les IDs des ressources liées à la session
         resource_ids_query = db.query(session_resource_association.c.resource_id).\
@@ -68,9 +68,12 @@ def get_resources_by_session(db: Session, session_id: int, skip: int = 0, limit:
                 joinedload(Resource.type),
                 joinedload(Resource.sub_type),
                 joinedload(Resource.sessions)
-            ).filter(Resource.id.in_(resource_ids)).all()
+            ).filter(
+                Resource.id.in_(resource_ids),
+                Resource.user_id == user_id  # Filtrer par user_id
+            ).all()
         
-        logger.info(f"Trouvé {len(resources)} ressources pour les IDs {resource_ids}")
+        logger.info(f"Trouvé {len(resources)} ressources pour l'utilisateur {user_id} dans la session {session_id}")
         
         # Convertir les objets SQLAlchemy en utilisant la méthode de classe du schéma
         resources_data = [ResourceResponse.from_resource(resource, db) for resource in resources]

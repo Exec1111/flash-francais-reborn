@@ -4,7 +4,9 @@ from typing import List
 
 from database import get_db
 import crud
-from schemas.session import SessionCreate, SessionRead, SessionUpdate
+from schemas.session import SessionCreate, SessionUpdate, SessionRead
+from models.user import User
+from security import get_current_active_user
 
 session_router = APIRouter(
     # prefix="/sessions", # Supprimé car géré dans app.py
@@ -26,12 +28,32 @@ def read_sessions_route(skip: int = 0, limit: int = 100, db: Session = Depends(g
     return sessions
 
 @session_router.get("/by_sequence/{sequence_id}", response_model=List[SessionRead])
-def read_sessions_by_sequence_route(sequence_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_sessions_by_sequence_route(
+    sequence_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la séquence parente existe
     db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
     if db_sequence is None:
-        raise HTTPException(status_code=404, detail=f"Sequence with id {sequence_id} not found")
-    sessions = crud.get_sessions_by_sequence(db, sequence_id=sequence_id, skip=skip, limit=limit)
+        raise HTTPException(status_code=404, detail=f"Séquence avec l'id {sequence_id} non trouvée")
+    
+    # Vérifier si l'utilisateur a accès à cette séquence
+    if db_sequence.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous n'avez pas l'autorisation d'accéder aux séances de cette séquence"
+        )
+    
+    sessions = crud.get_sessions_by_sequence(
+        db,
+        sequence_id=sequence_id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
     return sessions
 
 @session_router.get("/{session_id}", response_model=SessionRead)

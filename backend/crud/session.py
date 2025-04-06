@@ -4,17 +4,31 @@ from schemas.session import SessionCreate, SessionUpdate
 from crud.objective import get_objective
 
 def get_session(db: Session, session_id: int):
-    """Récupère une séance par son ID, en chargeant explicitement les objectifs liés."""
-    # Utilisation de options(selectinload(...)) pour charger la relation objectives
-    return db.query(Session).options(selectinload(Session.objectives)).filter(Session.id == session_id).first()
+    """Récupère une séance par son ID, en chargeant explicitement les relations."""
+    # Utilisation de options(selectinload(...)) pour charger les relations nécessaires
+    return db.query(Session).options(
+        selectinload(Session.objectives),
+        selectinload(Session.sequence)
+    ).filter(Session.id == session_id).first()
 
 def get_sessions(db: Session, skip: int = 0, limit: int = 100):
     """Récupère une liste de séances."""
     return db.query(Session).offset(skip).limit(limit).all()
 
-def get_sessions_by_sequence(db: Session, sequence_id: int, skip: int = 0, limit: int = 100):
-    """Récupère les séances appartenant à une séquence spécifique."""
-    return db.query(Session).filter(Session.sequence_id == sequence_id).offset(skip).limit(limit).all()
+def get_sessions_by_sequence(db: Session, sequence_id: int, user_id: int = None, skip: int = 0, limit: int = 100):
+    """Récupère les séances appartenant à une séquence spécifique.
+    
+    Args:
+        db (Session): La session de base de données
+        sequence_id (int): ID de la séquence
+        user_id (int, optional): ID de l'utilisateur pour filtrer les séances
+        skip (int, optional): Nombre d'éléments à sauter. Defaults to 0.
+        limit (int, optional): Nombre maximum d'éléments à retourner. Defaults to 100.
+    """
+    query = db.query(Session).filter(Session.sequence_id == sequence_id)
+    if user_id is not None:
+        query = query.filter(Session.user_id == user_id)
+    return query.offset(skip).limit(limit).all()
 
 def create_session(db: Session, session: SessionCreate):
     """Crée une nouvelle séance."""
