@@ -99,7 +99,8 @@ async def create_resource_route(
         )
         
         # Déterminer le chemin de sauvegarde final
-        upload_dir = Path("uploads") / str(current_user.id)
+        backend_root = Path(__file__).parent.parent
+        upload_dir = backend_root / "static" / "uploads" / str(current_user.id)
         upload_dir.mkdir(parents=True, exist_ok=True)
         final_file_path = upload_dir / file.filename
         temp_file_path = final_file_path # Utiliser directement le chemin final pour l'écriture
@@ -305,7 +306,8 @@ async def update_resource_route(
             file_size=file.size
         )
         
-        upload_dir = Path("uploads") / str(current_user.id)
+        backend_root = Path(__file__).parent.parent
+        upload_dir = backend_root / "static" / "uploads" / str(current_user.id)
         upload_dir.mkdir(parents=True, exist_ok=True)
         final_file_path = upload_dir / file.filename
         temp_file_path = final_file_path # Écrasera l'ancien si le nom est le même

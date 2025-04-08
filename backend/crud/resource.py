@@ -9,8 +9,9 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 def get_upload_path(user_id: int, file_name: str) -> str:
-    user_folder = Path("uploads") / str(user_id)
-    user_folder.mkdir(parents=True, exist_ok=True)
+    # Crée le chemin RELATIF pour la BDD (ex: uploads/19/fichier.pdf)
+    # La création du dossier physique est maintenant gérée par le routeur au bon endroit (static/uploads/...)
+    user_folder = Path("uploads") / str(user_id) 
     return str(user_folder / file_name)
 
 def get_resource(db: Session, resource_id: int):

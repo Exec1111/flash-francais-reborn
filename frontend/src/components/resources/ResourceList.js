@@ -22,6 +22,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility'; // Importer l'icône
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,9 +45,12 @@ const columns = [
   { 
     field: 'actions', 
     headerName: 'Actions', 
-    width: 130,
+    width: 220, // Augmenter la largeur pour la nouvelle icône
     renderCell: (params) => (
       <Box sx={{ display: 'flex', gap: 1 }}>
+        <IconButton size="small" title="Voir" data-action="view">
+          <VisibilityIcon />
+        </IconButton>
         <IconButton size="small" title="Modifier" data-action="edit">
           <EditIcon />
         </IconButton>
@@ -115,6 +119,10 @@ const ResourceList = () => {
 
   const handleEditResource = (id) => {
     navigate(`/resources/edit/${id}`);
+  };
+
+  const handleViewResource = (id) => {
+    navigate(`/resources/view/${id}`);
   };
 
   const handleDeleteResource = async (id) => {
@@ -211,7 +219,9 @@ const ResourceList = () => {
               if (params.field === 'actions') {
                 if (event.target.closest('button')) {
                   const action = event.target.closest('button').dataset.action;
-                  if (action === 'edit') {
+                  if (action === 'view') {
+                    handleViewResource(params.id);
+                  } else if (action === 'edit') {
                     handleEditResource(params.id);
                   } else if (action === 'delete') {
                     handleDeleteResource(params.id);
@@ -241,6 +251,14 @@ const ResourceList = () => {
                   </Typography>
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        title="Voir" 
+                        data-action="view"
+                        onClick={() => handleViewResource(resource.id)}
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
                       <IconButton 
                         size="small" 
                         title="Modifier" 

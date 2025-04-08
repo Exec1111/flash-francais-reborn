@@ -12,7 +12,13 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export const resourceService = {
+// Fonction pour récupérer UNE ressource par son ID
+const getResourceById = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}`); // Appelle GET /api/v1/resources/{id}
+  return response.data;
+};
+
+const resourceService = {
   // Récupérer toutes les ressources
   getAll: async () => {
     try {
@@ -60,7 +66,9 @@ export const resourceService = {
     } catch (error) {
       throw error;
     }
-  }
+  },
+
+  getResourceById, // Exporter la nouvelle fonction
 };
 
 export default resourceService;

@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
@@ -36,6 +37,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+
+# --- Créer le dossier static/uploads s'il n'existe pas --- 
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
+# --- Fin création dossier --- 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -171,6 +181,10 @@ app.include_router(
     prefix="/api/v1/users",
     tags=["users"]
 )
+
+# --- Monter le dossier static pour servir les fichiers --- 
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# --- Fin montage static --- 
 
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])
