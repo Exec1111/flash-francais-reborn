@@ -37,8 +37,14 @@ class Resource(Base):
     description = Column(Text, nullable=True)
     type_id = Column(Integer, ForeignKey("resource_types.id"), nullable=False)
     sub_type_id = Column(Integer, ForeignKey("resource_subtypes.id"), nullable=False)
-    content = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Champs ajoutés par la migration b6c5f8d9e0a1
+    source_type = Column(String(10), nullable=False, comment='Type de source: file ou ai')
+    file_path = Column(String, nullable=True, comment='Chemin du fichier uploadé')
+    file_name = Column(String, nullable=True, comment='Nom original du fichier uploadé')
+    file_size = Column(Integer, nullable=True, comment='Taille du fichier en octets')
+    file_type = Column(String, nullable=True, comment='Type MIME du fichier')
     
     # Relations
     type = relationship("ResourceType", back_populates="resources")

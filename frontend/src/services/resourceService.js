@@ -1,11 +1,11 @@
 import axios from 'axios';
-import authService from './auth';
+import authService from './auth'; // Garder l'import si d'autres fonctions d'authService sont utilisées ailleurs
 
-const API_URL = '/api/resources';
+const API_URL = 'http://localhost:10000/api/v1/resources'; // CORRIGÉ: URL absolue du backend
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {
-  const token = authService.getToken();
+  const token = localStorage.getItem('token'); // CORRIGÉ: Utiliser localStorage
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
