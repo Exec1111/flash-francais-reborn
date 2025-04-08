@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import crud
@@ -12,10 +12,18 @@ import shutil
 from pathlib import Path
 import json # Pour parser session_ids
 from fastapi import status
+from werkzeug.utils import secure_filename # Sécurité: importer depuis werkzeug.utils
+from config import get_settings
+settings = get_settings()
 
 logger = logging.getLogger(__name__)
+logger.info(">>> ROUTER FILE resource.py LOADED <<<") # <--- ADD LOG 1
+
+# Utiliser le chemin défini dans la config
+DISK_UPLOADS_BASE = settings.UPLOADS_BASE_DIR
 
 resource_router = APIRouter()
+logger.info(">>> APIRouter() INSTANTIATED for resources <<<") # <--- ADD LOG 2
 
 # --- Routes pour les Ressources ---
 
@@ -51,26 +59,23 @@ async def create_resource_route(
         raise HTTPException(status_code=400, detail=f"Format invalide pour session_ids_json: {e}")
 
     # --- Validation du fichier uploadé ---
-    MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
-    ALLOWED_MIME_TYPE = "application/pdf"
-
     if source_type == 'file':
         if file is None:
             raise HTTPException(status_code=400, detail="Un fichier est requis lorsque source_type est 'file'")
         
-        if file.content_type != ALLOWED_MIME_TYPE:
+        if file.content_type not in settings.ALLOWED_UPLOAD_MIME_TYPES:
             logger.error(f"File type not allowed: {file.content_type}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Type de fichier non autorisé. Seuls les fichiers PDF sont acceptés."
+                detail=f"Type de fichier non autorisé. Seuls les fichiers {', '.join(settings.ALLOWED_UPLOAD_MIME_TYPES)} sont acceptés."
             )
         
         actual_size = file.size
-        if actual_size > MAX_FILE_SIZE:
+        if actual_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
             logger.error(f"File size exceeded limit: {actual_size} bytes")
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Le fichier est trop volumineux. La taille maximale est de {MAX_FILE_SIZE / (1024 * 1024)} Mo."
+                detail=f"Le fichier est trop volumineux. La taille maximale est de {settings.MAX_UPLOAD_SIZE_MB} Mo."
             )
         logger.info(f"File validation passed for {file.filename}")
     # -------------------------------------
@@ -91,39 +96,41 @@ async def create_resource_route(
 
     # Gérer le fichier uploadé si source_type est 'file'
     if source_type == 'file':
+        # Sécuriser le nom de fichier
+        safe_filename = secure_filename(file.filename)
+        if not safe_filename: # Vérifier si secure_filename n'a pas tout supprimé
+             raise HTTPException(status_code=400, detail="Nom de fichier invalide.")
+
+        # Construire le chemin ABSOLU sur le disque Render
+        user_upload_dir_on_disk = Path(DISK_UPLOADS_BASE) / str(current_user.id)
+        user_upload_dir_on_disk.mkdir(parents=True, exist_ok=True) # Crée /var/data/uploads-storage/uploads/USER_ID/
+        final_file_path_on_disk = user_upload_dir_on_disk / safe_filename
+
+        # Sauvegarder le fichier sur le disque
+        try:
+            with open(final_file_path_on_disk, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            logger.info(f"Fichier '{safe_filename}' sauvegardé dans '{final_file_path_on_disk}' pour user {current_user.id}")
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde du fichier {safe_filename} sur disque: {e}")
+            # Supprimer le fichier potentiellement partiellement écrit ?
+            if final_file_path_on_disk.exists():
+                final_file_path_on_disk.unlink()
+            raise HTTPException(status_code=500, detail="Erreur interne lors de la sauvegarde du fichier.")
+        finally:
+             # S'assurer que le file descriptor est fermé (important avec UploadFile)
+             await file.close()
+
+        # Obtenir le chemin RELATIF pour la BDD
+        file_path_relative_for_db = safe_filename
+
         # Préparer les informations du fichier pour le CRUD
         file_upload_data = ResourceFileUpload(
-            file_name=file.filename,
+            file_name=safe_filename,
             file_type=file.content_type,
             file_size=file.size
         )
         
-        # Déterminer le chemin de sauvegarde final
-        backend_root = Path(__file__).parent.parent
-        upload_dir = backend_root / "static" / "uploads" / str(current_user.id)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        final_file_path = upload_dir / file.filename
-        temp_file_path = final_file_path # Utiliser directement le chemin final pour l'écriture
-
-        # Sauvegarder le fichier uploadé de manière asynchrone
-        try:
-            logger.info(f"Sauvegarde du fichier uploadé vers : {temp_file_path}")
-            with open(temp_file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            logger.info(f"Fichier sauvegardé avec succès : {temp_file_path}")
-        except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde du fichier {file.filename}: {e}")
-            # Supprimer le fichier temporaire s'il a été créé
-            if temp_file_path and os.path.exists(temp_file_path):
-                 try:
-                     os.remove(temp_file_path)
-                 except OSError as remove_err:
-                     logger.error(f"Erreur lors de la suppression du fichier temporaire échoué {temp_file_path}: {remove_err}")
-            raise HTTPException(status_code=500, detail=f"Erreur lors de la sauvegarde du fichier: {e}")
-        finally:
-            # Fermer le fichier uploadé (important)
-             await file.close()
-
     # Appeler la fonction CRUD pour créer la ressource en BDD
     try:
         db_resource = crud.resource.create_resource(
@@ -156,6 +163,7 @@ async def create_resource_route(
         logger.error(f"Erreur serveur inattendue lors de la création de la ressource: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erreur interne du serveur.")
 
+# --- Route GET pour lister toutes les ressources de l'utilisateur ---
 @resource_router.get("/", response_model=List[ResourceResponse])
 def read_resources(
     db: Session = Depends(get_db),
@@ -169,41 +177,53 @@ def read_resources(
     # FastAPI convertit la liste d'objets SQLAlchemy en List[ResourceResponse]
     return resources
 
-@resource_router.get("/session/{session_id}", response_model=List[ResourceResponse])
-def read_resources_by_session(
+# --- Route GET pour les ressources d'une session spécifique ---
+@resource_router.get("/by_session/{session_id}", response_model=list[ResourceResponse])
+async def read_resources_by_session(
     session_id: int,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000) 
 ):
+    logger.info(f">>> ENTERING read_resources_by_session for session {session_id} <<<") # <--- ADD LOG 3
     """Récupère les ressources d'une session spécifique pour l'utilisateur courant."""
-    logger.info(f"Lecture des ressources pour la session {session_id}, utilisateur {current_user.id}")
-    resources = crud.resource.get_resources_by_session(db, session_id=session_id, user_id=current_user.id, skip=skip, limit=limit)
-    # FastAPI convertit la liste d'objets SQLAlchemy
+    # ---> AJOUT: Vérifier d'abord si la session existe et appartient à l'utilisateur
+    db_session = crud.session.get_session(db=db, session_id=session_id) # Ne prend pas user_id
+    
+    # Vérification existence ET appartenance
+    if db_session is None or \
+       db_session.sequence is None or \
+       db_session.sequence.progression is None or \
+       db_session.sequence.progression.user_id != current_user.id:
+        logger.warning(f"Session {session_id} non trouvée ou non appartenant à l'utilisateur {current_user.id} lors de la demande de ressources.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found")
+    
+    logger.info(f"Lecture des ressources pour la session {session_id} par l'utilisateur {current_user.id}")
+    # Utiliser les valeurs par défaut pour skip/limit dans la fonction CRUD
+    resources = crud.resource.get_resources_by_session(db=db, session_id=session_id, user_id=current_user.id) # Ici on passe user_id à la fonction CRUD des *ressources*
+ 
+    if not resources:
+        logger.warning(f"Aucune ressource trouvée pour la session {session_id} appartenant à l'utilisateur {current_user.id}")
     return resources
 
+# --- Route GET pour les ressources standalone ---
 @resource_router.get("/standalone/", response_model=List[ResourceResponse])
 def read_standalone_resources(
     db: Session = Depends(get_db), 
-    current_user: UserModel = Depends(get_current_active_user), # Ajouter l'authentification
+    current_user: UserModel = Depends(get_current_active_user),
     skip: int = 0, 
     limit: int = 100
 ):
     """Récupère les ressources non associées à une session (pour l'utilisateur courant)."""
-    # TODO: Vérifier si cette route est toujours pertinente et si la logique CRUD est correcte.
-    # La logique actuelle de get_resources_standalone filtre les ressources sans aucune session.
-    # Il faut ajouter le filtre par user_id ici.
-    # Pour l'instant, on retourne une liste vide ou on lève une exception NotImplemented
-    # raise HTTPException(status_code=501, detail="Fonctionnalité non implémentée ou à revoir")
-    # Alternative: adapter crud.resource.get_resources_standalone pour accepter user_id
-    # Ou filtrer ici après récupération (moins efficace)
-    logger.warning(f"La route /standalone/ nécessite une révision pour filtrer par user_id={current_user.id}")
-    # Retourne vide pour l'instant
-    return []
-    # resources = crud.resource.get_resources_standalone(db=db, skip=skip, limit=limit)
-    # return resources # Ceci retournerait TOUTES les ressources standalone, pas seulement celles de l'utilisateur
+    # NOTE: Cette route nécessite une fonction CRUD dédiée ou un filtrage spécifique.
+    # Pour l'instant, on utilise une fonction hypothétique qui filtre par user ET absence de session.
+    logger.info(f"Lecture des ressources standalone pour l'utilisateur {current_user.id}")
+    resources = crud.resource.get_standalone_resources_for_user(db=db, user_id=current_user.id, skip=skip, limit=limit)
+    if resources is None: # Si la fonction CRUD n'est pas prête, retourne une liste vide
+        logger.warning(f"Fonctionnalité standalone pour user {current_user.id} non entièrement implémentée dans le CRUD.")
+        return []
+    return resources
 
+# --- Route GET pour une ressource spécifique par ID ---
 @resource_router.get("/{resource_id}", response_model=ResourceResponse)
 def read_resource(
     resource_id: int,
@@ -219,34 +239,35 @@ def read_resource(
     if db_resource.user_id != current_user.id:
         logger.error(f"Accès non autorisé à la ressource {resource_id} par l'utilisateur {current_user.id}")
         raise HTTPException(status_code=403, detail="Not authorized to access this resource")
-    # FastAPI convertit l'objet SQLAlchemy
     return db_resource
 
 @resource_router.put("/{resource_id}", response_model=ResourceResponse)
 async def update_resource_route(
     resource_id: int,
-    *, # Force keyword-only
+    *,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     type_id: Optional[int] = Form(None),
     sub_type_id: Optional[int] = Form(None),
-    session_ids_json: Optional[str] = Form(None), # Accepter string JSON
-    source_type: Optional[str] = Form(None), # Ajouté
-    file: Optional[UploadFile] = File(None) # Fichier optionnel pour la mise à jour
+    session_ids_json: Optional[str] = Form(None),
+    source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
+    file: Optional[UploadFile] = File(None)
 ):
-    """Met à jour une ressource. Si un fichier est fourni, il remplace l'ancien (si existant)."""
+    """Met à jour une ressource. Si un fichier est fourni, il remplace l'ancien (si existant).
+       Si source_type est changé (ex: file -> url), l'ancien fichier est supprimé.
+    """
     logger.info(f"Tentative de mise à jour de la ressource {resource_id} par l'utilisateur {current_user.id}")
-    
+
     # Vérifier d'abord si la ressource existe et appartient à l'utilisateur
     db_resource_check = crud.resource.get_resource(db, resource_id=resource_id)
     if db_resource_check is None:
         logger.warning(f"Ressource {resource_id} non trouvée pour la mise à jour.")
-        raise HTTPException(status_code=404, detail="Resource not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
     if db_resource_check.user_id != current_user.id:
         logger.error(f"Accès non autorisé pour la mise à jour de la ressource {resource_id} par l'utilisateur {current_user.id}")
-        raise HTTPException(status_code=403, detail="Not authorized to update this resource")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this resource")
 
     # Parser les IDs de session depuis la string JSON si fournie
     session_ids: Optional[List[int]] = None
@@ -258,124 +279,166 @@ async def update_resource_route(
             session_ids = [int(sid) for sid in parsed_ids if sid is not None]
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Erreur de parsing JSON pour session_ids lors de la mise à jour: {e}")
-            raise HTTPException(status_code=400, detail=f"Format invalide pour session_ids_json: {e}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Format invalide pour session_ids_json: {e}")
 
-    # --- Validation du fichier uploadé ---
-    MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
-    ALLOWED_MIME_TYPE = "application/pdf"
-
+    # --- Validation du fichier uploadé --- (déjà adapté aux settings)
     if file:
-        if file.content_type != ALLOWED_MIME_TYPE:
+        if file.content_type not in settings.ALLOWED_UPLOAD_MIME_TYPES:
             logger.error(f"File type not allowed: {file.content_type}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Type de fichier non autorisé. Seuls les fichiers PDF sont acceptés."
+                detail=f"Type de fichier non autorisé. Seuls les fichiers {', '.join(settings.ALLOWED_UPLOAD_MIME_TYPES)} sont acceptés."
             )
         
         actual_size = file.size
-        if actual_size > MAX_FILE_SIZE:
+        if actual_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
             logger.error(f"File size exceeded limit: {actual_size} bytes")
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Le fichier est trop volumineux. La taille maximale est de {MAX_FILE_SIZE / (1024 * 1024)} Mo."
+                detail=f"Le fichier est trop volumineux. La taille maximale est de {settings.MAX_UPLOAD_SIZE_MB} Mo."
             )
         logger.info(f"File validation passed for {file.filename}")
     # -------------------------------------
-
+    
     # Préparer les données pour le schéma ResourceUpdate
     update_data = ResourceUpdate(
         title=title,
         description=description,
         type_id=type_id,
         sub_type_id=sub_type_id,
-        session_ids=session_ids # Passer la liste parsée
+        session_ids=session_ids, # Passer la liste parsée si elle existe
+        source_type=source_type # Passer le nouveau type s'il est fourni
     ).model_dump(exclude_unset=True) # Seulement les champs fournis
     
     # Si aucun champ n'est fourni pour la mise à jour (hors fichier), c'est peut-être une erreur
     if not update_data and file is None:
-         raise HTTPException(status_code=400, detail="Aucune donnée fournie pour la mise à jour.")
+         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Aucune donnée fournie pour la mise à jour.")
 
     file_upload_data: Optional[ResourceFileUpload] = None
-    temp_file_path: Optional[str] = None
+    temp_saved_file_path: Optional[Path] = None
 
     # Gérer le fichier uploadé s'il est fourni
     if file is not None:
+        safe_filename = secure_filename(file.filename) # Sécuriser le nom
         file_upload_data = ResourceFileUpload(
-            file_name=file.filename,
+            file_name=safe_filename, # Utiliser le nom sécurisé
             file_type=file.content_type,
             file_size=file.size
         )
         
-        backend_root = Path(__file__).parent.parent
-        upload_dir = backend_root / "static" / "uploads" / str(current_user.id)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        final_file_path = upload_dir / file.filename
-        temp_file_path = final_file_path # Écrasera l'ancien si le nom est le même
+        # Utiliser UPLOADS_BASE_DIR des settings
+        user_upload_dir_on_disk = settings.UPLOADS_BASE_DIR / str(current_user.id)
+        user_upload_dir_on_disk.mkdir(parents=True, exist_ok=True)
+        final_file_path_on_disk = user_upload_dir_on_disk / safe_filename
+        temp_saved_file_path = final_file_path_on_disk # Garder une trace pour suppression en cas d'erreur CRUD
 
         try:
-            logger.info(f"Sauvegarde du nouveau fichier pour mise à jour vers : {temp_file_path}")
-            with open(temp_file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            logger.info(f"Nouveau fichier sauvegardé avec succès : {temp_file_path}")
+            logger.info(f"Sauvegarde du nouveau fichier pour mise à jour vers : {final_file_path_on_disk}")
+            # Utiliser write() qui est asynchrone avec UploadFile
+            with open(final_file_path_on_disk, "wb") as buffer:
+                buffer.write(await file.read())
+            logger.info(f"Nouveau fichier sauvegardé avec succès : {final_file_path_on_disk}")
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde du nouveau fichier {file.filename}: {e}")
-            # Pas besoin de supprimer ici car on n'a pas encore appelé le CRUD
-            raise HTTPException(status_code=500, detail=f"Erreur lors de la sauvegarde du fichier: {e}")
+            logger.error(f"Erreur lors de la sauvegarde du nouveau fichier {safe_filename}: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la sauvegarde du fichier: {e}")
         finally:
             await file.close()
 
     # Appeler la fonction CRUD pour mettre à jour
     try:
-        # Passer les données filtrées et les infos du fichier (si présentes)
+        # La fonction CRUD doit gérer la suppression de l'ancien fichier si nécessaire
         updated_resource = crud.resource.update_resource(
             db=db, 
             resource_id=resource_id, 
-            resource_update=ResourceUpdate(**update_data), # Recréer un objet pour être sûr
-            file_upload=file_upload_data
+            resource_update=ResourceUpdate(**update_data), 
+            file_upload=file_upload_data # La fonction CRUD doit gérer l'user_id via resource_id
         )
-        if updated_resource is None: # Double check, même si on a vérifié avant
-            raise HTTPException(status_code=404, detail="Resource not found during update process")
+        if updated_resource is None: # Si CRUD retourne None (par ex. ressource non trouvée par lui)
+             # Normalement déjà géré par la vérification initiale, mais double sécurité
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found during update process")
         logger.info(f"Ressource {resource_id} mise à jour avec succès.")
-        # FastAPI convertit l'objet SQLAlchemy retourné
         return updated_resource
     except ValueError as e:
-        # Si le CRUD lève une ValueError (ex: session non trouvée)
-        # Le fichier uploadé (si nouveau) est déjà sauvegardé, mais la BDD n'est pas à jour.
-        # On pourrait le supprimer, mais c'est complexe à gérer proprement.
-        # On log l'erreur et on retourne 400.
+        # Si le CRUD lève une ValueError (ex: session non trouvée, problème logique)
+        # Supprimer le fichier qu'on VIENT de sauvegarder si on en a sauvegardé un
+        if temp_saved_file_path and temp_saved_file_path.exists():
+            try:
+                os.remove(temp_saved_file_path)
+                logger.warning(f"Nouveau fichier uploadé {temp_saved_file_path} supprimé car la mise à jour a échoué: {e}")
+            except OSError as remove_err:
+                logger.error(f"Erreur lors de la suppression du nouveau fichier après échec mise à jour {temp_saved_file_path}: {remove_err}")
         logger.error(f"Erreur (ValueError) lors de la mise à jour de la ressource {resource_id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         # Autre erreur inattendue
+        if temp_saved_file_path and temp_saved_file_path.exists():
+            try:
+                os.remove(temp_saved_file_path)
+                logger.warning(f"Nouveau fichier uploadé {temp_saved_file_path} supprimé car la mise à jour a échoué: {e}")
+            except OSError as remove_err:
+                logger.error(f"Erreur lors de la suppression du nouveau fichier après échec mise à jour {temp_saved_file_path}: {remove_err}")
         logger.error(f"Erreur serveur inattendue lors de la mise à jour de la ressource {resource_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Erreur interne du serveur.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur interne du serveur.")
 
-@resource_router.delete("/{resource_id}", status_code=204) # 204 No Content pour succès
+# --- Route DELETE pour supprimer ---
+@resource_router.delete("/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_resource_route(
     resource_id: int,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """Supprime une ressource."""
+    """Supprime une ressource et son fichier associé si elle en a un."""
     logger.info(f"Tentative de suppression de la ressource {resource_id} par l'utilisateur {current_user.id}")
     
     # Vérifier d'abord si la ressource existe et appartient à l'utilisateur
     db_resource_check = crud.resource.get_resource(db, resource_id=resource_id)
     if db_resource_check is None:
         logger.warning(f"Ressource {resource_id} non trouvée pour la suppression.")
-        raise HTTPException(status_code=404, detail="Resource not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
     if db_resource_check.user_id != current_user.id:
         logger.error(f"Accès non autorisé pour la suppression de la ressource {resource_id} par l'utilisateur {current_user.id}")
-        raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this resource")
 
-    # Appeler la fonction CRUD pour supprimer
+    # Garder une trace du chemin du fichier avant de supprimer l'enregistrement BDD
+    file_path_to_delete: Optional[Path] = None
+    if db_resource_check.file_path:
+        # Reconstruire le chemin absolu basé sur UPLOADS_BASE_DIR
+        # Note: db_resource_check.file_path devrait contenir le chemin relatif incluant le nom sécurisé
+        relative_path = Path(db_resource_check.file_path)
+        file_path_to_delete = settings.UPLOADS_BASE_DIR / str(current_user.id) / relative_path.name
+        logger.info(f"Chemin du fichier à supprimer identifié : {file_path_to_delete}")
+
+    # Appeler la fonction CRUD pour supprimer l'enregistrement en BDD
     deleted = crud.resource.delete_resource(db=db, resource_id=resource_id)
     
     if not deleted:
         # Ceci ne devrait pas arriver si la vérification initiale a réussi, mais par sécurité
-        logger.error(f"Échec de la suppression de la ressource {resource_id} après vérification.")
-        raise HTTPException(status_code=404, detail="Resource not found during delete process")
+        logger.error(f"Échec de la suppression de la ressource {resource_id} en BDD après vérification.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found during delete process")
     
-    logger.info(f"Ressource {resource_id} supprimée avec succès.")
+    # Si la suppression en BDD a réussi, supprimer le fichier physique s'il existait
+    if file_path_to_delete and file_path_to_delete.exists():
+        try:
+            os.remove(file_path_to_delete)
+            logger.info(f"Fichier physique {file_path_to_delete} supprimé avec succès pour la ressource {resource_id}.")
+        except OSError as e:
+            # Si la suppression échoue, on loggue l'erreur mais on ne lève pas d'exception HTTP
+            # Car la ressource BDD est déjà supprimée. C'est un état potentiellement incohérent
+            # mais lever une 500 ici serait trompeur pour le client.
+            logger.error(f"Erreur lors de la suppression du fichier physique {file_path_to_delete}: {e}")
+    elif file_path_to_delete:
+         logger.warning(f"Le fichier physique {file_path_to_delete} associé à la ressource {resource_id} n'a pas été trouvé sur le disque pour suppression.")
+
+    logger.info(f"Ressource {resource_id} supprimée avec succès de la BDD.")
     # Pas de contenu à retourner pour une réponse 204
-    return
+    return # Ou return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- Fin des Routes pour les Ressources ---
+
+# --- Route de TEST Simplifiée ---
+@resource_router.get("/by_session/{session_id}/test")
+async def test_route_for_session(session_id: int):
+    logger.info(f">>> SIMPLE TEST ROUTE CALLED for session {session_id} <<<")
+    return {"message": f"Simple test route ok for session {session_id}"}
+# --- Fin Route de TEST ---

@@ -30,14 +30,21 @@ const ResourceEdit = () => {
         }
 
         const data = await response.json();
+        // Construire l'objet initialData pour ResourceForm
+        // en utilisant les clés exactes de la réponse API
+        // et en s'assurant que les types correspondent (ex: array pour session_ids)
         setResource({
           title: data.title,
           description: data.description || '',
           type_id: data.type_id,
           sub_type_id: data.sub_type_id,
-          content: data.content || '',
-          session_ids: data.session_ids || [],
-          user_id: data.user_id
+          source_type: data.source_type, // Ajouter le type de source
+          file_path: data.file_path || '', // Ajouter le chemin du fichier
+          file_name: data.file_name || '', // Ajouter le nom du fichier
+          // Utiliser data.session_ids qui est déjà un tableau d'IDs
+          session_ids: Array.isArray(data.session_ids) ? data.session_ids : [],
+          // url: data.url || '', // Décommenter si le formulaire gère l'URL
+          // ai_generated_content: data.ai_generated_content || '', // Décommenter si pertinent
         });
         setLoading(false);
       } catch (err) {

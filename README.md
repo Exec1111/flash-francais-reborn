@@ -24,7 +24,7 @@ flash-francais/
 ```bash
 cd backend
 .\venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python app.py
 ```
 L API sera disponible sur http://localhost:10000
@@ -94,4 +94,4 @@ Pour exécuter les tests :
     python clear_db.py 
     # Optionnel : Peupler avec des données de test
     python populate_db.py 
-    ```
+    

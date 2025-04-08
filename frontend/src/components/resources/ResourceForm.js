@@ -83,49 +83,42 @@ const ResourceForm = ({
 
   // Initialisation du formulaire avec les données existantes
   useEffect(() => {
+    // Vérifier que initialData existe et que les types sont chargés
     if (initialData && resourceTypes.length > 0) {
-      const typeId = initialData.resource_type_id ? String(initialData.resource_type_id) : '';
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        resource_type_id: typeId,
-        resource_sub_type_id: initialData.resource_sub_type_id ? String(initialData.resource_sub_type_id) : '',
-        session_ids: initialData.sessions ? initialData.sessions.map(s => s.id) : (session ? [session.id] : []), 
-        ai_prompt: initialData.ai_prompt || '',
-        ai_model: initialData.ai_model || '',
-        ai_raw_output: initialData.ai_raw_output || ''
-      }));
-      setSourceType(initialData.source_type || 'ai'); 
+        const initialTypeId = initialData.type_id ? String(initialData.type_id) : '';
+        const initialSubTypeId = initialData.sub_type_id ? String(initialData.sub_type_id) : '';
 
-      if (typeId) {
-        fetchSubTypes(typeId); 
-      }
+        setFormData({ // Utiliser setFormData directement au lieu de l'updater
+            title: initialData.title || '',
+            description: initialData.description || '',
+            resource_type_id: initialTypeId,       // Clé correcte pour l'état
+            resource_sub_type_id: initialSubTypeId, // Clé correcte pour l'état
+            session_ids: initialData.session_ids || (session ? [session.id] : []), // Utiliser session_ids de ResourceEdit
+            // source_type est géré par l'état dédié `sourceType`
+            url: initialData.url || '', // Inclure l'URL si elle fait partie des initialData
+            ai_prompt: initialData.ai_prompt || '',
+            ai_model: initialData.ai_model || '',
+            ai_raw_output: initialData.ai_raw_output || ''
+            // Remarque: file_path, file_name ne sont pas des champs modifiables ici
+        });
 
-      // Si c'est une ressource de type fichier, afficher le nom (on ne recharge pas le fichier)
-      if (initialData.source_type === 'file' && initialData.file_name) {
-        // Optionnel: afficher le nom du fichier existant
-        // On ne peut pas re-sélectionner le fichier automatiquement pour des raisons de sécurité
-      }
+        setSourceType(initialData.source_type || 'ai'); // Mettre à jour aussi l'état sourceType
 
+        // Charger les sous-types correspondants si un type est sélectionné
+        if (initialTypeId) {
+            fetchSubTypes(initialTypeId);
+        }
     } else if (!isEdit && session) {
-      // Cas création avec session pré-remplie
-      setFormData(prev => ({ ...prev, session_ids: [session.id] }));
-    } else if (!isEdit) {
-      // Reset pour la création sans données initiales
-      setFormData({
-        title: '',
-        resource_type_id: '',
-        resource_sub_type_id: '',
-        session_ids: [],
-        ai_prompt: '',
-        ai_model: '',
-        ai_raw_output: ''
-      });
-      setSourceType('ai');
-      setSelectedFile(null);
-      setFileError('');
+        // Cas création simple avec session pré-remplie
+        setFormData(prev => ({ ...prev, session_ids: [session.id] }));
+    } else if (!isEdit && !initialData) {
+        // Reset normal pour création (si pas de données initiales)
+        // (Optionnel, dépend si on veut garder les valeurs entre créations)
+        // setFormData({ title: '', description: '', ... });
+        // setSourceType('ai');
+        // setSelectedFile(null);
     }
-  }, [initialData, resourceTypes, isEdit, session]); 
+  }, [initialData, resourceTypes, session, isEdit]); // Garder les dépendances
 
   // Charger les types
   const fetchResourceTypes = useCallback(async () => {

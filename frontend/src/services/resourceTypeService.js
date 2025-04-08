@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:10000/api/v1/resource-types';
+// Récupérer l'URL de base de l'API depuis les variables d'environnement
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
+const API_URL = `${API_BASE_URL}/api/v1/resource-types`;
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {

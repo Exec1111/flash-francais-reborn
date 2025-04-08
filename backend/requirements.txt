@@ -12,3 +12,10 @@ passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 requests # Ajout de la bibliothèque pour les requêtes HTTP
 python-multipart # Nécessaire pour gérer les données de formulaire dans FastAPI
+uvicorn
+websockets
+# fastapi-cache2[redis] # Temporairement désactivé à cause de pbs d'install pendulum/Rust
+# pendulum<3.0.0 # Temporairement désactivé
+passlib[bcrypt]
+python-multipart
+Werkzeug # Pour secure_filename et potentiellement d'autres utilitaires

@@ -6,6 +6,8 @@ from sqlalchemy import or_
 import logging
 import os
 from pathlib import Path
+from config import get_settings
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 def get_upload_path(user_id: int, file_name: str) -> str:
@@ -138,25 +140,44 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
     
     new_file_provided = file_upload is not None
 
+    old_file_path_relative = db_resource.file_path # Stocker l'ancien chemin relatif
+    old_user_id = db_resource.user_id # Nécessaire pour construire l'ancien chemin absolu
+
     for key, value in update_data.items():
         if key not in ['session_ids', 'source_type']:
             setattr(db_resource, key, value)
 
     if new_file_provided:
-        if db_resource.source_type == 'file' and db_resource.file_path and os.path.exists(db_resource.file_path):
-            try:
-                os.remove(db_resource.file_path)
-                logger.info(f"Ancien fichier supprimé : {db_resource.file_path}")
-            except OSError as e:
-                logger.error(f"Erreur lors de la suppression de l'ancien fichier {db_resource.file_path}: {e}")
-        
+        logger.info(f"Nouveau fichier fourni pour la ressource {resource_id}: {file_upload.file_name}")
+        # 1. Préparer les nouvelles informations du fichier
         db_resource.file_name = file_upload.file_name
         db_resource.file_type = file_upload.file_type
         db_resource.file_size = file_upload.file_size
         db_resource.file_path = get_upload_path(db_resource.user_id, file_upload.file_name)
-        db_resource.source_type = 'file' 
-        logger.info(f"Informations du fichier mises à jour pour la ressource {resource_id}")
+        # S'assurer que le type est 'file'
+        db_resource.source_type = 'file'
+        # Potentiellement nullifier les champs conflictuels (url, ai_content)
+        db_resource.url = None
+        db_resource.ai_generated_content = None
+        logger.info(f"Informations BDD mises à jour pour le fichier de la ressource {resource_id}")
 
+        # 2. Supprimer l'ancien fichier PHYSIQUE (si existant)
+        if db_resource.source_type == 'file' and old_file_path_relative:
+            # Extraire le nom de fichier du chemin relatif stocké
+            old_filename = Path(old_file_path_relative).name
+            # Construire le chemin ABSOLU correct de l'ancien fichier
+            absolute_old_file_path = settings.UPLOADS_BASE_DIR / str(old_user_id) / old_filename
+ 
+            if absolute_old_file_path.exists():
+                try:
+                    absolute_old_file_path.unlink() # Utiliser unlink() de Path
+                    logger.info(f"Ancien fichier supprimé physiquement : {absolute_old_file_path}")
+                except OSError as e:
+                    # Log l'erreur mais continuer, la màj BDD est prioritaire
+                    logger.error(f"Erreur lors de la suppression de l'ancien fichier {absolute_old_file_path}: {e}")
+            else:
+                logger.warning(f"Ancien fichier non trouvé pour suppression: {absolute_old_file_path}")
+        
     if "session_ids" in update_data and update_data["session_ids"] is not None:
         new_session_ids = set(sid for sid in update_data["session_ids"] if sid is not None and sid != 0)
         

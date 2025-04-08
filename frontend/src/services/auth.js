@@ -1,6 +1,8 @@
 import api from './api';
 
-const AUTH_ENDPOINT = '/auth';
+// Récupérer l'URL de base de l'API depuis les variables d'environnement
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
+const AUTH_ENDPOINT = `${API_BASE_URL}/api/v1/auth`;
 
 export const authService = {
   /**
@@ -59,7 +61,7 @@ export const authService = {
    */
   getCurrentUser: async () => {
     try {
-      const response = await api.get(`/auth/me`);
+      const response = await api.get(`${AUTH_ENDPOINT}/me`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors de la récupération des informations utilisateur" };

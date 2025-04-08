@@ -1,14 +1,17 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import List
 import os
+from pathlib import Path
+from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+from typing import List, Optional
 
 load_dotenv()
 
+BACKEND_ROOT = Path(__file__).resolve().parent 
+
 class Settings(BaseSettings):
     # Environnement (development, production)
-    ENV: str = "development"
+    ENV: str = os.getenv("ENV", "development")
     
     # Configuration de la base de données
     DATABASE_URL: str = os.getenv('DATABASE_URL', '')
@@ -33,6 +36,26 @@ class Settings(BaseSettings):
     OPENAI_CHAT_MODEL: str = os.getenv('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo')
     GEMINI_CHAT_MODEL: str = os.getenv('GEMINI_CHAT_MODEL', 'gemini-pro')
 
+    # Préfixe URL pour servir les fichiers média
+    MEDIA_URL_PREFIX: str = "/media/uploads" 
+
+    # --- Ajout des paramètres d'upload manquants ---
+    MAX_UPLOAD_SIZE_MB: int = int(os.getenv('MAX_UPLOAD_SIZE_MB', '10')) # Taille max en Mo, défaut 10 Mo
+    ALLOWED_UPLOAD_MIME_TYPES: List[str] = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "application/pdf",
+        "text/plain",
+        "audio/mpeg", # Pour les MP3
+        "video/mp4",  # Pour les MP4
+        # Ajoutez d'autres types MIME si nécessaire
+    ]
+    # -----------------------------------------------
+
+    # Chemin de base pour le stockage des uploads - Initialisé à None
+    UPLOADS_BASE_DIR: Optional[Path] = None
+
     # Swagger UI (peut être désactivé en production via .env.production)
     DOCS_URL: str | None = "/docs"
     REDOC_URL: str | None = "/redoc"
@@ -43,10 +66,33 @@ class Settings(BaseSettings):
         case_sensitive = True
         extra = 'allow'  # Autorise les variables d'environnement supplémentaires
 
-@lru_cache()
+@lru_cache() 
 def get_settings() -> Settings:
-    settings = Settings()
-    
+    settings = Settings() # Crée l'instance initiale
+
+    # Définir UPLOADS_BASE_DIR conditionnellement
+    if settings.ENV.lower() == "production":
+        # En production (Render), utiliser le disque monté
+        PRODUCTION_DISK_PATH = "/var/data/uploads-storage"
+        settings.UPLOADS_BASE_DIR = Path(PRODUCTION_DISK_PATH) / "uploads"
+        print(f"INFO: Environnement de PRODUCTION détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
+    else:
+        # En développement, utiliser un dossier local
+        settings.UPLOADS_BASE_DIR = BACKEND_ROOT / "local_uploads"
+        print(f"INFO: Environnement de DEVELOPPEMENT détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
+
+    # Créer le dossier (local ou prod) s'il n'existe pas
+    if settings.UPLOADS_BASE_DIR:
+        try:
+            os.makedirs(settings.UPLOADS_BASE_DIR, exist_ok=True)
+        except OSError as e:
+            print(f"ERROR: Impossible de créer le dossier d'uploads {settings.UPLOADS_BASE_DIR}: {e}")
+            # Vous pourriez vouloir lever une exception ici si le dossier est critique
+            raise RuntimeError(f"Impossible de créer le dossier d'uploads requis: {settings.UPLOADS_BASE_DIR}") from e
+    else:
+        # Gérer le cas où UPLOADS_BASE_DIR n'a pas pu être défini
+        raise ValueError("FATAL: UPLOADS_BASE_DIR n'a pas pu être configuré.")
+
     # Vérifier si nous sommes sur Render
     if os.environ.get("RENDER") == "true":
         # Forcer le mode production

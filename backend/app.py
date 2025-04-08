@@ -38,14 +38,13 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# --- Créer le dossier static/uploads s'il n'existe pas --- 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
-if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR)
-if not os.path.exists(UPLOADS_DIR):
-    os.makedirs(UPLOADS_DIR)
-# --- Fin création dossier --- 
+# --- Cache désactivé temporairement ---
+# from contextlib import asynccontextmanager 
+# from redis import asyncio as aioredis
+# from fastapi_cache import FastAPICache
+# from fastapi_cache.backends.redis import RedisBackend
+# from fastapi_cache.decorator import cache
+# --- Fin cache désactivé ---
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -102,21 +101,35 @@ app = FastAPI(
     openapi_url=settings.OPENAPI_URL
 )
 
-# Configuration CORS
+# --- Cache désactivé temporairement --- 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # Initialiser Redis pour le cache
+#     redis_url = settings.REDIS_URL # Assurez-vous que REDIS_URL est dans votre config/settings
+#     if redis_url:
+#         redis = aioredis.from_url(redis_url, encoding="utf8", decode_responses=True)
+#         FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+#         logger.info(f"Cache Redis initialisé avec succès depuis {redis_url}")
+#         yield
+#         await redis.close()
+#     else:
+#         logger.warning("REDIS_URL non définie. Le cache ne sera pas activé.")
+#         yield # Démarrer l'app sans cache
+# --- Fin cache désactivé ---
+
+# --- Configuration CORS ---
 origins = [
-    "http://localhost:3000",  # Frontend React
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
+    "http://localhost:3000",  # L'origine de votre frontend React
+    "http://localhost:8080",  # Si vous utilisez une autre origine pour le dev
+    "http://127.0.0.1:3000", # Parfois nécessaire
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Type", "Authorization"],  # Ajout des headers exposés
+    allow_origins=origins,  # Liste des origines autorisées
+    allow_credentials=True, # Autoriser les cookies/jetons dans les requêtes cross-origin
+    allow_methods=["*"],    # Autoriser toutes les méthodes (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],    # Autoriser tous les en-têtes
 )
 
 # Inclusion des routes d'authentification
@@ -182,9 +195,11 @@ app.include_router(
     tags=["users"]
 )
 
-# --- Monter le dossier static pour servir les fichiers --- 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-# --- Fin montage static --- 
+# --- Monter le dossier d'uploads en utilisant la config --- 
+# Le dossier est déjà créé par la logique dans config.py
+app.mount(settings.MEDIA_URL_PREFIX, StaticFiles(directory=str(settings.UPLOADS_BASE_DIR)), name="user_uploads")
+logger.info(f"Montage des médias depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
+# --- Fin montage Render Disk --- 
 
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])

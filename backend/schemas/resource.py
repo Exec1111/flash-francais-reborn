@@ -74,13 +74,13 @@ class ResourceResponse(BaseModel):
     # Champ pour que from_attributes peuple la relation (utilisé par computed_field)
     sessions: List[SessionMinimalSchema] = []
 
-    @computed_field
-    @property
-    def session_ids(self) -> List[int]:
-        # Accède à self.sessions peuplé par from_attributes
-        if hasattr(self, 'sessions') and self.sessions:
-            return [s.id for s in self.sessions]
-        return []
+    # @computed_field
+    # @property
+    # def session_ids(self) -> List[int]:
+    #     # Accède à self.sessions peuplé par from_attributes
+    #     if hasattr(self, 'sessions') and self.sessions:
+    #         return [s.id for s in self.sessions]
+    #     return []
 
     class Config:
         from_attributes = True # Active la conversion depuis les objets SQLAlchemy

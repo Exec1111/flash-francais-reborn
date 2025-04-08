@@ -1,7 +1,9 @@
 import axios from 'axios';
 import authService from './auth'; // Garder l'import si d'autres fonctions d'authService sont utilisées ailleurs
 
-const API_URL = 'http://localhost:10000/api/v1/resources'; // CORRIGÉ: URL absolue du backend
+// Récupérer l'URL de base de l'API depuis les variables d'environnement
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback pour sécurité
+const API_URL = `${API_BASE_URL}/api/v1/resources`; // CORRIGÉ: URL absolue du backend
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {

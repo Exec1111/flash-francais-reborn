@@ -13,8 +13,8 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', options);
 };
 
-// Base URL pour les fichiers statiques du backend
-const STATIC_FILES_URL = 'http://localhost:10000'; // Ajustez si nécessaire
+// Base URL pour l'API et les fichiers statiques du backend depuis les variables d'environnement
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
 function ResourceView() {
     const { id } = useParams();
@@ -84,9 +84,10 @@ function ResourceView() {
     }
 
     // Construire l'URL du fichier si applicable
-    // Le backend doit retourner le chemin *relatif* au dossier 'static' dans file_path (ex: 'uploads/19/mon_fichier.pdf')
+    // Le backend retourne le chemin *relatif* au dossier 'uploads' dans file_path (ex: 'uploads/19/mon_fichier.pdf')
+    // Et sert ces fichiers via /media/uploads/...
     const fileUrl = resource.source_type === 'file' && resource.file_path 
-                    ? `${STATIC_FILES_URL}/static/${resource.file_path.startsWith('/') ? resource.file_path.substring(1) : resource.file_path}` 
+                    ? `${API_BASE_URL}/media/${resource.file_path.startsWith('/') ? resource.file_path.substring(1) : resource.file_path}` 
                     : null;
 
     return (
