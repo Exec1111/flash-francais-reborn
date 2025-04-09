@@ -1,10 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Drawer, IconButton, Box, Typography, useTheme, Tooltip, CircularProgress, Divider } from '@mui/material';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Drawer, IconButton, Box, Typography, useTheme, Tooltip, CircularProgress, Divider, Button } from '@mui/material';
 import { 
   ChevronLeft as ChevronLeftIcon, 
   Description as DescriptionIcon, 
   Checklist as ChecklistIcon,
   AccountTree as AccountTreeIcon,
+  AddCircleOutline as AddIcon,
   FormatListBulleted as FormatListBulletedIcon,
   Folder as FolderIcon, 
   Article as ArticleIcon, 
@@ -14,21 +15,23 @@ import {
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view'; 
 import ResourceButton from './resources/ResourceButton';
 import { useAuth } from '../contexts/AuthContext';
+import { useTreeData } from '../contexts/TreeDataContext'; // Importer le hook
 import api from '../services/api'; // Importer l'instance api
+import { Link as RouterLink } from 'react-router-dom'; // Pour la navigation
 
 export const drawerWidth = 480;  
 
 function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
-  const { user, token } = useAuth();
+  const { token } = useAuth(); // Supprimer user s'il n'est pas utilisé ici
+  // Utiliser les données et états depuis le contexte
+  const { treeData, isTreeLoading: isLoading, treeError: error } = useTreeData(); // Supprimer refreshTreeData s'il n'est pas utilisé ici
   const theme = useTheme();
-  const [treeData, setTreeData] = useState({ id: 'root', name: 'Progressions', type: 'root', children: [] }); 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const textRef = useRef(null);
   const [isTextTruncated, setIsTextTruncated] = useState(false);
   const [expandedItems, setExpandedItems] = useState([]); 
+  const [internalTreeData, setInternalTreeData] = useState(treeData); // État local pour gérer les enfants dynamiques
 
-  const checkTextTruncation = React.useCallback(() => {
+  const checkTextTruncation = useCallback(() => {
     if (textRef.current) {
       const isOverflowing = textRef.current.scrollWidth > textRef.current.clientWidth;
       setIsTextTruncated(isOverflowing);
@@ -44,13 +47,24 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     return () => resizeObserver.disconnect();
   }, [checkTextTruncation]);
 
-  const findAndUpdateNodeImmutable = (nodes, nodeId, newChildren) => {
+  // Mettre à jour l'état interne lorsque les données du contexte changent
+  useEffect(() => {
+    console.log("SideTreeView: Context treeData updated, updating internal state.", treeData);
+    setInternalTreeData(treeData);
+    // Optionnel: Réinitialiser les expandedItems si nécessaire lors d'un refresh complet ?
+    // setExpandedItems([]); 
+  }, [treeData]);
+
+  // La logique de chargement initial est supprimée car gérée par ProtectedLayout
+  // useEffect(() => { ... fetchData ... }, [token]);
+
+  const findNodeAndUpdate = (nodes, nodeId, newChildren) => {
     return nodes.map(node => {
       if (node.id.toString() === nodeId.toString()) {
         console.log(`Updating children for node ${nodeId} immutably.`); 
         return { ...node, children: newChildren };
       } else if (node.children && node.children.length > 0) {
-        const updatedChildren = findAndUpdateNodeImmutable(node.children, nodeId, newChildren);
+        const updatedChildren = findNodeAndUpdate(node.children, nodeId, newChildren);
         if (updatedChildren !== node.children) {
           return { ...node, children: updatedChildren };
         }
@@ -59,10 +73,11 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     });
   };
 
-  const updateNodeChildrenImmutable = (nodeId, newChildren) => {
-    setTreeData(prevData => {
+  // Modifié pour utiliser setInternalTreeData
+  const updateNodeChildrenImmutable = useCallback((nodeId, newChildren) => {
+    setInternalTreeData(prevData => {
       console.log(`Calling setTreeData after immutable update for ${nodeId}`);
-      const updatedRootChildren = findAndUpdateNodeImmutable(prevData.children, nodeId, newChildren);
+      const updatedRootChildren = findNodeAndUpdate(prevData.children, nodeId, newChildren);
       if (updatedRootChildren !== prevData.children) {
         return { ...prevData, children: updatedRootChildren };
       } else {
@@ -70,60 +85,9 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
         return prevData;
       }
     });
-  };  
+  }, [findNodeAndUpdate]);  // useCallback pour éviter recréation inutile
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        if (!token) {
-          throw new Error('No token available');
-        }
-        // Utiliser l'instance api pour faire l'appel
-        // L'URL de base et le token d'autorisation sont gérés par l'instance api
-        const response = await api.get('/progressions');
-
-        // Axios met directement les données dans response.data
-        const progressions = response.data;
-
-        console.log("Données formatées pour TreeView:", progressions);
-        // Adapter les données reçues au format attendu par renderTree
-        const formattedProgressions = progressions.map(prog => ({
-          id: prog.id,
-          name: prog.title, 
-          type: 'progression', 
-          description: prog.description,
-          children: [{ id: `loading-${prog.id}`, name: 'Chargement...', type: 'loading' }]
-        }));
-
-        console.log("Données formatées pour TreeView:", formattedProgressions);
-        setTreeData(prevData => ({ ...prevData, children: formattedProgressions }));
-      } catch (e) {
-        console.error("Erreur lors de la récupération des données de l'API:", e);
-        setError('Impossible de charger les progressions.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [token]); // Ajouter token aux dépendances
-
-  const findNodeInTree = (nodes, id) => {
-    if (!nodes) return null;
-    for (const node of nodes) {
-      if (node.id.toString() === id.toString()) {
-        return node;
-      }
-      if (node.children && node.children.length > 0) {
-        const found = findNodeInTree(node.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  const handleExpandedItemsChange = async (event, itemIds) => {
+  const handleExpandedItemsChange = useCallback(async (event, itemIds) => {
     setExpandedItems(itemIds);
     
     const oldExpandedIds = expandedItems;
@@ -137,7 +101,7 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     console.log(`Expansion demandée pour l'ID: ${newlyExpandedItemId}`);
 
     // Trouver le nœud spécifique dans l'arbre actuel
-    const nodeToExpand = findNodeInTree([treeData], newlyExpandedItemId);
+    const nodeToExpand = findNodeInTree(internalTreeData.children, newlyExpandedItemId); // Chercher dans les enfants
 
     console.log('Node to expand found:', nodeToExpand);
 
@@ -239,12 +203,25 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
       // Mettre à jour l'arbre de manière immuable avec le nœud d'erreur
       updateNodeChildrenImmutable(nodeId, [errorNode]);
     }
+  }, [token, expandedItems, updateNodeChildrenImmutable]); // Ajout de updateNodeChildrenImmutable
+
+  const findNodeInTree = (nodes, id) => {
+    if (!nodes) return null;
+    for (const node of nodes) {
+      if (node.id.toString() === id.toString()) {
+        return node;
+      }
+      if (node.children && node.children.length > 0) {
+        const found = findNodeInTree(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
   };
 
-  const renderTree = (nodes, currentExpandedItems) =>
-    // Vérifier si nodes est bien un tableau avant de mapper
-    Array.isArray(nodes) && nodes.map((node) => (
-      <TreeItem
+  const renderTree = useCallback((nodes, currentExpandedItems) => (
+    nodes.map((node) => (
+      <TreeItem 
         key={node.id} // React key
         itemId={node.id.toString()} // Ensure itemId is a string
         // sx prop removed to show expand/collapse icons
@@ -355,12 +332,12 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
           )
         ) : null}
       </TreeItem>
-    ));
-  // Fin de renderTree
-
-  // Appel initial pour les enfants directs de treeData
-  const renderedTreeNodes = renderTree(treeData.children, expandedItems); // Passer expandedItems ici
+    ))
+  ), []); // Fin de renderTree
  
+  // Appel initial pour les enfants directs de internalTreeData
+  const renderedTreeNodes = renderTree(internalTreeData.children, expandedItems); // Passer expandedItems ici
+  
   return (
     <Drawer
       sx={{
@@ -400,6 +377,19 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
       </Box>
 
       <Divider sx={{ my: 2 }} />
+
+      {/* Bouton pour ajouter une nouvelle progression */}
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+        <Button
+          variant="contained"
+          color="secondary" // Ou "primary" selon votre thème
+          startIcon={<AddIcon />}
+          component={RouterLink}
+          to="/progressions/new" // Lien vers la page de création
+        >
+          Nouvelle Progression
+        </Button>
+      </Box>
 
       <Box sx={{ overflow: 'auto', height: 'calc(100vh - 120px)' }}>
         {isLoading ? (

@@ -1,29 +1,22 @@
-import React, { useState } from 'react';
-import {
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
   Routes,
   Route,
   Navigate,
   Outlet,
-  useNavigate,
-  useLocation,
 } from 'react-router-dom';
 import { 
   Box, 
-  Button, 
-  Typography, 
+  CssBaseline, 
   AppBar as MuiAppBar, 
   Toolbar, 
   IconButton, 
-  Fab,  
-  Slide,
-  Drawer,
-  CssBaseline
+  Drawer, 
+  Fab,
 } from '@mui/material'; 
 import { 
   Menu as MenuIcon, 
   ChatBubbleOutline as ChatIcon, 
-  KeyboardArrowUp as ArrowUpIcon, 
-  KeyboardArrowDown as ArrowDownIcon 
 } from '@mui/icons-material'; 
 import { useTheme } from '@mui/material/styles'; 
 import SideTreeView, { drawerWidth } from './components/SideTreeView';
@@ -33,21 +26,30 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import ResourceList from './components/resources/ResourceList';
-import Contact from './pages/Contact';
-import { useAuth } from './contexts/AuthContext';
 import NewResource from './pages/resources/NewResource';
 import ResourceEdit from './pages/resources/ResourceEdit';
-import ResourceView from './pages/ResourceView'; // <-- CORRIGÉ: Chemin d'import
+import ResourceView from './pages/ResourceView'; 
+import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
+import ProgressionBuilder from './pages/ProgressionBuilder'; 
+import { ThemeProvider } from '@mui/material/styles';
+import theme from './theme';
+import api from './services/api'; 
+import TreeDataContext from './contexts/TreeDataContext'; // Réimporter le contexte
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
-  const { user } = useAuth();
+  const { user, token } = useAuth(); // Ajouter token ici si nécessaire pour le fetch initial
   // État pour la barre latérale principale (TreeView)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   // État pour la chatbox latérale
   const [isChatboxOpen, setIsChatboxOpen] = useState(false); 
   const theme = useTheme(); 
+ 
+  // État pour les données du TreeView (déplacé depuis SideTreeView)
+  const [treeData, setTreeData] = useState({ id: 'root', name: 'Progressions', type: 'root', children: [] }); 
+  const [isTreeLoading, setIsTreeLoading] = useState(true);
+  const [treeError, setTreeError] = useState(null);
 
   // Handlers pour la barre latérale principale
   const handleSidebarOpen = () => {
@@ -57,20 +59,59 @@ function ProtectedLayout() {
     setIsSidebarOpen(false);
   };
 
-  // Handlers pour la chatbox
-  const handleToggleChatbox = () => {
-    setIsChatboxOpen(!isChatboxOpen);
-  };
-  const handleCloseChatbox = () => {
-    setIsChatboxOpen(false);
-  };
+  // Fonction pour charger/rafraîchir les données du TreeView (déplacée et adaptée depuis SideTreeView)
+  const refreshTreeData = useCallback(async () => {
+    console.log("ProtectedLayout: Refreshing tree data...");
+    setIsTreeLoading(true);
+    setTreeError(null);
+    try {
+      if (!token) {
+        // Gérer le cas où le token n'est pas encore prêt (peut arriver au chargement initial)
+        console.warn("RefreshTreeData: Token not available yet.");
+        // Optionnel: attendre un peu ou ne rien faire
+        return; 
+      }
+      // Utiliser l'instance api pour faire l'appel (le token est injecté par l'intercepteur)
+      const response = await api.get('/progressions'); 
+      const progressions = response.data;
+
+      console.log("ProtectedLayout: Progressions data fetched:", progressions);
+
+      // Adapter les données reçues au format attendu par SideTreeView
+      // TODO: Il faudra enrichir ce format pour inclure objectifs, séquences, etc.
+      const formattedProgressions = progressions.map(prog => ({
+        id: prog.id,
+        name: prog.title, 
+        type: 'progression', 
+        description: prog.description,
+        // La logique d'expansion dynamique reste dans SideTreeView pour l'instant
+        children: [{ id: `loading-${prog.id}`, name: 'Chargement...', type: 'loading' }]
+      }));
+
+      setTreeData(prevData => ({ ...prevData, children: formattedProgressions }));
+    } catch (e) {
+      console.error("Erreur lors du chargement des progressions:", e);
+      setTreeError(e.message || 'Erreur lors du chargement des données de l\'arbre.');
+      setTreeData(prevData => ({ ...prevData, children: [] })); // Vider en cas d'erreur
+    } finally {
+      setIsTreeLoading(false);
+    }
+  }, [token]); // Dépend du token pour s'assurer qu'il est disponible
+
+  // Chargement initial des données au montage de ProtectedLayout
+  useEffect(() => {
+    if (user && token) { // S'assurer que l'utilisateur est connecté et que le token est prêt
+      refreshTreeData();
+    }
+  }, [user, token, refreshTreeData]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Largeur du drawer (assurez-vous que cette variable est définie ou importée si elle vient d'ailleurs)
-  const drawerWidth = 240; // Valeur typique, ajustez si nécessaire
+  // Handlers pour la chatbox (simplifiés)
+  const handleToggleChatbox = () => setIsChatboxOpen(!isChatboxOpen);
+  const handleCloseChatbox = () => setIsChatboxOpen(false);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -96,74 +137,63 @@ function ProtectedLayout() {
           >
             <MenuIcon sx={{ fontSize: '20px' }} /> {/* Réduit la taille de l'icône */}
           </IconButton>
-          {/* Titre "Flash Francais" supprimé */}
-          {/* 
-          <Typography variant="h6" noWrap component="div">
-            Flash Francais 
-          </Typography>
-          */}
-          {/* Reste de la Toolbar (peut être vide) */}
         </Toolbar>
       </MuiAppBar>
 
-      {/* Barre latérale principale (TreeView) */}
-      {/* Passer les props pour contrôler l'ouverture/fermeture */}
-      <SideTreeView 
-        open={isSidebarOpen} 
-        handleDrawerOpen={handleSidebarOpen} 
-        handleDrawerClose={handleSidebarClose} 
-      />
-      {/* Contenu principal */}
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          p: 3, 
-          display: 'flex', 
-          flexDirection: 'column',
-          // Marge supérieure réduite pour correspondre à la nouvelle hauteur de l'AppBar
-          marginTop: '40px', 
-          // Logique pour décaler le contenu quand la sidebar est ouverte
-          transition: theme.transitions.create('margin', { 
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
-          marginLeft: `-${drawerWidth}px`, 
-          ...(isSidebarOpen && { 
-            transition: theme.transitions.create('margin', {
-              easing: theme.transitions.easing.easeOut,
-              duration: theme.transitions.duration.enteringScreen,
+      {/* Remettre le Provider ici */}
+      <TreeDataContext.Provider value={{ treeData, isTreeLoading, treeError, refreshTreeData }}>
+        <SideTreeView 
+          open={isSidebarOpen} 
+          handleDrawerOpen={handleSidebarOpen} 
+          handleDrawerClose={handleSidebarClose} 
+        />
+        {/* Contenu principal */}
+        <Box 
+          component="main" 
+          sx={{ 
+            flexGrow: 1, 
+            p: 3, 
+            display: 'flex', 
+            flexDirection: 'column',
+            marginTop: '40px', 
+            transition: theme.transitions.create('margin', { 
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
             }),
-            marginLeft: 0, 
-          }),
-        }}
-      >
-        {/* <Toolbar /> NO LONGER NEEDED HERE - AppBar provides the space */}
-        <Outlet /> 
-      </Box>
+            marginLeft: `-${drawerWidth}px`, 
+            ...(isSidebarOpen && { 
+              transition: theme.transitions.create('margin', {
+                easing: theme.transitions.easing.easeOut,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              marginLeft: 0, 
+            }),
+          }}
+        >
+          <Outlet /> 
+        </Box>
 
-      {/* Chatbox Section */}
-      {/* FAB to toggle Chatbox - Positionné en bas à droite */}
-      <Fab 
-        color="primary" 
-        aria-label="toggle chatbox" 
-        onClick={handleToggleChatbox}
-        sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: (theme) => theme.zIndex.drawer + 2 }} 
-      >
-        <ChatIcon />
-      </Fab>
+        {/* Chatbox Section */}
+        {/* FAB to toggle Chatbox */}
+        <Fab 
+          color="secondary" 
+          aria-label="chat" 
+          onClick={handleToggleChatbox}
+          sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: (theme) => theme.zIndex.drawer + 2 }} 
+        >
+          <ChatIcon />
+        </Fab>
 
-      {/* Sliding Chatbox Container - Modifié pour être à droite */}
-      <Drawer
-        anchor="right" 
-        open={isChatboxOpen}
-        onClose={handleCloseChatbox} 
-        PaperProps={{ sx: { width: '400px', height: '100vh', boxShadow: 3, zIndex: (theme) => theme.zIndex.drawer + 1 } }} 
-      >
-        {/* Le contenu du Drawer (la Chatbox) */}
-        <Chatbox onClose={handleCloseChatbox} /> 
-      </Drawer>
-
+        {/* Sliding Chatbox Container */}
+        <Drawer
+          anchor="right" 
+          open={isChatboxOpen}
+          onClose={handleCloseChatbox} 
+          PaperProps={{ sx: { width: '400px', height: '100vh', boxShadow: 3, zIndex: (theme) => theme.zIndex.drawer + 1 } }} 
+        >
+          <Chatbox onClose={handleCloseChatbox} /> 
+        </Drawer>
+      </TreeDataContext.Provider>
     </Box>
   );
 }
@@ -185,6 +215,7 @@ function App() {
   console.log('App: État d\'authentification:', isAuthenticated);
 
   return (
+    <ThemeProvider theme={theme}>
     <Routes>
       {/* Routes publiques */}
       <Route path="/" element={<LandingPage />} />
@@ -203,6 +234,12 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        {/* <Route path="profile" element={<Profile />} /> */}
+        {/* <Route path="settings" element={<Settings />} /> */}
+        {/* Route pour le constructeur de progression */}
+        <Route path="progressions/new" element={<ProgressionBuilder />} />
+        <Route path="progressions/edit/:progressionId" element={<ProgressionBuilder />} />
       </Route>
 
       <Route
@@ -216,13 +253,31 @@ function App() {
         <Route index element={<ResourceList session={useAuth()} />} />
         <Route path="new" element={<NewResource />} />
         <Route path="edit/:id" element={<ResourceEdit />} />
-        <Route path="view/:id" element={<ResourceView />} /> {/* <-- Nouvelle route */}
+        <Route path="view/:id" element={<ResourceView />} /> 
+      </Route>
+
+      <Route
+        path="/progressions"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="new" element={<ProgressionBuilder />} />
+        <Route path="edit/:id" element={<ProgressionBuilder />} />
       </Route>
 
       {/* Redirection par défaut */}
       <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
     </Routes>
+    </ThemeProvider>
   );
 }
 
 export default App;
+
+/* Importer les pages quand elles seront créées
+import Profile from './pages/Profile'; 
+import Settings from './pages/Settings'; 
+*/

@@ -16,7 +16,8 @@ progression_router = APIRouter(
 
 @progression_router.post("/", response_model=ProgressionRead, name="create_progression")
 def create_progression_endpoint(progression: ProgressionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crud.create_progression(db=db, progression=progression)
+    # Passer l'ID de l'utilisateur à la fonction CRUD
+    return crud.create_progression(db=db, progression=progression, user_id=current_user.id)
 
 @progression_router.get("/", response_model=List[ProgressionRead])
 def read_progressions_route(

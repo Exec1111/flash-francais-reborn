@@ -6,7 +6,7 @@ from database import get_db
 import crud
 from schemas.sequence import SequenceCreate, SequenceRead, SequenceUpdate
 from models.user import User
-from security import get_current_active_user
+from security import get_current_active_user, get_current_user
 
 sequence_router = APIRouter(
     # prefix="/sequences", # Supprimé car géré dans app.py
@@ -39,10 +39,10 @@ def read_sequences_by_progression_route(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_user)
 ):
     # Vérifier si la progression parente existe
-    db_progression = crud.get_progression(db, progression_id=progression_id)
+    db_progression = crud.get_progression(db, progression_id=progression_id, user_id=current_user.id)
     if db_progression is None:
         raise HTTPException(status_code=404, detail=f"Progression with id {progression_id} not found")
     
