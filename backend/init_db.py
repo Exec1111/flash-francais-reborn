@@ -10,8 +10,11 @@ load_dotenv()
 import sys
 import traceback
 from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker
-from models import Base, User, UserRole
+from sqlalchemy.orm import sessionmaker, Session
+from database import engine, Base, SessionLocal  # S'assurer que SessionLocal est importé
+# Importer les modèles nécessaires
+from models.user import User, UserRole
+from models.resource import ResourceType, ResourceSubType
 from hashing import get_password_hash
 
 # Configuration de la base de données
@@ -90,6 +93,95 @@ def create_admin_user():
     finally:
         db.close()
 
+def seed_reference_data(db: Session):
+    """Crée les données initiales pour les tables de référence si elles n'existent pas."""
+    print("Début du seeding des données de référence...")
+
+    # ===============================================================
+    # == MODIFIER ICI : Données initiales pour ResourceType ==
+    # ===============================================================
+    resource_types_to_seed = [
+        {"key": "EXERCICE", "value": "Exercice"},
+        {"key": "MULTIMEDIA", "value": "Multimédia"},
+        {"key": "LECON", "value": "Leçon"},
+        {"key": "OEUVRE", "value": "Oeuvre"},
+        # Ajoutez autant de types que nécessaire ici
+    ]
+    # ===============================================================
+    
+    created_types = {} # Pour stocker les objets créés ou trouvés
+    print("  Vérification/Création des ResourceType...")
+    for type_data in resource_types_to_seed:
+        # Utiliser l'attribut 'key' du modèle
+        db_type = db.query(ResourceType).filter(ResourceType.key == type_data["key"]).first()
+        if not db_type:
+            print(f"    Création ResourceType: {type_data['key']}")
+            # Utiliser 'key' et 'value' pour créer l'objet
+            db_type = ResourceType(key=type_data["key"], value=type_data["value"])
+            db.add(db_type)
+        created_types[type_data["key"]] = db_type # Stocker l'objet trouvé ou créé (utiliser la clé comme id dans le dict)
+    db.commit()
+    print("  Vérification/Création des ResourceType terminée.")
+    for type_obj in created_types.values():
+        if type_obj in db.new or type_obj in db.dirty:
+           db.refresh(type_obj)
+
+
+    # ===============================================================
+    # == MODIFIER ICI : Données initiales pour ResourceSubType ==
+    # ===============================================================
+    resource_subtypes_to_seed = [
+        # Utiliser 'key' pour le sous-type et 'parent_type_key' pour le parent
+        # Sous-types pour EXERCICE
+        {"key": "QCM", "parent_type_key": "EXERCICE", "value": "QCM"},
+        {"key": "DICTEE", "parent_type_key": "EXERCICE", "value": "DICTEE"},
+        {"key": "QOEUVRE", "parent_type_key": "EXERCICE", "value": "Questions sur une oeuvre"},
+        {"key": "QTEXTE", "parent_type_key": "EXERCICE", "value": "Questions sur un texte"},
+        
+        # Sous-types pour MULTIMEDIA - Aucun défini
+        
+        # Sous-types pour LECON
+        {"key": "FORMAT1", "parent_type_key": "LECON", "value": "Format court"},
+        {"key": "FORMAT2", "parent_type_key": "LECON", "value": "Format long"},
+        
+        # Sous-types pour OEUVRE
+        {"key": "TEXTE", "parent_type_key": "OEUVRE", "value": "Extrait de texte"},
+        {"key": "OEUVRE_SUB", "parent_type_key": "OEUVRE", "value": "Oeuvre complète"}, # Renommé la clé pour éviter conflit
+        
+        # Ajoutez autant de sous-types que nécessaire ici
+    ]
+    # ===============================================================
+    
+    print("  Vérification/Création des ResourceSubType...")
+    for subtype_data in resource_subtypes_to_seed:
+        # Utiliser l'attribut 'key' du modèle pour filtrer
+        db_subtype = db.query(ResourceSubType).filter(ResourceSubType.key == subtype_data["key"]).first()
+        if not db_subtype:
+            # Utiliser 'parent_type_key' pour trouver le parent dans le dict
+            parent_type = created_types.get(subtype_data["parent_type_key"])
+            if parent_type:
+                if not parent_type.id:
+                   print(f"    ATTENTION: L'ID du type parent '{parent_type.key}' n'est pas disponible. Tentative de rafraîchissement...")
+                   db.refresh(parent_type)
+                   if not parent_type.id:
+                       print(f"    ÉCHEC: Impossible d'obtenir l'ID pour {parent_type.key}. Skipping {subtype_data['key']}.")
+                       continue
+                       
+                print(f"    Création ResourceSubType: {subtype_data['key']} (Parent: {parent_type.key} - ID: {parent_type.id})")
+                # Utiliser 'key', 'value' et l'ID du parent pour créer l'objet
+                db_subtype = ResourceSubType(
+                    key=subtype_data["key"],
+                    value=subtype_data["value"],
+                    type_id=parent_type.id
+                )
+                db.add(db_subtype)
+            else:
+                print(f"    ATTENTION: Type parent '{subtype_data['parent_type_key']}' non trouvé pour le sous-type '{subtype_data['key']}'. Skipping.")
+    
+    db.commit()
+    print("  Vérification/Création des ResourceSubType terminée.")
+    print("Seeding des données de référence terminé.")
+
 def init_db(args=None):
     """
     Initialise la base de données en créant les tables et en créant un administrateur.
@@ -126,6 +218,15 @@ def init_db(args=None):
         # Créer un administrateur par défaut
         print("Création de l'administrateur par défaut...")
         create_admin_user()
+        
+        # Seeding des données de référence
+        print("Démarrage de la session pour le seeding...")
+        db = SessionLocal()
+        try:
+            seed_reference_data(db)
+        finally:
+            print("Fermeture de la session de seeding.")
+            db.close()
         
         return True
     except Exception as e:
@@ -175,8 +276,6 @@ if __name__ == "__main__":
         Base.metadata.drop_all(bind=engine)
         logger.info("Toutes les tables ont été supprimées")
         
-    init_db(args)
-    
     try:
         print("Démarrage du script d'initialisation de la base de données...")
         
