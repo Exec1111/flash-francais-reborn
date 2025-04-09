@@ -119,9 +119,10 @@ app = FastAPI(
 
 # --- Configuration CORS ---
 origins = [
-    "http://localhost:3000",  # L'origine de votre frontend React
+    "http://localhost:3000",  # L'origine de votre frontend React en dev
     "http://localhost:8080",  # Si vous utilisez une autre origine pour le dev
     "http://127.0.0.1:3000", # Parfois nécessaire
+    "https://flash-francais-reborn.onrender.com", # Votre frontend en production
 ]
 
 app.add_middleware(
