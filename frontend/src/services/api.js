@@ -9,7 +9,7 @@ const API_URL = `${API_BASE_URL}/api/v1`;
 
 // Création d'une instance axios avec une configuration par défaut
 const api = axios.create({
-  baseURL: API_URL, // Utilise maintenant l'URL complète construite
+  baseURL: API_URL, 
   headers: {
     'Content-Type': 'application/json',
   },
