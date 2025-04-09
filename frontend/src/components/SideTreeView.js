@@ -1,7 +1,12 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Drawer, IconButton, Box, Typography, useTheme, Tooltip, CircularProgress, Divider, Button } from '@mui/material';
 import { 
   ChevronLeft as ChevronLeftIcon, 
+  Edit as EditIcon, 
+  Delete as DeleteIcon, 
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon, 
+  ChevronRight, 
   Description as DescriptionIcon, 
   Checklist as ChecklistIcon,
   AccountTree as AccountTreeIcon,
@@ -15,21 +20,21 @@ import {
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view'; 
 import ResourceButton from './resources/ResourceButton';
 import { useAuth } from '../contexts/AuthContext';
-import { useTreeData } from '../contexts/TreeDataContext'; // Importer le hook
-import api from '../services/api'; // Importer l'instance api
-import { Link as RouterLink } from 'react-router-dom'; // Pour la navigation
+import { useTreeData } from '../contexts/TreeDataContext'; 
+import api from '../services/api'; 
+import { useNavigate, Link as RouterLink } from 'react-router-dom'; 
 
 export const drawerWidth = 480;  
 
 function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
-  const { token } = useAuth(); // Supprimer user s'il n'est pas utilisé ici
-  // Utiliser les données et états depuis le contexte
-  const { treeData, isTreeLoading: isLoading, treeError: error } = useTreeData(); // Supprimer refreshTreeData s'il n'est pas utilisé ici
+  const { token } = useAuth(); 
+  const { treeData, isTreeLoading: isLoading, treeError: error, refreshTreeData } = useTreeData(); 
   const theme = useTheme();
+  const navigate = useNavigate(); 
   const textRef = useRef(null);
   const [isTextTruncated, setIsTextTruncated] = useState(false);
   const [expandedItems, setExpandedItems] = useState([]); 
-  const [internalTreeData, setInternalTreeData] = useState(treeData); // État local pour gérer les enfants dynamiques
+  const [internalTreeData, setInternalTreeData] = useState(treeData); 
 
   const checkTextTruncation = useCallback(() => {
     if (textRef.current) {
@@ -47,16 +52,10 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     return () => resizeObserver.disconnect();
   }, [checkTextTruncation]);
 
-  // Mettre à jour l'état interne lorsque les données du contexte changent
   useEffect(() => {
     console.log("SideTreeView: Context treeData updated, updating internal state.", treeData);
     setInternalTreeData(treeData);
-    // Optionnel: Réinitialiser les expandedItems si nécessaire lors d'un refresh complet ?
-    // setExpandedItems([]); 
   }, [treeData]);
-
-  // La logique de chargement initial est supprimée car gérée par ProtectedLayout
-  // useEffect(() => { ... fetchData ... }, [token]);
 
   const findNodeAndUpdate = (nodes, nodeId, newChildren) => {
     return nodes.map(node => {
@@ -73,7 +72,6 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     });
   };
 
-  // Modifié pour utiliser setInternalTreeData
   const updateNodeChildrenImmutable = useCallback((nodeId, newChildren) => {
     setInternalTreeData(prevData => {
       console.log(`Calling setTreeData after immutable update for ${nodeId}`);
@@ -85,7 +83,7 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
         return prevData;
       }
     });
-  }, [findNodeAndUpdate]);  // useCallback pour éviter recréation inutile
+  }, [findNodeAndUpdate]);  
 
   const handleExpandedItemsChange = useCallback(async (event, itemIds) => {
     setExpandedItems(itemIds);
@@ -94,14 +92,12 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     const newlyExpandedItemId = itemIds.find(id => !oldExpandedIds.includes(id));
     
     if (!newlyExpandedItemId) {
-      // Un item a été replié, pas besoin de charger
       return;
     }
 
     console.log(`Expansion demandée pour l'ID: ${newlyExpandedItemId}`);
 
-    // Trouver le nœud spécifique dans l'arbre actuel
-    const nodeToExpand = findNodeInTree(internalTreeData.children, newlyExpandedItemId); // Chercher dans les enfants
+    const nodeToExpand = findNodeInTree(internalTreeData.children, newlyExpandedItemId); 
 
     console.log('Node to expand found:', nodeToExpand);
 
@@ -110,13 +106,12 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
       return;
     }
 
-    // Vérifier si CE nœud spécifique a un enfant 'loading'
     const hasLoadingChild = nodeToExpand.children && nodeToExpand.children.some(child => child.type === 'loading');
     console.log(`Nœud ${nodeToExpand.id} (${nodeToExpand.type}) a un enfant loading: ${hasLoadingChild}`);
 
     if (!hasLoadingChild) {
       console.log('Pas d\'enfant loading à traiter pour ce nœud.');
-      return; // Pas besoin de charger si pas d'enfant loading
+      return; 
     }
 
     const nodeId = nodeToExpand.id;
@@ -170,8 +165,8 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
             name: res.title || `Ressource ${res.id}`,
             type: 'resource',
             url: res.description,
-            resource_type: res.type ? res.type.key : 'unknown', // Utiliser la clé ('text', 'image', etc.) ou fallback
-            children: [] // Les ressources n'ont pas d'enfants
+            resource_type: res.type ? res.type.key : 'unknown', 
+            children: [] 
           }));
           console.log(`SÉANCE ${nodeId}. Chargement des ressources... URL: ${apiUrl}`);
           break;
@@ -183,27 +178,20 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
       const response = await api.get(apiUrl);
       console.log(`Réponse reçue pour ${nodeType} ${nodeId}:`, response.status);
 
-      // Supprimer cette vérification : Axios lèvera une exception pour les erreurs HTTP (non-2xx)
-      // if (!response.ok) { 
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-
       const data = response.data;
       console.log(`Données brutes reçues pour ${nodeType} ${nodeId}:`, data);
 
       const formattedChildren = formatFunction(data);
       console.log(`Enfants formatés pour ${nodeType} ${nodeId}:`, formattedChildren);
 
-      // Mettre à jour l'arbre de manière immuable
       updateNodeChildrenImmutable(nodeId, formattedChildren);
 
     } catch (error) {
       console.error(`Erreur lors du chargement des données pour ${nodeType} ${nodeId}:`, error);
       const errorNode = { id: `${errorChildIdPrefix}-${nodeId}`, name: errorChildName, type: 'error' };
-      // Mettre à jour l'arbre de manière immuable avec le nœud d'erreur
       updateNodeChildrenImmutable(nodeId, [errorNode]);
     }
-  }, [token, expandedItems, updateNodeChildrenImmutable]); // Ajout de updateNodeChildrenImmutable
+  }, [token, expandedItems, updateNodeChildrenImmutable]);  
 
   const findNodeInTree = (nodes, id) => {
     if (!nodes) return null;
@@ -219,35 +207,44 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     return null;
   };
 
+  const handleEdit = (nodeId) => {
+    console.log('[SideTreeView] Navigating to edit progression ID:', nodeId, 'Path:', `/progressions/edit/${nodeId}`); // Log de diagnostic
+    navigate(`/progressions/edit/${nodeId}`);
+  };
+
+  const handleDelete = async (nodeId) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette progression et tout son contenu ?")) {
+      try {
+        console.log(`Attempting to delete progression ${nodeId}`);
+        await api.delete(`/progressions/${nodeId}`, { headers: { Authorization: `Bearer ${token}` } });
+        console.log(`Progression ${nodeId} deleted successfully.`);
+        refreshTreeData(); 
+      } catch (err) {
+        console.error("Erreur lors de la suppression de la progression:", err);
+      }
+    }
+  };
+
   const renderTree = useCallback((nodes, currentExpandedItems) => (
     nodes.map((node) => (
       <TreeItem 
-        key={node.id} // React key
-        itemId={node.id.toString()} // Ensure itemId is a string
-        // sx prop removed to show expand/collapse icons
+        key={node.id} 
+        itemId={node.id.toString()} 
         label={(
-          <Box 
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between', // Rétablir l'alignement horizontal
-              width: '100%', 
-              p: 1, 
-              overflow: 'hidden', 
-            }}
-          >
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <Tooltip 
-              title={isTextTruncated ? node.name : ""} // Only show tooltip if truncated
+              title={isTextTruncated ? node.name : ""} 
               placement="bottom-start"
             >
               <Box 
-                sx={{
-                  flexGrow: 1,
-                  overflow: 'hidden',
+                ref={textRef} 
+                sx={{ 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  flexGrow: 1, 
+                  mr: 1 
                 }}
-                ref={textRef} // Attach ref to the box containing the text
-                onMouseEnter={checkTextTruncation} // Check truncation on hover
-                onMouseLeave={() => setIsTextTruncated(false)} // Reset on leave
               > 
                 <Typography
                   variant="body2"
@@ -261,82 +258,43 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
                 </Typography>
               </Box>
             </Tooltip>
-            {/* Icônes spécifiques au type de noeud */}
-            <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}> {/* Container for icons */} 
-              {node.type === 'progression' && (
-                <FolderIcon sx={{ fontSize: 18, color: 'action.active' }} /> 
-              )}
-              {/* Icône Objectifs pour les séquences AVEC objectifs */} 
-              {node.type === 'sequence' && Array.isArray(node.objectives) && node.objectives.length > 0 && (
-                <Tooltip 
-                  placement="right"
-                  title={(
-                    <Box sx={{ p: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>Objectifs :</Typography>
-                      {node.objectives.map((obj, index) => (
-                        // Utiliser un Tooltip interne pour la description de chaque objectif
-                        <Tooltip key={`obj-tooltip-${node.id}-${index}`} title={obj.description || ''} placement="top-start">
-                          <Typography variant="body2" sx={{ mb: 0.5 }}>
-                            - {obj.title}
-                          </Typography>
-                        </Tooltip>
-                      ))}
-                    </Box>
-                  )}
+            {node.type === 'progression' && (
+              <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}> 
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    handleEdit(node.id); 
+                  }}
+                  aria-label={`Modifier la progression ${node.label}`}
                 >
-                  {/* L'icône elle-même */} 
-                  <ChecklistIcon sx={{ fontSize: 18, color: 'primary.main', ml: 0.5 }} />
-                </Tooltip>
-              )}
-              {node.type === 'sequence' && (
-                <AccountTreeIcon sx={{ fontSize: 18, color: 'action.active' }} />
-              )}
-              {node.type === 'seance' && (
-                <FormatListBulletedIcon sx={{ fontSize: 18, color: 'action.active' }} />
-              )}
-              {/* Icône pour les ressources - spécifique au type */}
-              {node.type === 'resource' && (
-                (() => {
-                  console.log(`Resource Node: ${node.name}, Type:`, node.resource_type); // DEBUG LOG
-                  const iconProps = { sx: { fontSize: 18, color: 'action.active' } };
-                  switch (node.resource_type?.toLowerCase()) {
-                    case 'text':
-                      return <DescriptionIcon {...iconProps} />;
-                    case 'video':
-                      return <VideoIcon {...iconProps} />;
-                    case 'exercise':
-                      return <ExerciseIcon {...iconProps} />;
-                    // Add other cases like 'link', 'pdf' if needed
-                    default:
-                      return <ArticleIcon {...iconProps} />; // Default icon
-                  }
-                })()
-              )}
-              {/* Ne pas afficher d'icône pour le type 'loading' ou 'error' */} 
-            </Box>
+                  <EditIcon fontSize="inherit" />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    handleDelete(node.id); 
+                  }}
+                  aria-label={`Supprimer la progression ${node.label}`}
+                >
+                  <DeleteIcon fontSize="inherit" />
+                </IconButton>
+              </Box>
+            )}
           </Box>
         )}
       >
-        {/* Les enfants directs du TreeItem (loading ou enfants récursifs) */} 
-        {/* Affichage conditionnel pendant le chargement ou pour les enfants normaux */}
-        {Array.isArray(node.children) && node.children.length > 0 ? (
-          // Afficher un indicateur de chargement si l'enfant est le noeud factice
-          node.children.length === 1 && node.children[0].type === 'loading' ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', pl: 4, pt: 1, color: 'text.secondary' }}>
-              <CircularProgress size={16} sx={{ mr: 1 }} />
-              <Typography variant="caption">{node.children[0].name}</Typography>
-            </Box>
-          ) : (
-            // Sinon, rendre les enfants récursivement
-            renderTree(node.children, currentExpandedItems)
-          )
+        {node.isLoading ? (
+          <CircularProgress size={16} sx={{ ml: 1 }} />
+        ) : node.children && node.children.length > 0 && expandedItems.includes(node.id.toString()) ? (
+          renderTree(node.children, currentExpandedItems)
         ) : null}
       </TreeItem>
     ))
-  ), []); // Fin de renderTree
+  ), []); 
  
-  // Appel initial pour les enfants directs de internalTreeData
-  const renderedTreeNodes = renderTree(internalTreeData.children, expandedItems); // Passer expandedItems ici
+  const renderedTreeNodes = renderTree(internalTreeData.children, expandedItems); 
   
   return (
     <Drawer
@@ -354,7 +312,6 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
       anchor="left"
       open={open}
     >
-      {/* En-tête du Drawer */}
       <Box
         sx={{
           display: 'flex',
@@ -366,7 +323,6 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
           bgcolor: 'background.paper',
         }}
       >
-        {/* Bouton pour fermer (ChevronLeftIcon) maintenant à gauche et plus visible */}
         <IconButton size="small" onClick={handleDrawerClose} color="primary">
           <ChevronLeftIcon sx={{ fontSize: '20px' }} />
         </IconButton>
@@ -378,14 +334,13 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
 
       <Divider sx={{ my: 2 }} />
 
-      {/* Bouton pour ajouter une nouvelle progression */}
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
         <Button
           variant="contained"
-          color="secondary" // Ou "primary" selon votre thème
+          color="secondary" 
           startIcon={<AddIcon />}
           component={RouterLink}
-          to="/progressions/new" // Lien vers la page de création
+          to="/progressions/new" 
         >
           Nouvelle Progression
         </Button>

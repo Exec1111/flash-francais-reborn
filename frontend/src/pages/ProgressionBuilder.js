@@ -16,10 +16,12 @@ import progressionService from '../services/progressionService';
 import { useTreeData } from '../contexts/TreeDataContext'; // Importer le hook
 
 const ProgressionBuilder = () => {
-  const { progressionId } = useParams(); // Récupère l'ID de la progression depuis l'URL
+  const { id } = useParams(); // Récupère l'ID de la progression depuis l'URL
+  console.log('[ProgressionBuilder] useParams result:', useParams()); // Log de diagnostic
+  console.log('[ProgressionBuilder] Extracted id:', id); // Log de diagnostic
   const navigate = useNavigate();
   const { token } = useAuth();
-  const isEdit = Boolean(progressionId); // Détermine si on est en mode édition
+  const isEdit = Boolean(id); // Détermine si on est en mode édition
 
   const [formData, setFormData] = useState({
     title: '',
@@ -35,23 +37,26 @@ const ProgressionBuilder = () => {
 
   // --- Chargement des données initiales en mode édition ---
   useEffect(() => {
-    if (isEdit && token) {
+    if (isEdit && token && id) { // Seulement si en mode édition et le token est disponible
       setLoading(true);
-      progressionService.getProgressionById(progressionId, token)
+      setError(null);
+      console.log(`ProgressionBuilder: Mode édition détecté. Chargement des données pour progression ID: ${id}`);
+      progressionService.getProgressionById(id, token)
         .then(data => {
+          console.log("ProgressionBuilder: Données reçues:", data);
           setFormData({
-            title: data.title || '',
-            description: data.description || ''
+            title: data.title,
+            description: data.description || '' // Gérer le cas où la description est null
           });
           setLoading(false);
         })
         .catch(err => {
           console.error("Erreur lors du chargement de la progression:", err);
-          setError(err.response?.data?.detail || 'Erreur lors du chargement des données.');
+          setError("Impossible de charger les données de la progression. Vérifiez que l'ID est correct et que vous avez les permissions.");
           setLoading(false);
         });
     }
-  }, [progressionId, isEdit, token]);
+  }, [id, isEdit, token]); // Déclencher quand l'ID ou le token change
 
   // --- Gestion des changements dans les champs ---
   const handleInputChange = (e) => {
@@ -69,9 +74,13 @@ const ProgressionBuilder = () => {
     try {
       let response;
       if (isEdit) {
-        response = await progressionService.updateProgression(progressionId, formData, token);
+        // --- Mise à jour ---
+        console.log(`ProgressionBuilder: Mise à jour de la progression ID: ${id}`);
+        response = await progressionService.updateProgression(id, formData, token);
         setSuccess('Progression mise à jour avec succès !');
       } else {
+        // --- Création ---
+        console.log("ProgressionBuilder: Création d'une nouvelle progression.");
         response = await progressionService.createProgression(formData, token);
         setSuccess('Progression créée avec succès !');
         // Rediriger vers la page d'édition de la nouvelle progression pour ajouter des séquences ?

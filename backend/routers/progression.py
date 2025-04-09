@@ -42,14 +42,19 @@ def read_progression_route(progression_id: int, db: Session = Depends(get_db), c
 
 @progression_router.put("/{progression_id}", response_model=ProgressionRead)
 def update_progression_route(progression_id: int, progression: ProgressionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_progression = crud.update_progression(db=db, progression_id=progression_id, progression_update=progression)
+    db_progression = crud.get_progression(db, progression_id=progression_id, user_id=current_user.id)
     if db_progression is None:
-        raise HTTPException(status_code=404, detail="Progression not found")
+        raise HTTPException(status_code=404, detail="Progression not found or not accessible")
+    db_progression = crud.update_progression(db=db, progression_id=progression_id, progression_update=progression, user_id=current_user.id)
     return db_progression
 
 @progression_router.delete("/{progression_id}", status_code=204) # No content on successful deletion
 def delete_progression_route(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    success = crud.delete_progression(db, progression_id=progression_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Progression not found")
-    return # Return None for 204 status code
+    """Supprime une progression spécifique appartenant à l'utilisateur courant."""
+    deleted = crud.delete_progression(db=db, progression_id=progression_id, user_id=current_user.id)
+    if deleted is None: # crud.delete_progression returns None if not found/not owned
+        raise HTTPException(status_code=404, detail="Progression not found or not accessible")
+    # Si deleted est True, FastAPI renverra automatiquement 204 No Content car il n'y a pas de corps de réponse
+    # Pas besoin de return explicite ici dans ce cas.
+    # Si on veut être hyper explicite, on peut faire `return Response(status_code=204)` mais ce n'est pas nécessaire.
+    # Simplement ne rien retourner fonctionne pour les status_code 204.
