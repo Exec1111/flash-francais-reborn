@@ -39,19 +39,24 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
+    console.log("handleSubmit called");
     e.preventDefault();
     setError('');
     
+    console.log("Running validation...");
     // Validation de base
     if (password !== confirmPassword) {
+      console.log("Validation failed: Passwords do not match");
       setError('Les mots de passe ne correspondent pas');
       return;
     }
     
     if (password.length < 8) {
+      console.log("Validation failed: Password too short");
       setError('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
+    console.log("Validation passed.");
 
     setLoading(true);
     try {
@@ -62,16 +67,19 @@ const Register = () => {
         last_name: lastName,
         role,
       };
+      console.log("Attempting authService.register with data:", userData);
       
       await authService.register(userData);
+      console.log("authService.register successful (frontend perspective)");
       
       navigate('/login', { state: { message: 'Inscription réussie ! Veuillez vous connecter.' } });
 
     } catch (err) {
-      console.error("Registration error:", err); 
-      const errorMessage = err.detail || 'Une erreur est survenue lors de l\'inscription.';
+      console.error("Registration failed in catch block:", err); 
+      const errorMessage = err?.detail || err?.message || 'Une erreur est survenue lors de l\'inscription.';
       setError(errorMessage);
     } finally {
+      console.log("Running finally block.");
       setLoading(false);
     }
   };
