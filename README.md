@@ -21,6 +21,11 @@ flash-francais/
 ## Installation
 
 ### Backend
+
+si venv non créé
+```bash
+python -m venv .venv
+
 ```bash
 cd backend
 .\venv\Scripts\activate

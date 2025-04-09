@@ -19,3 +19,8 @@ websockets
 passlib[bcrypt]
 python-multipart
 Werkzeug # Pour secure_filename et potentiellement d'autres utilitaires
+
+# LangChain dependencies
+langchain-core
+langchain-openai
+langchain-google-genai
