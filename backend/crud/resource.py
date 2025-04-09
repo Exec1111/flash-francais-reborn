@@ -34,6 +34,10 @@ def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     logger.info(f"Nombre de ressources trouvées pour l'utilisateur {user_id}: {len(resources)}")
     return resources
 
+def count_resources(db: Session, user_id: int) -> int:
+    """Compte le nombre total de ressources pour un utilisateur."""
+    return db.query(Resource).filter(Resource.user_id == user_id).count()
+
 def get_resources_by_session(db: Session, session_id: int, user_id: int, skip: int = 0, limit: int = 100):
     from models.association_tables import session_resource_association
     

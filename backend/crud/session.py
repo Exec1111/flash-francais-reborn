@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session, selectinload
-from models import Session, Objective
+from models import Session, Objective, Resource
+from models.association_tables import session_resource_association
 from schemas.session import SessionCreate, SessionUpdate
 from crud.objective import get_objective
+from sqlalchemy import func
+from typing import List
 
 def get_session(db: Session, session_id: int):
     """Récupère une séance par son ID, en chargeant explicitement les relations."""
@@ -29,6 +32,10 @@ def get_sessions_by_sequence(db: Session, sequence_id: int, user_id: int = None,
     if user_id is not None:
         query = query.filter(Session.user_id == user_id)
     return query.offset(skip).limit(limit).all()
+
+def count_sessions(db: Session, user_id: int) -> int:
+    """Compte le nombre total de sessions pour un utilisateur."""
+    return db.query(Session).filter(Session.user_id == user_id).count()
 
 def create_session(db: Session, session: SessionCreate):
     """Crée une nouvelle séance."""
@@ -82,3 +89,20 @@ def delete_session(db: Session, session_id: int):
     db.delete(db_session)
     db.commit()
     return True # Confirme la suppression
+
+def get_sessions_with_no_resources(db: Session, user_id: int) -> List[Session]:
+    """Récupère les sessions d'un utilisateur qui n'ont aucune ressource associée."""
+    # Utilise une jointure externe (outerjoin) avec la table d'association
+    # et filtre les sessions pour lesquelles la jointure n'a pas trouvé de correspondance
+    # (c'est-à-dire, aucune ressource liée)
+    return (
+        db.query(Session)
+        .outerjoin(
+            session_resource_association,
+            Session.id == session_resource_association.c.session_id
+        )
+        .filter(Session.user_id == user_id)
+        .group_by(Session.id)
+        .having(func.count(session_resource_association.c.resource_id) == 0)
+        .all()
+    )

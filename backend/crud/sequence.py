@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload # Import for eager loading
-from models import Sequence # Import Sequence model
+from models import Sequence, Session as SessionModel # Import Sequence model AND Session model
 from schemas.sequence import SequenceCreate, SequenceUpdate # Import schemas
+from sqlalchemy import func
+from typing import List
 
 def get_sequence(db: Session, sequence_id: int):
     """Récupère une séquence par son ID."""
@@ -20,6 +22,10 @@ def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 
     if user_id is not None:
         query = query.filter(Sequence.user_id == user_id)
     return query.offset(skip).limit(limit).all()
+
+def count_sequences(db: Session, user_id: int) -> int:
+    """Compte le nombre total de séquences pour un utilisateur."""
+    return db.query(Sequence).filter(Sequence.user_id == user_id).count()
 
 def get_sequences_by_progression(db: Session, progression_id: int, user_id: int = None, skip: int = 0, limit: int = 100):
     """Récupère les séquences appartenant à une progression spécifique.
@@ -65,3 +71,14 @@ def delete_sequence(db: Session, sequence_id: int):
     db.delete(db_sequence)
     db.commit()
     return True # Confirme la suppression
+
+def get_sequences_with_no_sessions(db: Session, user_id: int) -> List[Sequence]:
+    """Récupère les séquences d'un utilisateur qui n'ont aucune session associée."""
+    return (
+        db.query(Sequence)
+        .outerjoin(SessionModel, Sequence.id == SessionModel.sequence_id)
+        .filter(Sequence.user_id == user_id)
+        .group_by(Sequence.id)
+        .having(func.count(SessionModel.id) == 0)
+        .all()
+    )
