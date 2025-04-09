@@ -14,6 +14,7 @@ import {
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view'; 
 import ResourceButton from './resources/ResourceButton';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api'; // Importer l'instance api
 
 export const drawerWidth = 480;  
 
@@ -79,15 +80,14 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
         if (!token) {
           throw new Error('No token available');
         }
-        const response = await fetch('http://localhost:10000/api/v1/progressions', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }); 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const progressions = await response.json();
+        // Utiliser l'instance api pour faire l'appel
+        // L'URL de base et le token d'autorisation sont gérés par l'instance api
+        const response = await api.get('/progressions');
+
+        // Axios met directement les données dans response.data
+        const progressions = response.data;
+
+        console.log("Données formatées pour TreeView:", progressions);
         // Adapter les données reçues au format attendu par renderTree
         const formattedProgressions = progressions.map(prog => ({
           id: prog.id,
@@ -216,18 +216,15 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
           return;
       }
 
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get(apiUrl);
       console.log(`Réponse reçue pour ${nodeType} ${nodeId}:`, response.status);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // Supprimer cette vérification : Axios lèvera une exception pour les erreurs HTTP (non-2xx)
+      // if (!response.ok) { 
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
 
-      const data = await response.json();
+      const data = response.data;
       console.log(`Données brutes reçues pour ${nodeType} ${nodeId}:`, data);
 
       const formattedChildren = formatFunction(data);

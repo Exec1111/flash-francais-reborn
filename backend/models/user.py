@@ -1,8 +1,11 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, Enum as SQLEnum, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 import enum
+from datetime import datetime
+
+# Importer la fonction de vérification du mot de passe
+from hashing import verify_password
 
 class UserRole(enum.Enum):
     TEACHER = "teacher"
@@ -17,7 +20,7 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     hashed_password = Column(String)
-    role = Column(Enum(UserRole), default=UserRole.TEACHER)
+    role = Column(SQLEnum(UserRole), default=UserRole.TEACHER)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -28,6 +31,10 @@ class User(Base):
     sessions = relationship("Session", back_populates="user")
     objectives = relationship("Objective", back_populates="user")
     progressions = relationship("Progression", back_populates="user")
+
+    # Méthode pour vérifier le mot de passe
+    def check_password(self, plain_password: str) -> bool:
+        return verify_password(plain_password, self.hashed_password)
 
     def __repr__(self):
         return f"<User {self.email}>"
