@@ -26,6 +26,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility'; // Importer l'icôn
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api'; // Importer l'instance Axios configurée
 
 const columns = [
   { field: 'id', headerName: 'ID', width: 90 },
@@ -73,21 +74,25 @@ const ResourceList = () => {
 
   // Fonction de chargement des ressources
   const fetchResources = async () => {
+    setLoading(true); // Remettre loading à true au début du fetch
     try {
-      const response = await fetch('http://localhost:10000/api/v1/resources', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement des ressources');
-      }
-
-      const data = await response.json();
-      setResources(data);
+      // Utiliser l'instance api importée.
+      // Axios gère le baseURL et l'en-tête Authorization via l'intercepteur.
+      const response = await api.get('/resources'); 
+      
+      // Axios met les données directement dans response.data
+      setResources(response.data);
+      
     } catch (err) {
-      console.error('Erreur lors du chargement des ressources:', err);
+      // L'intercepteur gère le 401, mais on log les autres erreurs
+      if (err.response && err.response.status !== 401) {
+        console.error('Erreur lors du chargement des ressources:', err);
+      }
+      // Si c'est une autre erreur (réseau, etc.)
+      if (!err.response) {
+         console.error('Erreur réseau ou autre lors du chargement des ressources:', err);
+      }
+      setResources([]); // Vider les ressources en cas d'erreur
     } finally {
       setLoading(false);
     }
@@ -132,17 +137,10 @@ const ResourceList = () => {
 
   const confirmDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:10000/api/v1/resources/${resourceToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression de la ressource');
-      }
-
+      // Utiliser l'instance api importée.
+      // Axios gère le baseURL et l'en-tête Authorization via l'intercepteur.
+      const response = await api.delete(`/resources/${resourceToDelete}`); 
+      
       // Recharger la liste après suppression
       fetchResources();
     } catch (err) {
