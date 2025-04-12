@@ -19,7 +19,7 @@ import ResourceButton from './resources/ResourceButton';
 export const drawerWidth = 480;
 
 // Composant pour le contenu d'un nœud de l'arbre
-const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete }) => {
+const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence }) => {
   const navigate = useNavigate();
 
   // Gestion des clics sur les boutons d'action
@@ -105,12 +105,35 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete }) => {
           </IconButton>
         </Box>
       )}
+
+      {/* Boutons d'action pour les séquences */}
+      {node.type === 'sequence' && (
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+          <IconButton
+            size="small"
+            onClick={handleEdit}
+            aria-label={`Modifier la séquence ${node.name}`}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteSequence(node.id);
+            }}
+            aria-label={`Supprimer la séquence ${node.name}`}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
     </Box>
   );
 };
 
 // Composant récursif pour l'arbre
-const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, loadingNodeId }) => {
+const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, loadingNodeId }) => {
 
   return (
     <div>
@@ -128,6 +151,7 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
           onAddSequence={onAddSequence}
           onEdit={onEdit}
           onDelete={onDelete}
+          onDeleteSequence={onDeleteSequence}
         />
       </Box>
 
@@ -160,6 +184,7 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
                   onAddSequence={onAddSequence}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onDeleteSequence={onDeleteSequence}
                   loadingNodeId={loadingNodeId}
                 />
               )
@@ -340,33 +365,62 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
   };
 
   // Gérer l'édition d'une progression
-  const handleEdit = (progressionNodeId) => {
-    const progressionId = progressionNodeId.replace(/^progression_/, '');
-    navigate(`/progressions/edit/${progressionId}`);
+  // Gérer la suppression d'une séquence
+  const handleDeleteSequence = async (nodeId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette séquence ?')) {
+      return;
+    }
+
+    setLoadingNodeId(nodeId);
+    try {
+      const token = localStorage.getItem('token');
+      const originalId = nodeId.startsWith('sequence_') ? nodeId.substring(9) : nodeId;
+      await api.delete(`/sequences/${originalId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await refreshTreeData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la séquence:', error);
+    } finally {
+      setLoadingNodeId(null);
+    }
   };
 
   // Gérer la suppression d'une progression
-  const handleDelete = async (progressionNodeId) => {
-    const progressionId = progressionNodeId.replace(/^progression_/, '');
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette progression et tout son contenu ?")) {
-      try {
-        // Récupérer le token depuis localStorage si nécessaire
-        const authToken = token || localStorage.getItem('token');
+  const handleDeleteProgression = async (nodeId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette progression ?')) {
+      return;
+    }
 
-        if (!authToken) {
-          throw new Error('Token d\'authentification manquant');
-        }
+    setLoadingNodeId(nodeId);
+    try {
+      const token = localStorage.getItem('token');
+      const originalId = nodeId.startsWith('progression_') ? nodeId.substring(12) : nodeId;
+      await api.delete(`/progressions/${originalId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await refreshTreeData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la progression:', error);
+    } finally {
+      setLoadingNodeId(null);
+    }
+  };
 
-        await api.delete(`/progressions/${progressionId}`, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        });
-
-        // Rafraîchir les données de l'arbre
-        refreshTreeData();
-      } catch (error) {
-        console.error("Erreur lors de la suppression de la progression:", error);
-        alert("Erreur lors de la suppression: " + (error.message || "Une erreur est survenue"));
-      }
+  // Gérer l'édition d'une progression
+  const handleEditProgression = async (nodeId, newName) => {
+    setLoadingNodeId(nodeId);
+    try {
+      const token = localStorage.getItem('token');
+      const originalId = nodeId.startsWith('progression_') ? nodeId.substring(12) : nodeId;
+      await api.put(`/progressions/${originalId}`, { name: newName }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await refreshTreeData();
+    } catch (error) {
+      console.error('Erreur lors de la modification de la progression:', error);
+    } finally {
+      setLoadingNodeId(null);
     }
   };
 
@@ -454,8 +508,9 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                   node={node}
                   onExpand={handleToggleExpand}
                   onAddSequence={handleAddSequence}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
+                  onEdit={handleEditProgression}
+                  onDelete={handleDeleteProgression}
+                  onDeleteSequence={handleDeleteSequence}
                   loadingNodeId={loadingNodeId}
                 />
               ))
