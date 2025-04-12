@@ -31,7 +31,11 @@ import ResourceEdit from './pages/resources/ResourceEdit';
 import ResourceView from './pages/ResourceView';
 import ObjectiveList from './pages/objectives/ObjectiveList';
 import NewObjective from './pages/objectives/NewObjective';
-import ObjectiveEdit from './pages/objectives/ObjectiveEdit'; 
+import ObjectiveEdit from './pages/objectives/ObjectiveEdit';
+import SequenceDetailPage from './pages/sequences/SequenceDetailPage';
+import ManageSequenceObjectivesPage from './pages/sequences/ManageSequenceObjectivesPage';
+import NewSequence from './pages/sequences/NewSequence';
+import SequenceEdit from './pages/sequences/SequenceEdit'; 
 import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
 import ProgressionBuilder from './pages/ProgressionBuilder'; 
@@ -282,6 +286,21 @@ function App() {
         <Route index element={<ObjectiveList />} />
         <Route path="new" element={<NewObjective />} />
         <Route path="edit/:id" element={<ObjectiveEdit />} />
+      </Route>
+
+      <Route
+        path="/sequences"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="new" element={<NewSequence />} />
+        <Route path="new/:progressionId" element={<NewSequence />} />
+        <Route path="edit/:id" element={<SequenceEdit />} />
+        <Route path=":id" element={<SequenceDetailPage />} />
+        <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
       </Route>
 
       {/* Redirection par défaut */}

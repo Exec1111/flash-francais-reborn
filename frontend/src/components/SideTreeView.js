@@ -226,6 +226,12 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
     }
   };
 
+  // Rediriger vers la page de création de séquence avec l'ID de la progression
+  const handleAddSequence = (progressionId, e) => {
+    e.stopPropagation(); // Empêcher l'expansion du nœud de progression
+    navigate(`/sequences/new/${progressionId}`);
+  };
+
   const renderTree = useCallback((nodes, currentExpandedItems) => (
     nodes.map((node) => (
       <TreeItem 
@@ -262,6 +268,15 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
             {node.type === 'progression' && (
               <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}> 
                 <IconButton 
+                  size="small"
+                  color="success"
+                  onClick={(e) => handleAddSequence(node.id, e)}
+                  aria-label={`Ajouter une séquence à ${node.name || node.label}`}
+                  title="Ajouter une séquence"
+                >
+                  <AddIcon fontSize="inherit" />
+                </IconButton>
+                <IconButton 
                   size="small" 
                   onClick={(e) => { 
                     e.stopPropagation(); 
@@ -293,7 +308,7 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
         ) : null}
       </TreeItem>
     ))
-  ), []); 
+  ), [handleAddSequence, handleDelete, handleEdit, isTextTruncated]); 
  
   const renderedTreeNodes = renderTree(internalTreeData.children, expandedItems); 
   

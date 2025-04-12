@@ -15,12 +15,26 @@ sequence_router = APIRouter(
 )
 
 @sequence_router.post("/", response_model=SequenceRead, name="create_sequence")
-def create_sequence_endpoint(sequence: SequenceCreate, db: Session = Depends(get_db)):
+def create_sequence_endpoint(
+    sequence: SequenceCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la progression parente existe (optionnel mais bonne pratique)
-    db_progression = crud.get_progression(db, progression_id=sequence.progression_id)
+    db_progression = crud.get_progression(db, progression_id=sequence.progression_id, user_id=current_user.id)
     if db_progression is None:
         raise HTTPException(status_code=404, detail=f"Progression with id {sequence.progression_id} not found")
-    return crud.create_sequence(db=db, sequence=sequence)
+    
+    # Nous devons conserver l'objet Pydantic intact
+    # Associer l'utilisateur directement au modèle Sequence lors de la création
+    db_sequence = crud.create_sequence(db=db, sequence=sequence)
+    
+    # Mettre à jour manuellement l'ID utilisateur
+    db_sequence.user_id = current_user.id
+    db.commit()
+    db.refresh(db_sequence)
+    
+    return db_sequence
 
 @sequence_router.get("/", response_model=List[SequenceRead])
 def read_sequences_route(
@@ -63,17 +77,26 @@ def read_sequences_by_progression_route(
     return sequences
 
 @sequence_router.get("/{sequence_id}", response_model=SequenceRead)
-def read_sequence_route(sequence_id: int, db: Session = Depends(get_db)):
+def read_sequence_route(
+    sequence_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
     if db_sequence is None:
         raise HTTPException(status_code=404, detail="Sequence not found")
     return db_sequence
 
 @sequence_router.put("/{sequence_id}", response_model=SequenceRead)
-def update_sequence_route(sequence_id: int, sequence: SequenceUpdate, db: Session = Depends(get_db)):
+def update_sequence_route(
+    sequence_id: int, 
+    sequence: SequenceUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la nouvelle progression_id existe si elle est fournie
     if sequence.progression_id is not None:
-        db_progression = crud.get_progression(db, progression_id=sequence.progression_id)
+        db_progression = crud.get_progression(db, progression_id=sequence.progression_id, user_id=current_user.id)
         if db_progression is None:
             raise HTTPException(status_code=404, detail=f"Progression with id {sequence.progression_id} not found")
             
@@ -83,7 +106,11 @@ def update_sequence_route(sequence_id: int, sequence: SequenceUpdate, db: Sessio
     return db_sequence
 
 @sequence_router.delete("/{sequence_id}", status_code=204)
-def delete_sequence_route(sequence_id: int, db: Session = Depends(get_db)):
+def delete_sequence_route(
+    sequence_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     success = crud.delete_sequence(db, sequence_id=sequence_id)
     if not success:
         raise HTTPException(status_code=404, detail="Sequence not found")
