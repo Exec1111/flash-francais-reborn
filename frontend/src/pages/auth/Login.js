@@ -32,8 +32,8 @@ const Login = () => {
   // Pré-remplissage des champs en mode développement
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      setEmail('student2@example.com');
-      setPassword('aa');
+      setEmail('julien.vachey@gmail.com');
+      setPassword('aaaaaaaa');
     }
   }, []);
 

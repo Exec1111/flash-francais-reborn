@@ -28,7 +28,10 @@ import Dashboard from './pages/Dashboard';
 import ResourceList from './components/resources/ResourceList';
 import NewResource from './pages/resources/NewResource';
 import ResourceEdit from './pages/resources/ResourceEdit';
-import ResourceView from './pages/ResourceView'; 
+import ResourceView from './pages/ResourceView';
+import ObjectiveList from './pages/objectives/ObjectiveList';
+import NewObjective from './pages/objectives/NewObjective';
+import ObjectiveEdit from './pages/objectives/ObjectiveEdit'; 
 import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
 import ProgressionBuilder from './pages/ProgressionBuilder'; 
@@ -266,6 +269,19 @@ function App() {
       >
         <Route path="new" element={<ProgressionBuilder />} />
         <Route path="edit/:id" element={<ProgressionBuilder />} />
+      </Route>
+
+      <Route
+        path="/objectives"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ObjectiveList />} />
+        <Route path="new" element={<NewObjective />} />
+        <Route path="edit/:id" element={<ObjectiveEdit />} />
       </Route>
 
       {/* Redirection par défaut */}

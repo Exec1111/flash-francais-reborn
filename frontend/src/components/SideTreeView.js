@@ -15,7 +15,8 @@ import {
   Folder as FolderIcon, 
   Article as ArticleIcon, 
   OndemandVideo as VideoIcon, 
-  FitnessCenter as ExerciseIcon 
+  FitnessCenter as ExerciseIcon,
+  Flag as FlagIcon
 } from '@mui/icons-material';
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view'; 
 import ResourceButton from './resources/ResourceButton';
@@ -328,8 +329,20 @@ function SideTreeView({ open, handleDrawerOpen, handleDrawerClose }) {
         </IconButton>
       </Box>
 
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <ResourceButton />
+        
+        <Button
+          variant="outlined"
+          color="primary" 
+          startIcon={<FlagIcon />}
+          component={RouterLink}
+          to="/objectives"
+          fullWidth
+          sx={{ justifyContent: 'flex-start' }}
+        >
+          Objectifs pédagogiques
+        </Button>
       </Box>
 
       <Divider sx={{ my: 2 }} />
