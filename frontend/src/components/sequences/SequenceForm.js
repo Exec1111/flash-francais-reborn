@@ -18,6 +18,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
+import { useTreeData } from '../../contexts/TreeDataContext';
 
 /**
  * Composant de formulaire pour la création et l'édition de séquences
@@ -53,6 +54,7 @@ const SequenceForm = ({
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { refreshTreeData } = useTreeData();
 
   // --- Effets ---
 
@@ -137,11 +139,12 @@ const SequenceForm = ({
       if (isEdit) {
         // Mise à jour de la séquence existante
         result = await sequenceService.updateSequence(sequenceId, sequenceData);
-        setSuccess("Séquence mise à jour avec succès!");
+        setSuccess("Séquence modifiée avec succès !");
       } else {
         // Création d'une nouvelle séquence
         result = await sequenceService.createSequence(sequenceData);
-        setSuccess("Séquence créée avec succès!");
+        setSuccess("Nouvelle séquence créée avec succès !");
+        refreshTreeData(); // Rafraîchir l'arbre ici après la création
       }
 
       // Appeler le callback onSuccess si fourni

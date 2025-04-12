@@ -19,7 +19,7 @@ import {
   ChatBubbleOutline as ChatIcon, 
 } from '@mui/icons-material'; 
 import { useTheme } from '@mui/material/styles'; 
-import SideTreeView, { drawerWidth } from './components/SideTreeView';
+import SideNav, { drawerWidth } from './components/SideNav';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login'; 
 import Register from './pages/auth/Register';
@@ -149,10 +149,10 @@ function ProtectedLayout() {
 
       {/* Remettre le Provider ici */}
       <TreeDataContext.Provider value={{ treeData, isTreeLoading, treeError, refreshTreeData }}>
-        <SideTreeView 
-          open={isSidebarOpen} 
-          handleDrawerOpen={handleSidebarOpen} 
-          handleDrawerClose={handleSidebarClose} 
+        <SideNav
+          open={isSidebarOpen}
+          handleDrawerOpen={handleSidebarOpen}
+          handleDrawerClose={handleSidebarClose}
         />
         {/* Contenu principal */}
         <Box 

@@ -108,8 +108,8 @@ Le frontend est construit avec React et utilise :
 #### Composants principaux
 
 - **AuthContext** : Gestion de l'état d'authentification et des sessions
-- **TreeDataContext** : Gestion des données d'arborescence pour les progressions
-- **SideTreeView** : Navigation hiérarchique dans les progressions
+- **TreeDataContext** : Gestion des données d'arborescence pour les progressions et fonction de rafraîchissement (`refreshTreeData`).
+- **SideNav** : Navigation hiérarchique personnalisée (Progressions > Séquences > Séances > Ressources). Implémentation custom sans bibliothèque externe, utilisant des composants récursifs (`TreeNode`, `NodeContent`). Gère l'état d'expansion localement et charge dynamiquement les enfants lors du dépliage d'un nœud. Se rafraîchit automatiquement après ajout/modification/suppression via `TreeDataContext`.
 - **Layout protégé** : Structure commune pour les pages authentifiées
 
 #### Navigation et Routage
