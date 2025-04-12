@@ -19,7 +19,7 @@ import ResourceButton from './resources/ResourceButton';
 export const drawerWidth = 480;
 
 // Composant pour le contenu d'un nœud de l'arbre
-const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence }) => {
+const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence }) => {
   const navigate = useNavigate();
 
   // Gestion des clics sur les boutons d'action
@@ -111,7 +111,10 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
           <IconButton
             size="small"
-            onClick={handleEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditSequence(node.id);
+            }}
             aria-label={`Modifier la séquence ${node.name}`}
           >
             <EditIcon fontSize="small" />
@@ -133,7 +136,7 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
 };
 
 // Composant récursif pour l'arbre
-const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, loadingNodeId }) => {
+const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, loadingNodeId }) => {
 
   return (
     <div>
@@ -152,6 +155,7 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
           onEdit={onEdit}
           onDelete={onDelete}
           onDeleteSequence={onDeleteSequence}
+          onEditSequence={onEditSequence}
         />
       </Box>
 
@@ -185,6 +189,7 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onDeleteSequence={onDeleteSequence}
+                  onEditSequence={onEditSequence}
                   loadingNodeId={loadingNodeId}
                 />
               )
@@ -408,20 +413,15 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
   };
 
   // Gérer l'édition d'une progression
-  const handleEditProgression = async (nodeId, newName) => {
-    setLoadingNodeId(nodeId);
-    try {
-      const token = localStorage.getItem('token');
-      const originalId = nodeId.startsWith('progression_') ? nodeId.substring(12) : nodeId;
-      await api.put(`/progressions/${originalId}`, { name: newName }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await refreshTreeData();
-    } catch (error) {
-      console.error('Erreur lors de la modification de la progression:', error);
-    } finally {
-      setLoadingNodeId(null);
-    }
+  const handleEditProgression = (progressionNodeId) => {
+    const progressionId = progressionNodeId.replace(/^progression_/, '');
+    navigate(`/progressions/edit/${progressionId}`);
+  };
+
+  // Gérer l'édition d'une séquence
+  const handleEditSequence = (sequenceNodeId) => {
+    const sequenceId = sequenceNodeId.replace(/^sequence_/, '');
+    navigate(`/sequences/edit/${sequenceId}`);
   };
 
   return (
@@ -511,6 +511,7 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                   onEdit={handleEditProgression}
                   onDelete={handleDeleteProgression}
                   onDeleteSequence={handleDeleteSequence}
+                  onEditSequence={handleEditSequence}
                   loadingNodeId={loadingNodeId}
                 />
               ))
