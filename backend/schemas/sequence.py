@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
+from schemas.objective import ObjectiveRead
 
 # Pour les type hints uniquement, afin d'éviter les imports circulaires réels
 if TYPE_CHECKING:
@@ -11,12 +12,16 @@ class SequenceBase(BaseModel):
     progression_id: int
 
 class SequenceCreate(SequenceBase):
-    pass
+    # Liste optionnelle d'IDs d'objectifs à associer lors de la création
+    objective_ids: Optional[List[int]] = None
 
 class SequenceUpdate(BaseModel): # Allow partial updates
     title: str | None = None
     description: str | None = None
     progression_id: int | None = None # Usually not updated, but possible
+    # Liste optionnelle d'IDs d'objectifs à associer lors de la mise à jour
+    # None = ne pas toucher, [] = supprimer toutes les associations, [1, 2] = définir les associations à 1 et 2
+    objective_ids: Optional[List[int]] = None
 
 class SequenceRead(SequenceBase):
     id: int
@@ -28,10 +33,8 @@ class SequenceRead(SequenceBase):
     class Config:
         from_attributes = True # Compatible avec l'ORM SQLAlchemy
 
-# Schéma simplifié pour les références (évite dépendances circulaires)
-class SequenceReadSimple(BaseModel):
-    id: int
-    title: str
+# Importer ici juste avant le rebuild pour résoudre les références
+from schemas.objective import ObjectiveRead
 
-    class Config:
-        from_attributes = True # Compatible avec l'ORM SQLAlchemy
+# Résoudre les références forward
+SequenceRead.model_rebuild()

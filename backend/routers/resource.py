@@ -59,6 +59,7 @@ async def create_resource_route(
     sub_type_id: int = Form(...),
     source_type: str = Form(...), # 'file' ou 'ai'
     session_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs
+    objective_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objectifs
     file: Optional[UploadFile] = File(None) # Le fichier uploadé
 ):
     """Crée une nouvelle ressource. 
@@ -78,6 +79,17 @@ async def create_resource_route(
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"Erreur de parsing JSON pour session_ids: {e}")
         raise HTTPException(status_code=400, detail=f"Format invalide pour session_ids_json: {e}")
+
+    # Parser les IDs d'objectifs depuis la string JSON
+    try:
+        objective_ids = json.loads(objective_ids_json) if objective_ids_json else []
+        if not isinstance(objective_ids, list):
+            raise ValueError("objective_ids_json doit être une liste JSON.")
+        # Convertir les IDs en int (et filtrer les None potentiels)
+        objective_ids = [int(oid) for oid in objective_ids if oid is not None]
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"Erreur de parsing JSON pour objective_ids: {e}")
+        raise HTTPException(status_code=400, detail=f"Format invalide pour objective_ids_json: {e}")
 
     # --- Validation du fichier uploadé ---
     if source_type == 'file':
@@ -109,6 +121,7 @@ async def create_resource_route(
         sub_type_id=sub_type_id,
         source_type=source_type,
         session_ids=session_ids, 
+        objective_ids=objective_ids, # Passer la liste parsée
         user_id=current_user.id
     )
 
@@ -157,6 +170,7 @@ async def create_resource_route(
         db_resource = crud.resource.create_resource(
             db=db, 
             resource=resource_data, 
+            user_id=current_user.id, # Rétabli car requis par la signature de la fonction CRUD
             file_upload=file_upload_data # Passer les infos du fichier
         )
         logger.info(f"Ressource créée avec ID: {db_resource.id}")
@@ -285,6 +299,7 @@ async def update_resource_route(
     type_id: Optional[int] = Form(None),
     sub_type_id: Optional[int] = Form(None),
     session_ids_json: Optional[str] = Form(None),
+    objective_ids_json: Optional[str] = Form(None), # Ajout pour les objectifs
     source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
     file: Optional[UploadFile] = File(None)
 ):
@@ -302,51 +317,33 @@ async def update_resource_route(
         logger.error(f"Accès non autorisé pour la mise à jour de la ressource {resource_id} par l'utilisateur {current_user.id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this resource")
 
-    # Parser les IDs de session depuis la string JSON si fournie
-    session_ids: Optional[List[int]] = None
+    # --- Parsing des IDs de session --- 
+    session_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
     if session_ids_json is not None:
         try:
-            parsed_ids = json.loads(session_ids_json)
+            parsed_ids = json.loads(session_ids_json) # Peut être une liste vide []
             if not isinstance(parsed_ids, list):
                 raise ValueError("session_ids_json doit être une liste JSON.")
             session_ids = [int(sid) for sid in parsed_ids if sid is not None]
+            logger.info(f"Session IDs parsés pour MAJ: {session_ids}")
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Erreur de parsing JSON pour session_ids lors de la mise à jour: {e}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Format invalide pour session_ids_json: {e}")
+            logger.error(f"Erreur parsing JSON pour session_ids dans MAJ: {e}")
+            raise HTTPException(status_code=400, detail=f"Format invalide pour session_ids_json: {e}")
 
-    # --- Validation du fichier uploadé --- (déjà adapté aux settings)
-    if file:
-        if file.content_type not in settings.ALLOWED_UPLOAD_MIME_TYPES:
-            logger.error(f"File type not allowed: {file.content_type}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Type de fichier non autorisé. Seuls les fichiers {', '.join(settings.ALLOWED_UPLOAD_MIME_TYPES)} sont acceptés."
-            )
-        
-        actual_size = file.size
-        if actual_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-            logger.error(f"File size exceeded limit: {actual_size} bytes")
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Le fichier est trop volumineux. La taille maximale est de {settings.MAX_UPLOAD_SIZE_MB} Mo."
-            )
-        logger.info(f"File validation passed for {file.filename}")
-    # -------------------------------------
-    
-    # Préparer les données pour le schéma ResourceUpdate
-    update_data = ResourceUpdate(
-        title=title,
-        description=description,
-        type_id=type_id,
-        sub_type_id=sub_type_id,
-        session_ids=session_ids, # Passer la liste parsée si elle existe
-        source_type=source_type # Passer le nouveau type s'il est fourni
-    ).model_dump(exclude_unset=True) # Seulement les champs fournis
-    
-    # Si aucun champ n'est fourni pour la mise à jour (hors fichier), c'est peut-être une erreur
-    if not update_data and file is None:
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Aucune donnée fournie pour la mise à jour.")
+    # --- Parsing des IDs d'objectifs --- 
+    objective_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
+    if objective_ids_json is not None:
+        try:
+            parsed_ids = json.loads(objective_ids_json) # Peut être une liste vide []
+            if not isinstance(parsed_ids, list):
+                raise ValueError("objective_ids_json doit être une liste JSON.")
+            objective_ids = [int(oid) for oid in parsed_ids if oid is not None]
+            logger.info(f"Objective IDs parsés pour MAJ: {objective_ids}")
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Erreur parsing JSON pour objective_ids dans MAJ: {e}")
+            raise HTTPException(status_code=400, detail=f"Format invalide pour objective_ids_json: {e}")
 
+    # --- Gestion de l'upload de fichier --- 
     file_upload_data: Optional[ResourceFileUpload] = None
     temp_saved_file_path: Optional[Path] = None
 
@@ -377,18 +374,51 @@ async def update_resource_route(
         finally:
             await file.close()
 
-    # Appeler la fonction CRUD pour mettre à jour
+    # Préparer les données pour la mise à jour via le schéma Pydantic
+    # Utiliser exclude_unset=False n'est pas idéal ici car Form(...) peut retourner None
+    update_data_dict = {
+        "title": title,
+        "description": description,
+        "type_id": type_id,
+        "sub_type_id": sub_type_id,
+        # Inclure session_ids et objective_ids SEULEMENT si les JSON correspondants ont été fournis
+        # La logique est: si json=None, on ne touche pas à la relation.
+        # Si json="[]", on passe une liste vide pour supprimer les relations.
+    }
+    if session_ids_json is not None:
+        update_data_dict["session_ids"] = session_ids
+    if objective_ids_json is not None:
+        update_data_dict["objective_ids"] = objective_ids
+        
+    # Filtrer les clés dont la valeur est None pour ne pas écraser les valeurs existantes par None
+    update_data_filtered = {k: v for k, v in update_data_dict.items() if v is not None}
+    
+    # Si session_ids ou objective_ids a été fourni (même vide), on les remet
+    if "session_ids" in update_data_dict:
+         update_data_filtered["session_ids"] = update_data_dict["session_ids"] # Peut être []
+    if "objective_ids" in update_data_dict:
+         update_data_filtered["objective_ids"] = update_data_dict["objective_ids"] # Peut être []
+
+    resource_update_schema = ResourceUpdate(**update_data_filtered)
+    logger.debug(f"Schéma ResourceUpdate préparé: {resource_update_schema.model_dump_json(exclude_none=True)}")
+
+    # Appeler la fonction CRUD mise à jour
     try:
         # La fonction CRUD doit gérer la suppression de l'ancien fichier si nécessaire
         updated_resource = crud.resource.update_resource(
             db=db, 
             resource_id=resource_id, 
-            resource_update=ResourceUpdate(**update_data), 
-            file_upload=file_upload_data # La fonction CRUD doit gérer l'user_id via resource_id
+            resource_update=resource_update_schema, # Passer le schéma Pydantic
+            user_id=current_user.id, # Passer user_id explicitement
+            file_upload=file_upload_data # Passer les infos du nouveau fichier s'il y en a un
         )
-        if updated_resource is None: # Si CRUD retourne None (par ex. ressource non trouvée par lui)
-             # Normalement déjà géré par la vérification initiale, mais double sécurité
+
+        # Vérifier si la mise à jour a réussi (normalement géré par l'exception ou return None du CRUD)
+        if updated_resource is None:
+            # Cette condition est maintenant redondante car gérée au début et dans le CRUD
+            logger.error(f"La fonction CRUD update_resource a retourné None pour la ressource {resource_id} après vérifications initiales.")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found during update process")
+
         logger.info(f"Ressource {resource_id} mise à jour avec succès.")
         return updated_resource
     except ValueError as e:

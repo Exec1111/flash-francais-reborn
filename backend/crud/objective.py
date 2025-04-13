@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from models import Objective, Sequence, Session # Import models
 from schemas.objective import ObjectiveCreate, ObjectiveUpdate # Import schemas
+from sqlalchemy import or_
+from typing import Optional
 
 def get_objective(db: Session, objective_id: int):
     """Récupère un objectif par son ID."""
@@ -11,9 +13,20 @@ def get_objective_by_title(db: Session, title: str):
     """Récupère un objectif par son titre (qui est unique)."""
     return db.query(Objective).filter(Objective.title == title).first()
 
-def get_objectives(db: Session, skip: int = 0, limit: int = 100):
-    """Récupère une liste d'objectifs."""
-    return db.query(Objective).offset(skip).limit(limit).all()
+def get_objectives(db: Session, skip: int = 0, limit: int = 10, search: Optional[str] = None):
+    """Récupère une liste d'objectifs, avec recherche optionnelle."""
+    query = db.query(Objective)
+
+    if search:
+        search_term = f"%{search}%" # Préparer le terme pour ilike
+        query = query.filter(
+            or_(
+                Objective.title.ilike(search_term),
+                Objective.description.ilike(search_term)
+            )
+        )
+
+    return query.offset(skip).limit(limit).all()
 
 def create_objective(db: Session, objective: ObjectiveCreate):
     """Crée un nouvel objectif."""
@@ -125,3 +138,7 @@ def get_sessions_by_objective(db: Session, objective_id: int):
     if not db_objective:
         raise ValueError("Objective not found")
     return db_objective.sessions
+
+def get_objective(db: Session, objective_id: int) -> Optional[Objective]:
+    """Récupère un objectif par son ID."""
+    return db.query(Objective).filter(Objective.id == objective_id).first()

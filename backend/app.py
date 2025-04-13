@@ -27,7 +27,7 @@ from routers.objective import objective_router
 from routers.user import user_router
 from routers import ai_router  # Importation du routeur AI
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
-from schemas.sequence import SequenceRead, SequenceReadSimple
+from schemas.sequence import SequenceRead
 from schemas.objective import ObjectiveRead
 
 # Création des tables dans la base de données
@@ -228,7 +228,6 @@ def root():
 
 print("Rebuilding Pydantic models...")
 SequenceRead.model_rebuild()
-SequenceReadSimple.model_rebuild()
 ObjectiveRead.model_rebuild()
 # Appeler model_rebuild() pour d'autres modèles si nécessaire
 print("Pydantic models rebuilt.")

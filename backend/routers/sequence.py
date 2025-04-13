@@ -26,13 +26,13 @@ def create_sequence_endpoint(
         raise HTTPException(status_code=404, detail=f"Progression with id {sequence.progression_id} not found")
     
     # Nous devons conserver l'objet Pydantic intact
-    # Associer l'utilisateur directement au modèle Sequence lors de la création
-    db_sequence = crud.create_sequence(db=db, sequence=sequence)
+    # Associer l'utilisateur et gérer les objective_ids dans la fonction CRUD
+    db_sequence = crud.create_sequence(db=db, sequence=sequence, user_id=current_user.id)
     
-    # Mettre à jour manuellement l'ID utilisateur
-    db_sequence.user_id = current_user.id
-    db.commit()
-    db.refresh(db_sequence)
+    # La fonction CRUD gère maintenant le commit et le refresh
+    # db_sequence.user_id = current_user.id
+    # db.commit()
+    # db.refresh(db_sequence)
     
     return db_sequence
 
@@ -94,16 +94,30 @@ def update_sequence_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # Vérifier si la nouvelle progression_id existe si elle est fournie
+    # 1. Vérifier si la séquence existe et appartient à l'utilisateur
+    db_sequence_existing = crud.get_sequence(db, sequence_id=sequence_id)
+    if db_sequence_existing is None:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    if db_sequence_existing.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this sequence")
+
+    # 2. Vérifier si la nouvelle progression_id existe si elle est fournie
     if sequence.progression_id is not None:
         db_progression = crud.get_progression(db, progression_id=sequence.progression_id, user_id=current_user.id)
         if db_progression is None:
-            raise HTTPException(status_code=404, detail=f"Progression with id {sequence.progression_id} not found")
+            raise HTTPException(status_code=404, detail=f"Progression with id {sequence.progression_id} not found or does not belong to user")
             
-    db_sequence = crud.update_sequence(db=db, sequence_id=sequence_id, sequence_update=sequence)
-    if db_sequence is None:
-        raise HTTPException(status_code=404, detail="Sequence not found")
-    return db_sequence
+    # 3. Appeler la fonction CRUD mise à jour
+    db_sequence_updated = crud.update_sequence(
+        db=db, 
+        sequence_id=sequence_id, 
+        sequence_update=sequence
+        # user_id=current_user.id # Retiré car non attendu par crud.update_sequence et vérif faite avant
+    )
+    # La fonction CRUD retourne None si non trouvée, mais on l'a déjà vérifié plus haut
+    # if db_sequence_updated is None:
+    #     raise HTTPException(status_code=404, detail="Sequence not found")
+    return db_sequence_updated
 
 @sequence_router.delete("/{sequence_id}", status_code=204)
 def delete_sequence_route(
@@ -111,7 +125,15 @@ def delete_sequence_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    success = crud.delete_sequence(db, sequence_id=sequence_id)
-    if not success:
+    # Vérifier si la séquence existe et appartient à l'utilisateur avant de supprimer
+    db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
+    if db_sequence is None:
         raise HTTPException(status_code=404, detail="Sequence not found")
+    if db_sequence.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this sequence")
+        
+    success = crud.delete_sequence(db, sequence_id=sequence_id)
+    # if not success:
+    #     # Cette vérification est maintenant redondante car faite au début
+    #     raise HTTPException(status_code=404, detail="Sequence not found")
     return # Retourne None pour 204

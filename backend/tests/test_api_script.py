@@ -36,16 +36,19 @@ def run_all_tests():
         success, msg = test_objectives(objective_id_holder)
         results.append(("Objectives", success, msg))
 
-        # Passer l'ID de la progression créée
-        success, msg = test_sequences(progression_id_holder.get("id"), sequence_id_holder)
+        # Créer une liste avec l'ID d'objectif (si disponible)
+        objective_ids_list = [objective_id_holder.get("id")] if objective_id_holder.get("id") else []
+
+        # Passer l'ID de la progression créée et la liste des IDs d'objectifs
+        success, msg = test_sequences(progression_id_holder.get("id"), objective_ids_list, sequence_id_holder)
         results.append(("Séquences", success, msg))
 
         # Passer l'ID de la séquence créée
         success, msg = test_sessions(sequence_id_holder.get("id"), session_id_holder)
         results.append(("Sessions", success, msg))
 
-        # Passer l'ID de la session créée
-        success, msg = test_resources(session_id_holder.get("id"), resource_id_holder)
+        # Passer l'ID de la session créée et la liste des IDs d'objectifs
+        success, msg = test_resources(session_id_holder.get("id"), objective_ids_list, resource_id_holder)
         results.append(("Resources", success, msg))
 
         # Passer les IDs de session et d'objectif créés

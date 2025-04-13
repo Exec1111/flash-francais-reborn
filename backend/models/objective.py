@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 # Importer les tables d'association
-from models.association_tables import sequence_objective_association, session_objective_association
+from models.association_tables import sequence_objective_association, session_objective_association, objective_resource_association
 
 class Objective(Base):
     __tablename__ = "objectives"
@@ -25,4 +25,11 @@ class Objective(Base):
         "Session",
         secondary=session_objective_association,
         back_populates="objectives" # 'objectives' sera ajouté à Session
+    )
+
+    # Relationship Many-to-Many with Resource
+    resources = relationship(
+        "Resource",
+        secondary=objective_resource_association,
+        back_populates="objectives" # 'objectives' sera ajouté à Resource
     )

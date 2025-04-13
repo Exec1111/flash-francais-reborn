@@ -13,12 +13,16 @@ import {
   CardHeader,
   IconButton,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Typography,
+  Stack,
+  Chip
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
 import { useTreeData } from '../../contexts/TreeDataContext';
+import ObjectiveSelectorModal from './ObjectiveSelectorModal';
 
 /**
  * Composant de formulaire pour la création et l'édition de séquences
@@ -50,6 +54,11 @@ const SequenceForm = ({
     progression_id: progressionId || null,
   });
   
+  // --- Nouveaux États pour la gestion des objectifs --- 
+  const [selectedObjectives, setSelectedObjectives] = useState([]);
+  const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false);
+  // --- Fin des Nouveaux États ---
+  
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +75,10 @@ const SequenceForm = ({
         description: initialData.description || '',
         progression_id: initialData.progression_id || progressionId || null,
       });
+      // Initialiser les objectifs sélectionnés si disponibles
+      if (Array.isArray(initialData.objectives)) {
+        setSelectedObjectives(initialData.objectives);
+      }
     } else if (progressionId) {
       setFormData(prev => ({
         ...prev,
@@ -85,6 +98,14 @@ const SequenceForm = ({
             description: data.description || '',
             progression_id: data.progression_id || null,
           });
+          // Pré-remplir les objectifs en mode édition (si l'API les renvoie)
+          if (Array.isArray(data.objectives)) {
+            setSelectedObjectives(data.objectives);
+          } else {
+             // Optionnel: Si l'API ne renvoie pas les objectifs, les charger séparément?
+             // Pour l'instant, on initialise vide si non fourni.
+             setSelectedObjectives([]);
+          }
         } catch (err) {
           setError("Erreur lors du chargement de la séquence: " + (err.detail || err.message || "Erreur inconnue"));
         }
@@ -104,6 +125,22 @@ const SequenceForm = ({
       [name]: value
     }));
   };
+
+  // --- Nouveaux Handlers pour la modale Objectifs --- 
+  const handleOpenObjectiveModal = () => {
+    setIsObjectiveModalOpen(true);
+  };
+
+  const handleObjectiveSelectionSave = (newSelection) => {
+    setSelectedObjectives(newSelection);
+    setIsObjectiveModalOpen(false); // Fermer la modale après sauvegarde
+  };
+
+  // Supprimer un objectif de la sélection locale
+  const handleRemoveObjective = (objectiveToRemove) => {
+     setSelectedObjectives(prev => prev.filter(obj => obj.id !== objectiveToRemove.id));
+  };
+  // --- Fin Nouveaux Handlers ---
 
   // Soumission du formulaire
   const handleSubmit = async (e) => {
@@ -129,30 +166,33 @@ const SequenceForm = ({
         progression_id: parseInt(formData.progression_id, 10), // S'assurer que c'est bien un nombre
       };
       
+      // Ajouter les IDs des objectifs sélectionnés
+      const objectiveIds = selectedObjectives.map(obj => obj.id);
+      const finalSequenceData = { ...sequenceData, objective_ids: objectiveIds };
+
       console.log('Données soumises:', {
-        ...sequenceData,
-        progressionIdType: typeof sequenceData.progression_id
+        ...finalSequenceData,
+        progressionIdType: typeof finalSequenceData.progression_id
       });
 
       let result;
       
       if (isEdit) {
         // Mise à jour de la séquence existante
-        result = await sequenceService.updateSequence(sequenceId, sequenceData);
+        result = await sequenceService.updateSequence(sequenceId, finalSequenceData);
         setSuccess("Séquence modifiée avec succès !");
       } else {
         // Création d'une nouvelle séquence
-        result = await sequenceService.createSequence(sequenceData);
-        setSuccess("Nouvelle séquence créée avec succès !");
-        refreshTreeData(); // Rafraîchir l'arbre ici après la création
+        console.log('Création de la séquence:', finalSequenceData);
+        result = await sequenceService.createSequence(finalSequenceData);
+        setSuccess('Séquence créée avec succès !');
+        if (onSuccess) onSuccess(result); // Appeler le callback
       }
 
-      // Appeler le callback onSuccess si fourni
-      if (onSuccess) {
-        onSuccess(result);
-      }
+      // Mise à jour de l'arbre après succès
+      await refreshTreeData();
 
-      // Gérer la redirection en fonction du mode (dialogue ou page complète)
+      // Gestion de la redirection ou fermeture du dialogue
       if (isDialog) {
         // Fermer le dialogue après un court délai pour montrer le message de succès
         setTimeout(() => {
@@ -212,6 +252,36 @@ const SequenceForm = ({
             placeholder="Décrivez le contenu et les objectifs de cette séquence..."
           />
         </Grid>
+
+        {/* --- Section Gestion des Objectifs --- */} 
+        <Grid item xs={12}> 
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}> 
+            Objectifs Associés ({selectedObjectives.length})
+          </Typography>
+          <Button 
+            variant="outlined" 
+            onClick={handleOpenObjectiveModal} 
+            disabled={submitting}
+            sx={{ mb: 1 }}
+          >
+            Gérer les Objectifs
+          </Button>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {selectedObjectives.length > 0 ? (
+              selectedObjectives.map((objective) => (
+                <Chip
+                  key={objective.id}
+                  label={objective.title}
+                  onDelete={() => handleRemoveObjective(objective)}
+                  disabled={submitting}
+                />
+              ))
+            ) : (
+              <Typography variant="body2" color="text.secondary">Aucun objectif associé.</Typography>
+            )}
+          </Box>
+        </Grid>
+        {/* --- Fin Section Gestion des Objectifs --- */}
 
         {/* Le champ progression_id est généralement caché car fourni automatiquement */}
         <input type="hidden" name="progression_id" value={formData.progression_id || ''} />
@@ -288,6 +358,14 @@ const SequenceForm = ({
           </form>
         </CardContent>
       </Card>
+
+      {/* Instanciation de la modale Objectifs */} 
+      <ObjectiveSelectorModal 
+        open={isObjectiveModalOpen}
+        onClose={() => setIsObjectiveModalOpen(false)}
+        initialSelectedObjectives={selectedObjectives}
+        onSave={handleObjectiveSelectionSave}
+      />
     </Box>
   );
 };

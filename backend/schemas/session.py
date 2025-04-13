@@ -2,43 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import timedelta, datetime
 
-# --- Schéma Simple pour Objective --- #
-# (Pour éviter dépendance circulaire avec schemas.objective)
-class ObjectiveReadSimple(BaseModel):
-    id: int
-    title: str
-
-    class Config:
-        from_attributes = True
-
-# --- Schéma Simple pour Type --- #
-# (Pour éviter dépendance circulaire)
-class TypeSchemaSimple(BaseModel):
-    id: int
-    value: str | None = None # Le nom/libellé du type
-
-    class Config:
-        from_attributes = True
-
-# --- Schéma Simple pour Sous-Type --- #
-# (Pour éviter dépendance circulaire)
-class SubTypeSchemaSimple(BaseModel):
-    id: int
-    value: str | None = None # Le nom/libellé du sous-type
-
-    class Config:
-        from_attributes = True
-
-# --- Schéma Simple pour Resource --- #
-# (Pour éviter dépendance circulaire avec schemas.resource)
-class ResourceReadSimple(BaseModel):
-    id: int
-    title: str # Ou 'name' selon le modèle Resource
-    type: TypeSchemaSimple | None = None # Ajouter le type
-    sub_type: SubTypeSchemaSimple | None = None # Ajouter le sous-type
-
-    class Config:
-        from_attributes = True
+# Importer les identifiants depuis common.py
+from .common import ObjectiveIdentifier, ResourceIdentifier, TypeIdentifier, SubTypeIdentifier
 
 # --- Schémas pour Session --- #
 class SessionBase(BaseModel):
@@ -63,13 +28,12 @@ class SessionUpdate(BaseModel): # Permettre les mises à jour partielles
 class SessionRead(SessionBase):
     id: int
     sequence_id: int
-    objectives: List[ObjectiveReadSimple] = [] # Décommenté et utilise le schéma simple créé
-    resources: List[ResourceReadSimple] = [] # Utilise maintenant ResourceReadSimple enrichi
+    objectives: List[ObjectiveIdentifier] = [] 
+    resources: List[ResourceIdentifier] = [] 
 
     class Config:
         from_attributes = True # Compatible avec l'ORM SQLAlchemy
 
-# Schéma simplifié pour les références (évite dépendances circulaires)
 class SessionReadSimple(BaseModel):
     id: int
     title: str

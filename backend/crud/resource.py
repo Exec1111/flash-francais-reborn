@@ -1,7 +1,8 @@
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session, joinedload
-from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType
+from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType, Objective
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceFileUpload
+from crud.objective import get_objective
 from sqlalchemy import or_
 import logging
 import os
@@ -20,7 +21,8 @@ def get_resource(db: Session, resource_id: int):
     resource = db.query(Resource).options(
         joinedload(Resource.type),
         joinedload(Resource.sub_type),
-        joinedload(Resource.sessions) 
+        joinedload(Resource.sessions),
+        joinedload(Resource.objectives) # Charger aussi les objectifs associés
     ).filter(Resource.id == resource_id).first()
     return resource
 
@@ -32,7 +34,8 @@ def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100,
     query = db.query(Resource).options(
         joinedload(Resource.sessions),
         joinedload(Resource.type),
-        joinedload(Resource.sub_type)
+        joinedload(Resource.sub_type),
+        joinedload(Resource.objectives) # Charger aussi les objectifs
     ).filter(Resource.user_id == user_id)
 
     if search_term:
@@ -125,63 +128,69 @@ def get_resources_standalone(db: Session, skip: int = 0, limit: int = 100):
         .all()
     )
 
-def create_resource(db: Session, resource: ResourceCreate, file_upload: Optional[ResourceFileUpload] = None) -> Resource:
-    if resource.user_id is not None:
-        db_user = db.query(User).filter(User.id == resource.user_id).first()
-        if not db_user:
-            raise ValueError(f"User with id {resource.user_id} not found")
+def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_upload: Optional[ResourceFileUpload] = None):
+    """Crée une nouvelle ressource et gère les associations initiales."""
+    resource_data = resource.model_dump()
+    session_ids = resource_data.pop('session_ids', [])
+    objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
+    resource_data.pop('user_id', None) # Retirer user_id du dict car il est passé explicitement
+    resource_data.pop('source_type', None) # Retirer source_type aussi, car il est défini ci-dessous
+
+    # Gérer le cas où file_upload est None (ressource de type 'ai' ou 'url')
+    if file_upload:
+        file_path_relative = get_upload_path(user_id, file_upload.file_name)
+        db_resource = Resource(
+            **resource_data,
+            user_id=user_id,
+            file_path=file_path_relative,
+            file_name=file_upload.file_name,
+            file_size=file_upload.file_size,
+            file_type=file_upload.file_type,
+            source_type='file' # Défini comme 'file' si upload
+        )
     else:
-        raise ValueError("user_id is required to create a resource")
+        # Si pas d'upload, le source_type DOIT être défini dans resource_data
+        if 'source_type' not in resource_data or resource_data['source_type'] == 'file':
+            raise ValueError("source_type doit être défini (ex: 'ai', 'url') si aucun fichier n'est uploadé.")
+        # Utiliser user_id de l'argument, pas de resource_data (déjà poppé)
+        # source_type est défini dans le **resource_data restant si pas d'upload.
+        db_resource = Resource(**resource_data, user_id=user_id)
 
-    db_sessions = []
-    if resource.session_ids and len(resource.session_ids) > 0:
-        valid_session_ids = [sid for sid in resource.session_ids if sid is not None and sid != 0]
-        if valid_session_ids:
-            db_sessions = db.query(SessionModel).filter(SessionModel.id.in_(valid_session_ids)).all()
-            if len(db_sessions) != len(valid_session_ids):
-                found_ids = {s.id for s in db_sessions}
-                missing_ids = set(valid_session_ids) - found_ids
-                raise ValueError(f"Session(s) not found: {missing_ids}")
+    # Lier les sessions initiales
+    if session_ids:
+        sessions = db.query(SessionModel).filter(SessionModel.id.in_(session_ids)).all()
+        db_resource.sessions = sessions
 
-    db_resource = Resource(
-        title=resource.title,
-        description=resource.description,
-        type_id=resource.type_id,
-        sub_type_id=resource.sub_type_id,
-        user_id=resource.user_id,
-        source_type=resource.source_type 
-    )
-    
-    if resource.source_type == 'file':
-        if not file_upload:
-            raise ValueError("File information is required when source_type is 'file'")
-        db_resource.file_name = file_upload.file_name
-        db_resource.file_type = file_upload.file_type
-        db_resource.file_size = file_upload.file_size
-        db_resource.file_path = get_upload_path(resource.user_id, file_upload.file_name)
-    elif file_upload:
-        logger.warning("File information provided but source_type is not 'file'. File info will be ignored.")
+    # Lier les objectifs initiaux
+    if objective_ids:
+        objectives = []
+        for obj_id in objective_ids:
+            db_objective = get_objective(db, objective_id=obj_id)
+            if db_objective:
+                objectives.append(db_objective)
+            else:
+                logger.warning(f"Objective with id {obj_id} not found during resource creation, skipping.")
+        db_resource.objectives = objectives
 
     db.add(db_resource)
     db.commit()
-    db.refresh(db_resource) 
-    
-    if db_sessions:
-        db_resource.sessions = db_sessions
-        db.commit() 
-        db.refresh(db_resource) 
-    
-    db_resource_loaded = get_resource(db, db_resource.id) 
+    db.refresh(db_resource)
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives']) # Recharger les relations
+    return db_resource
 
-    return db_resource_loaded 
-
-def update_resource(db: Session, resource_id: int, resource_update: ResourceUpdate, file_upload: Optional[ResourceFileUpload] = None) -> Optional[Resource]:
-    db_resource = db.query(Resource).filter(Resource.id == resource_id).first()
+def update_resource(db: Session, resource_id: int, resource_update: ResourceUpdate, file_upload: Optional[ResourceFileUpload] = None):
+    """Met à jour une ressource existante, gère le remplacement de fichier et les associations."""
+    db_resource = db.query(Resource).get(resource_id)
     if not db_resource:
         return None
 
-    update_data = resource_update.model_dump(exclude_unset=True) 
-    
+    update_data = resource_update.model_dump(exclude_unset=True)
+    new_session_ids_provided = 'session_ids' in update_data
+    new_objective_ids_provided = 'objective_ids' in update_data # Vérifier si la clé est présente
+
+    new_session_ids = update_data.pop('session_ids', None) if new_session_ids_provided else None
+    new_objective_ids = update_data.pop('objective_ids', None) if new_objective_ids_provided else None # Pop seulement si présente
+
     new_file_provided = file_upload is not None
 
     old_file_path_relative = db_resource.file_path # Stocker l'ancien chemin relatif
@@ -222,28 +231,58 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
             else:
                 logger.warning(f"Ancien fichier non trouvé pour suppression: {absolute_old_file_path}")
         
-    if "session_ids" in update_data and update_data["session_ids"] is not None:
-        new_session_ids = set(sid for sid in update_data["session_ids"] if sid is not None and sid != 0)
-        
-        if not new_session_ids:
-            db_resource.sessions = []
+    if new_session_ids_provided:
+        if new_session_ids is None or not new_session_ids: # Liste vide ou None
+            db_resource.sessions = [] # Dissocier toutes les sessions
             logger.info(f"Toutes les sessions dissociées de la ressource {resource_id}")
         else:
             db_sessions = db.query(SessionModel).filter(SessionModel.id.in_(new_session_ids)).all()
             found_ids = {s.id for s in db_sessions}
-            if found_ids != new_session_ids:
-                missing_ids = new_session_ids - found_ids
+            if found_ids != set(new_session_ids):
+                missing_ids = set(new_session_ids) - found_ids
                 raise ValueError(f"Session(s) not found for update: {missing_ids}")
             
             db_resource.sessions = db_sessions
             logger.info(f"Sessions mises à jour pour la ressource {resource_id}: {new_session_ids}")
-    
+
+    # Gérer la mise à jour de la relation many-to-many avec les objectifs
+    if new_objective_ids_provided: # Agir seulement si la clé 'objective_ids' a été fournie
+        if new_objective_ids is None or not new_objective_ids: # Liste vide ou None
+            db_resource.objectives = [] # Dissocier tous les objectifs
+            logger.info(f"Tous les objectifs dissociés de la ressource {resource_id}")
+        else:
+            # Récupérer les objets Objective correspondants aux IDs fournis
+            new_objectives = []
+            valid_objective_ids = set() # Pour la comparaison
+            for obj_id in new_objective_ids:
+                if obj_id is not None and obj_id != 0:
+                    db_objective = get_objective(db, objective_id=obj_id)
+                    if db_objective:
+                        new_objectives.append(db_objective)
+                        valid_objective_ids.add(obj_id)
+                    else:
+                        logger.warning(f"Objective with id {obj_id} not found during resource update, skipping.")
+            
+            input_ids_set = set(oid for oid in new_objective_ids if oid is not None and oid != 0)
+            if valid_objective_ids != input_ids_set:
+                 missing_ids = input_ids_set - valid_objective_ids
+                 # Lever une exception ou logger une erreur plus sévère?
+                 logger.error(f"Objective(s) not found for update: {missing_ids}")
+                 # Peut-être retourner une erreur ici ? Pour l'instant on continue avec les objectifs trouvés.
+
+            # Assigner la nouvelle liste d'objets Objective à la relation
+            db_resource.objectives = new_objectives
+            logger.info(f"Objectifs mis à jour pour la ressource {resource_id}: {valid_objective_ids}")
+
     db.add(db_resource) 
     db.commit()
-    db.refresh(db_resource) 
+    db.refresh(db_resource)
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives']) # Recharger les relations
 
-    db_resource_loaded = get_resource(db, db_resource.id)
-    return db_resource_loaded 
+    # Recharger explicitement après refresh pour être sûr d'avoir l'état à jour
+    # db_resource_loaded = get_resource(db, db_resource.id)
+    # return db_resource_loaded 
+    return db_resource # Retourner l'objet rafraîchi directement
 
 def delete_resource(db: Session, resource_id: int) -> bool:
     db_resource = db.query(Resource).get(resource_id)

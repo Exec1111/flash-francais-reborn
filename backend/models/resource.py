@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from database import Base
-from .association_tables import session_resource_association
+from .association_tables import session_resource_association, objective_resource_association
 
 # --- Modèle pour les Types de Ressources ---
 class ResourceType(Base):
@@ -59,3 +59,10 @@ class Resource(Base):
     # Relations avec Type et SubType
     type = relationship("ResourceType", back_populates="resources")
     sub_type = relationship("ResourceSubType", back_populates="resources")
+
+    # Relationship Many-to-Many with Objective
+    objectives = relationship(
+        "Objective",
+        secondary=objective_resource_association,
+        back_populates="resources" # 'resources' a été ajouté à Objective
+    )

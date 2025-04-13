@@ -1,11 +1,23 @@
 import requests
 import json
 import uuid
+import os
 from datetime import datetime, timedelta
 
 # --- Configuration --- #
 BASE_URL = "http://localhost:10000/api/v1"
 HEADERS = {"Content-Type": "application/json"}
+
+# Lire le token d'authentification depuis une variable d'environnement
+AUTH_TOKEN = os.getenv("TEST_AUTH_TOKEN")
+if AUTH_TOKEN:
+    if not AUTH_TOKEN.startswith("Bearer "):
+        print("WARN: TEST_AUTH_TOKEN ne semble pas commencer par 'Bearer '. Ajout du préfixe.")
+        AUTH_TOKEN = f"Bearer {AUTH_TOKEN}"
+    HEADERS["Authorization"] = AUTH_TOKEN
+else:
+    print("!!! ATTENTION : Variable d'environnement TEST_AUTH_TOKEN non définie. Les tests nécessitant une authentification vont échouer. !!!")
+
 # Générer un suffixe unique pour cette exécution de test
 UNIQUE_SUFFIX = str(uuid.uuid4())[:8]
 

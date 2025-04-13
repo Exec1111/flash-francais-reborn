@@ -3,7 +3,8 @@ from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 import logging
 from datetime import datetime
-from .session import SessionReadSimple # Import pour éviter la dépendance circulaire
+from .session import SessionReadSimple
+from .common import ObjectiveIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class ResourceBase(BaseModel):
     sub_type_id: int
     source_type: str  # 'file' ou 'ai'
     session_ids: Optional[List[int]] = None
+    objective_ids: Optional[List[int]] = None
 
     @field_validator('source_type')
     def check_source_type(cls, v):
@@ -62,7 +64,7 @@ class ResourceResponse(BaseModel):
     title: str
     description: Optional[str] = None
     type_id: int
-    sub_type_id: Optional[int] = None # Peut être nullable si non applicable ? Vérifier logique métier.
+    sub_type_id: Optional[int] = None
     user_id: int
     source_type: str
     # Champs spécifiques aux fichiers
@@ -73,19 +75,11 @@ class ResourceResponse(BaseModel):
     # Relations chargées
     type: Optional[ResourceTypeSchema] = None
     sub_type: Optional[ResourceSubTypeSchema] = None
-    # Champ pour que from_attributes peuple la relation (utilisé par computed_field)
     sessions: List[SessionMinimalSchema] = []
-
-    # @computed_field
-    # @property
-    # def session_ids(self) -> List[int]:
-    #     # Accède à self.sessions peuplé par from_attributes
-    #     if hasattr(self, 'sessions') and self.sessions:
-    #         return [s.id for s in self.sessions]
-    #     return []
+    objectives: List[ObjectiveIdentifier] = []
 
     class Config:
-        from_attributes = True # Active la conversion depuis les objets SQLAlchemy
+        from_attributes = True
 
 # Schéma pour la mise à jour
 class ResourceUpdate(BaseModel):
@@ -94,6 +88,7 @@ class ResourceUpdate(BaseModel):
     type_id: Optional[int] = None
     sub_type_id: Optional[int] = None
     session_ids: Optional[List[int]] = None
+    objective_ids: Optional[List[int]] = None
     # Pas de mise à jour de source_type ici, c'est généralement fixé à la création
     # Pas de file_* ici, la mise à jour de fichier est gérée séparément dans la route/CRUD
 
@@ -106,12 +101,17 @@ class ResourceTypeBase(BaseModel):
 
 class ResourceRead(ResourceBase):
     id: int
-    sessions: List[SessionReadSimple] = [] # Utilisation du schéma simplifié
+    sessions: List[SessionReadSimple] = []
+    objectives: List[ObjectiveIdentifier] = []
 
     class Config:
-        from_attributes = True # Mis à jour de orm_mode
+        from_attributes = True
 
-# Nouveau schéma pour la réponse paginée des ressources
 class ResourceListResponse(BaseModel):
     items: List[ResourceRead]
     total: int
+
+# Appeler model_rebuild pour résoudre les références en avant (forward references)
+# après que tous les modèles ont été définis.
+ResourceResponse.model_rebuild()
+ResourceRead.model_rebuild()

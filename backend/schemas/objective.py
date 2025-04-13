@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-# Importer les schémas simplifiés pour éviter les dépendances circulaires
-from schemas.sequence import SequenceReadSimple
-from schemas.session import SessionReadSimple
+# Importer les schémas identifiants depuis common.py
+from schemas.common import SequenceIdentifier, SessionIdentifier
 
 # --- Schémas pour Objective --- #
 
@@ -22,13 +21,12 @@ class ObjectiveUpdate(BaseModel): # Permet les mises à jour partielles
 
 class ObjectiveRead(ObjectiveBase):
     id: int
-    # Inclure les listes simplifiées de sequences et sessions liées
-    sequences: List[SequenceReadSimple] = [] # Utilise le schéma simplifié
-    sessions: List[SessionReadSimple] = []  # Utilise le schéma simplifié
+    # Utiliser les identifiants importés
+    sequences: List[SequenceIdentifier] = []
+    sessions: List[SessionIdentifier] = []
 
     class Config:
         from_attributes = True # Compatible avec l'ORM SQLAlchemy
 
 # Note: Des schémas "simples" (ex: SequenceReadSimple ne contenant que id et title)
 # seraient utiles pour éviter les références circulaires et alléger les réponses
-# lorsque ObjectiveRead inclura les listes liées.

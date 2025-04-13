@@ -1,8 +1,8 @@
 import requests
 from ..utils import BASE_URL, HEADERS, UNIQUE_SUFFIX, print_status
 
-def test_sequences(progression_id, sequence_id_holder):
-    """Teste les endpoints CRUD pour Sequence et met à jour sequence_id_holder."""
+def test_sequences(progression_id, objective_ids, sequence_id_holder):
+    """Teste les endpoints CRUD pour Sequence, y compris l'association avec les objectifs, et met à jour sequence_id_holder."""
     if progression_id is None:
         print("\n! Skipping Sequence tests: Progression ID manquant.")
         return False, "Progression ID manquant pour tester les séquences."
@@ -10,11 +10,12 @@ def test_sequences(progression_id, sequence_id_holder):
     print(f"\n--- Test des Séquences (pour Progression ID: {progression_id}) ---")
     sequence_data = {
         "title": f"Test Séquence 1 - {UNIQUE_SUFFIX}",
-        "description": "Première séquence de test",
-        "progression_id": progression_id
+        "description": "Première séquence de test avec objectifs",
+        "progression_id": progression_id,
+        "objective_ids": objective_ids if objective_ids else [] # Ajouter les IDs d'objectifs
     }
     response_create = requests.post(f"{BASE_URL}/sequences", headers=HEADERS, json=sequence_data)
-    success, error_detail = print_status(response_create, "Créer Séquence")
+    success, error_detail = print_status(response_create, "Créer Séquence avec Objectifs")
     if not success:
         return False, f"Création Séquence échouée: {error_detail}"
     sequence_id = response_create.json().get("id")
@@ -25,11 +26,21 @@ def test_sequences(progression_id, sequence_id_holder):
     response_get = requests.get(f"{BASE_URL}/sequences/{sequence_id}")
     success, error_detail = print_status(response_get, f"Lire Séquence ID {sequence_id}")
     if success:
-        print(f"  Données reçues: {response_get.json()}")
-        if response_get.json().get("progression_id") != progression_id:
-             error_msg = f"Erreur Lecture Séquence {sequence_id}: progression_id ({response_get.json().get('progression_id')}) != attendu ({progression_id})"
+        received_data = response_get.json()
+        print(f"  Données reçues: {received_data}")
+        if received_data.get("progression_id") != progression_id:
+             error_msg = f"Erreur Lecture Séquence {sequence_id}: progression_id ({received_data.get('progression_id')}) != attendu ({progression_id})"
              print(f"! {error_msg}")
              return False, error_msg
+        # Vérifier les objectifs associés
+        received_objective_ids = sorted([obj['id'] for obj in received_data.get('objectives', [])])
+        expected_objective_ids = sorted(objective_ids if objective_ids else [])
+        if received_objective_ids != expected_objective_ids:
+            error_msg = f"Erreur Lecture Séquence {sequence_id}: objective_ids ({received_objective_ids}) != attendus ({expected_objective_ids})"
+            print(f"! {error_msg}")
+            return False, error_msg
+        else:
+            print(f"  Objectifs associés vérifiés: {received_objective_ids}")
     else:
         return False, f"Lecture Séquence {sequence_id} échouée: {error_detail}"
 
@@ -45,10 +56,14 @@ def test_sequences(progression_id, sequence_id_holder):
     else:
         return False, f"Lecture de toutes les séquences échouée: {error_detail}"
 
-    # Mettre à jour Séquence
-    update_data = {"title": f"Test Séquence 1 - Modifiée - {UNIQUE_SUFFIX}"}
+    # Mettre à jour Séquence (changer le titre et les objectifs associés)
+    updated_objective_ids = [] # Tester la suppression des objectifs
+    update_data = {
+        "title": f"Test Séquence 1 - Modifiée - {UNIQUE_SUFFIX}",
+        "objective_ids": updated_objective_ids
+        }
     response_update = requests.put(f"{BASE_URL}/sequences/{sequence_id}", headers=HEADERS, json=update_data)
-    success, error_detail = print_status(response_update, f"Mettre à jour Séquence ID {sequence_id}")
+    success, error_detail = print_status(response_update, f"Mettre à jour Séquence ID {sequence_id} (sans objectifs)")
     if not success:
         return False, f"Mise à jour Séquence {sequence_id} échouée: {error_detail}"
 
@@ -56,10 +71,18 @@ def test_sequences(progression_id, sequence_id_holder):
     response_check = requests.get(f"{BASE_URL}/sequences/{sequence_id}")
     if response_check.status_code == 200:
         updated_title = response_check.json().get('title')
+        updated_objectives = sorted([obj['id'] for obj in response_check.json().get('objectives', [])])
         if updated_title == update_data["title"]:
             print(f"  Nouveau titre vérifié: {updated_title}")
         else:
-            error_msg = f"Échec vérification MàJ Séquence {sequence_id}. Attendu: {update_data['title']}, Reçu: {updated_title}"
+            error_msg = f"Échec vérification MàJ titre Séquence {sequence_id}. Attendu: {update_data['title']}, Reçu: {updated_title}"
+            print(f"! {error_msg}")
+            return False, error_msg
+        # Vérifier la mise à jour des objectifs
+        if updated_objectives == updated_objective_ids:
+            print(f"  Objectifs associés mis à jour vérifiés: {updated_objectives}")
+        else:
+            error_msg = f"Échec vérification MàJ objectifs Séquence {sequence_id}. Attendus: {updated_objective_ids}, Reçus: {updated_objectives}"
             print(f"! {error_msg}")
             return False, error_msg
     else:

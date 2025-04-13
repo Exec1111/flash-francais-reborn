@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from crud import objective as crud_objective
 from schemas import objective as schemas_objective
 # Importer les schémas "simples" si/quand ils seront créés
-from schemas.sequence import SequenceReadSimple
+from schemas.common import SequenceIdentifier
 from schemas.session import SessionReadSimple
 
 objective_router = APIRouter()
@@ -22,9 +22,14 @@ def create_objective(objective: schemas_objective.ObjectiveCreate, db: Session =
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @objective_router.get("/", response_model=List[schemas_objective.ObjectiveRead])
-def read_objectives(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """Récupère une liste d'objectifs."""
-    objectives = crud_objective.get_objectives(db, skip=skip, limit=limit)
+def read_objectives(
+    skip: int = 0, 
+    limit: int = 10, 
+    search: Optional[str] = Query(None, min_length=1, max_length=100, description="Terme de recherche dans le titre ou la description"),
+    db: Session = Depends(get_db)
+    ):
+    """Récupère une liste d'objectifs, potentiellement filtrée par terme de recherche."""
+    objectives = crud_objective.get_objectives(db, skip=skip, limit=limit, search=search)
     return objectives
 
 @objective_router.get("/{objective_id}", response_model=schemas_objective.ObjectiveRead)
@@ -84,7 +89,7 @@ def get_objectives_for_sequence(sequence_id: int, db: Session = Depends(get_db))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-@objective_router.get("/{objective_id}/sequences", response_model=List[SequenceReadSimple])
+@objective_router.get("/{objective_id}/sequences", response_model=List[SequenceIdentifier])
 def get_sequences_for_objective(objective_id: int, db: Session = Depends(get_db)):
     """Récupère la liste simplifiée des séquences associées à un objectif spécifique."""
     try:

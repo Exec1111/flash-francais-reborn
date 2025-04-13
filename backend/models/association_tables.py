@@ -24,3 +24,11 @@ session_resource_association = Table(
     Column('session_id', Integer, ForeignKey('sessions.id'), primary_key=True),
     Column('resource_id', Integer, ForeignKey('resources.id'), primary_key=True)
 )
+
+# Table d'association Many-to-Many entre Objective et Resource
+objective_resource_association = Table(
+    'objective_resource_association',
+    Base.metadata,
+    Column('objective_id', Integer, ForeignKey('objectives.id'), primary_key=True),
+    Column('resource_id', Integer, ForeignKey('resources.id'), primary_key=True)
+)
