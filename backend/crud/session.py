@@ -49,9 +49,12 @@ def create_session(db: Session, session: SessionCreate):
     return db_session
 
 def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
-    """Crée une nouvelle séance liée à un utilisateur et à ses ressources."""
+    """Crée une nouvelle séance liée à un utilisateur et à ses ressources.
+       Modifié pour lier aussi les objectifs.
+    """
     session_data = session.model_dump()
     resource_ids = session_data.pop('resource_ids', []) # Extraire les IDs de ressources
+    objective_ids = session_data.pop('objective_ids', []) # Extraire les IDs d'objectifs
 
     db_session = Session(**session_data, user_id=user_id)
 
@@ -67,9 +70,23 @@ def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
                 print(f"Warning: Resource with id {res_id} not found, skipping.")
         db_session.resources = resources
 
+    # Lier les objectifs
+    if objective_ids:
+        objectives = []
+        for obj_id in objective_ids:
+            db_objective = get_objective(db, objective_id=obj_id)
+            if db_objective:
+                objectives.append(db_objective)
+            else:
+                # Gérer le cas où un ID d'objectif fourni n'existe pas
+                print(f"Warning: Objective with id {obj_id} not found, skipping.")
+        db_session.objectives = objectives
+
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
+    # Recharger explicitement les relations pour qu'elles soient disponibles dans l'objet retourné
+    db.refresh(db_session, attribute_names=['resources', 'objectives'])
     return db_session
 
 def update_session(db: Session, session_id: int, session_update: SessionUpdate):

@@ -14,6 +14,7 @@ class SessionBase(BaseModel):
     sequence_id: int
 
 class SessionCreate(SessionBase):
+    objective_ids: Optional[List[int]] = None # Ajout pour lier les objectifs dès la création
     resource_ids: List[int] = [] # Ajout pour lier les ressources dès la création
 
 class SessionUpdate(BaseModel): # Permettre les mises à jour partielles

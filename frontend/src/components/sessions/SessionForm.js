@@ -28,6 +28,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../services/api';
 import ResourceSelectorModal from './ResourceSelectorModal';
+import ObjectiveSelectorModal from '../sequences/ObjectiveSelectorModal'; // Importer la modale des objectifs
 import { useTreeData } from '../../contexts/TreeDataContext';
 
 /**
@@ -71,6 +72,8 @@ const SessionForm = ({
   const [availableResources, setAvailableResources] = useState([]); // Ajout pour les ressources disponibles
   const [selectedResources, setSelectedResources] = useState([]); // Ajout pour les ressources sélectionnées
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false); // État pour le modal
+  const [selectedObjectives, setSelectedObjectives] = useState([]); // État pour les objectifs sélectionnés
+  const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false); // État pour le modal objectifs
 
   // --- Effets ---
 
@@ -84,7 +87,15 @@ const SessionForm = ({
         duration: initialData.duration ? (typeof initialData.duration === 'string' ? parseInt(initialData.duration.replace(/PT(\d+)M/, '$1')) : initialData.duration) : 60,
         sequence_id: initialData.sequence_id || sequenceId || null,
         resource_ids: initialData.resources ? initialData.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
+        // Note: initialData ne contient pas directement objective_ids mais les objets objectives
       });
+      // Initialiser les objectifs et ressources sélectionnés pour l'affichage des Chips
+      if (initialData.objectives) {
+        setSelectedObjectives(initialData.objectives);
+      }
+      if (initialData.resources) {
+        setSelectedResources(initialData.resources);
+      }
     } else if (sequenceId) {
       setFormData(prev => ({
         ...prev,
@@ -107,13 +118,21 @@ const SessionForm = ({
           setFormData({
             title: data.title || '',
             notes: data.notes || '',
+            // Assurer la conversion correcte de la date
             date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             duration: data.duration ? (typeof data.duration === 'string' ? parseInt(data.duration.replace(/PT(\d+)M/, '$1')) : data.duration) : 60,
             sequence_id: data.sequence_id || null,
-            resource_ids: data.resources ? data.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
+            resource_ids: data.resources ? data.resources.map(res => res.id) : [],
+            // Note: objective_ids ne sont pas dans formData initialement mais gérés via selectedObjectives
           });
-          // Initialiser l'état selectedResources avec les objets ressources complets
-          setSelectedResources(data.resources || []); 
+          // Initialiser les objectifs et ressources sélectionnés pour l'affichage des Chips
+          if (data.objectives) {
+            setSelectedObjectives(data.objectives);
+          }
+          if (data.resources) {
+            setSelectedResources(data.resources);
+          }
+
         } catch (err) {
           setError("Erreur lors du chargement de la séance: " + (err.response?.data?.detail || err.message || "Erreur inconnue"));
         }
@@ -155,6 +174,10 @@ const SessionForm = ({
   const handleOpenResourceModal = () => {
     setIsResourceModalOpen(true);
   };
+  // Ouvrir le modal de sélection des objectifs
+  const handleOpenObjectiveModal = () => {
+    setIsObjectiveModalOpen(true);
+  };
 
   // Fermer le modal et mettre à jour les ressources sélectionnées
   const handleSaveResources = (newSelection) => {
@@ -163,12 +186,25 @@ const SessionForm = ({
     setFormData(prev => ({ ...prev, resource_ids: newSelection.map(res => res.id) }));
     setIsResourceModalOpen(false);
   };
+  // Fermer le modal et mettre à jour les objectifs sélectionnés
+  const handleSaveObjectives = (newSelection) => {
+    setSelectedObjectives(newSelection);
+    // Note: On ajoutera objective_ids au payload lors de la soumission, pas besoin de le stocker dans formData directement
+    setIsObjectiveModalOpen(false);
+  };
 
   // Supprimer une ressource de la sélection via le Chip
   const handleRemoveResource = (resourceToRemove) => {
-    const updatedSelection = selectedResources.filter(res => res.id !== resourceToRemove.id);
-    setSelectedResources(updatedSelection);
-    setFormData(prev => ({ ...prev, resource_ids: updatedSelection.map(res => res.id) }));
+    const newSelection = selectedResources.filter(res => res.id !== resourceToRemove.id);
+    setSelectedResources(newSelection);
+    // Mettre à jour formData.resource_ids
+    setFormData(prev => ({ ...prev, resource_ids: newSelection.map(res => res.id) }));
+  };
+  // Supprimer un objectif de la sélection via le Chip
+  const handleRemoveObjective = (objectiveToRemove) => {
+    const newSelection = selectedObjectives.filter(obj => obj.id !== objectiveToRemove.id);
+    setSelectedObjectives(newSelection);
+    // Pas besoin de modifier formData ici
   };
 
   // Soumission du formulaire
@@ -178,88 +214,87 @@ const SessionForm = ({
     setSuccess('');
     setSubmitting(true);
 
+    // Préparer les données pour l'API
+    // Inclure les IDs des objectifs sélectionnés
+    const sessionData = {
+      ...formData,
+      // Assurer que duration est un nombre entier
+      duration: formData.duration ? parseInt(formData.duration, 10) : null,
+      // Explicitement ajouter les IDs des objectifs sélectionnés
+      objective_ids: selectedObjectives.map(obj => obj.id)
+    };
+
+    // Retirer les IDs si le champ n'est pas pertinent pour l'opération (ex: sequence_id si non défini)
+    if (!sessionData.sequence_id) {
+      delete sessionData.sequence_id; // Ou le mettre à null selon l'API
+    }
+    if (!sessionData.duration) {
+      delete sessionData.duration; // Ou le mettre à null
+    }
+
+    // Valider la durée si nécessaire (doit être un entier)
+    if (formData.duration && isNaN(sessionData.duration)) {
+        setError("La durée doit être un nombre entier (en minutes).");
+        setSubmitting(false);
+        return;
+    }
+
     try {
-      // Validation du formulaire
-      if (!formData.title.trim()) {
-        throw new Error("Le titre de la séance est requis");
-      }
-      
-      if (!formData.date) {
-        throw new Error("La date de la séance est requise");
-      }
-
-      if (!formData.sequence_id) {
-        throw new Error("Une séquence parente est requise");
-      }
-
-      // Construction des données à envoyer
-      const sessionData = {
-        title: formData.title.trim(),
-        notes: formData.notes.trim() || null,
-        date: new Date(formData.date).toISOString(),
-        duration: parseInt(formData.duration, 10) || 60, // Durée en minutes (nombre entier)
-        sequence_id: parseInt(formData.sequence_id, 10), // S'assurer que c'est bien un nombre
-        resource_ids: formData.resource_ids // Ajout pour les IDs des ressources
-      };
-      
-      console.log('Données envoyées à l\'API:', sessionData);
-
       const token = localStorage.getItem('token');
-      let result;
-      
+      let response;
+
       if (isEdit) {
-        // Mise à jour de la séance existante
-        const response = await api.put(`/sessions/${sessionId}`, sessionData, {
+        // Logique de mise à jour
+        response = await api.put(`/sessions/${sessionId}`, sessionData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        result = response.data;
-        setSuccess("Séance modifiée avec succès !");
+        setSuccess('Séance modifiée avec succès !');
       } else {
-        // Création d'une nouvelle séance
-        // Utiliser l'endpoint direct pour les sessions
-        const response = await api.post('/sessions', sessionData, {
+        // Logique de création
+        response = await api.post('/sessions/', sessionData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        result = response.data;
-        setSuccess("Nouvelle séance créée avec succès !");
+        setSuccess('Séance créée avec succès !');
       }
 
-      // Rafraîchir l'arbre des données
-      refreshTreeData();
-
-      // Appeler le callback onSuccess si fourni
+      // Appeler la fonction de succès si fournie (utile en mode dialogue)
       if (onSuccess) {
-        onSuccess(result);
+        onSuccess(response.data); // Passer les données de la réponse
       }
 
-      // Gérer la redirection en fonction du mode (dialogue ou page complète)
-      if (isDialog) {
-        // Fermer le dialogue après un court délai pour montrer le message de succès
-        setTimeout(() => {
-          if (onClose) {
-            onClose();
-          }
-        }, 1500);
-      } else {
-        // En mode page complète, rediriger vers les détails de la séance ou retourner à la page précédente
-        setTimeout(() => {
-          if (isEdit) {
-            navigate(`/sessions/${sessionId}`);
-          } else if (result && result.id) {
-            navigate(`/sessions/${result.id}`);
-          } else {
-            navigate(-1);
-          }
-        }, 1500);
+      // Rafraîchir l'arbre si la fonction est disponible
+      if (refreshTreeData) {
+        await refreshTreeData();
       }
+
+      // Gérer la fermeture ou la redirection
+      if (isDialog) {
+        // Si c'est un dialogue, ne pas rediriger mais fermer
+        // La fermeture est gérée par `onSuccess` ou `onClose` dans le composant parent
+      } else {
+        // Rediriger vers la page précédente ou une page spécifique si nécessaire
+        // navigate(-1); // Exemple: retour à la page précédente
+        // Ou rediriger vers la vue de la séquence parente ?
+        if (formData.sequence_id) {
+          // Idéalement, on redirigerait vers la vue de la séquence contenant cette session
+          // Pour l'instant, retour simple ou redirection vers une liste de sessions
+          navigate(`/sequences/${formData.sequence_id}`); // Exemple
+        } else {
+          navigate('/sessions'); // Fallback
+        }
+      }
+
     } catch (err) {
-      setError("Erreur: " + (err.response?.data?.detail || err.message || "Une erreur est survenue"));
+      const errorMsg = err.response?.data?.detail || err.message || (isEdit ? 'Erreur lors de la modification de la séance' : 'Erreur lors de la création de la séance');
+      setError(errorMsg);
+      console.error("Erreur handleSubmit SessionForm:", err.response || err);
     } finally {
       setSubmitting(false);
+      // Ne pas fermer automatiquement le dialogue ici, laisser onSuccess/onClose gérer
     }
   };
 
-  // --- Rendu du contenu du formulaire ---
+  // --- Contenu du Formulaire --- 
   const formContent = (
     <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -345,9 +380,33 @@ const SessionForm = ({
           >
             Ajouter/Gérer les Ressources
           </Button>
-
-
         </Grid>
+
+        {/* Affichage des objectifs sélectionnés et bouton d'ajout */}
+        <Grid item xs={12} sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>Objectifs Associés</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {selectedObjectives.map((objective) => (
+              <Chip
+                key={objective.id}
+                label={objective.title}
+                onDelete={() => handleRemoveObjective(objective)}
+                deleteIcon={<CancelIcon onMouseDown={(event) => event.stopPropagation()} />}
+                size="small"
+              />
+            ))}
+          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={handleOpenObjectiveModal}
+            disabled={submitting}
+            size="small"
+          >
+            Ajouter/Gérer les Objectifs
+          </Button>
+        </Grid>
+
       </Grid>
     </>
   );
@@ -409,6 +468,13 @@ const SessionForm = ({
           initialSelectedResources={selectedResources} // Passer les ressources déjà sélectionnées
           onSave={handleSaveResources} // Fonction pour récupérer la sélection finale
         />
+        {/* Modal de sélection des objectifs */}
+        <ObjectiveSelectorModal
+          open={isObjectiveModalOpen}
+          onClose={() => setIsObjectiveModalOpen(false)}
+          initialSelectedObjectives={selectedObjectives} // Passer les objectifs déjà sélectionnés
+          onSave={handleSaveObjectives} // Fonction pour récupérer la sélection finale
+        />
       </Dialog>
     );
   }
@@ -434,6 +500,13 @@ const SessionForm = ({
         onClose={() => setIsResourceModalOpen(false)}
         initialSelectedResources={selectedResources} // Passer les ressources déjà sélectionnées
         onSave={handleSaveResources} // Fonction pour récupérer la sélection finale
+      />
+      {/* Modal de sélection des objectifs */}
+      <ObjectiveSelectorModal
+        open={isObjectiveModalOpen}
+        onClose={() => setIsObjectiveModalOpen(false)}
+        initialSelectedObjectives={selectedObjectives} // Passer les objectifs déjà sélectionnés
+        onSave={handleSaveObjectives} // Fonction pour récupérer la sélection finale
       />
     </Box>
   );
