@@ -1,7 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlalchemy.orm import Session, joinedload
-from models import Resource, Session as SessionModel, User 
-from schemas.resource import ResourceCreate, ResourceUpdate, ResourceFileUpload 
+from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType
+from schemas.resource import ResourceCreate, ResourceUpdate, ResourceFileUpload
 from sqlalchemy import or_
 import logging
 import os
@@ -24,15 +24,55 @@ def get_resource(db: Session, resource_id: int):
     ).filter(Resource.id == resource_id).first()
     return resource
 
-def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    logger.info(f"Recherche des ressources pour l'utilisateur {user_id}")
-    resources = db.query(Resource).options(
+def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100,
+                  search_term: Optional[str] = None,
+                  type_id: Optional[int] = None,
+                  sub_type_id: Optional[int] = None) -> Dict:
+    logger.info(f"Recherche des ressources pour l'utilisateur {user_id} avec critères: terme='{search_term}', type={type_id}, subtype={sub_type_id}")
+    query = db.query(Resource).options(
         joinedload(Resource.sessions),
         joinedload(Resource.type),
         joinedload(Resource.sub_type)
-    ).filter(Resource.user_id == user_id).offset(skip).limit(limit).all()
-    logger.info(f"Nombre de ressources trouvées pour l'utilisateur {user_id}: {len(resources)}")
-    return resources
+    ).filter(Resource.user_id == user_id)
+
+    if search_term:
+        search_filter = or_(
+            Resource.title.ilike(f"%{search_term}%"),
+            Resource.description.ilike(f"%{search_term}%"),
+            # Vous pouvez ajouter d'autres champs pour la recherche textuelle ici
+        )
+        query = query.filter(search_filter)
+
+    if type_id is not None:
+        query = query.filter(Resource.type_id == type_id)
+
+    if sub_type_id is not None:
+        # Assurez-vous que le sous-type est pertinent pour le type sélectionné si nécessaire
+        query = query.filter(Resource.sub_type_id == sub_type_id)
+
+    # Compter le total AVANT la pagination
+    total = query.count()
+
+    # Appliquer la pagination
+    resources = query.order_by(Resource.title).offset(skip).limit(limit).all()
+    logger.info(f"Nombre total de ressources correspondantes: {total}. Retourne {len(resources)} ressources.")
+
+    return {"items": resources, "total": total}
+
+def get_resource_types(db: Session) -> List[ResourceType]:
+    """Récupère tous les types de ressources disponibles."""
+    return db.query(ResourceType).order_by(ResourceType.value).all()
+
+def get_resource_sub_types(db: Session, type_id: Optional[int] = None) -> List[ResourceSubType]:
+    """Récupère les sous-types de ressources, filtrés optionnellement par type_id."""
+    query = db.query(ResourceSubType)
+    if type_id is not None:
+        # Assurez-vous que le modèle ResourceSubType a une relation ou un champ type_id
+        # Si ResourceSubType a une relation 'type' (ForeignKey vers ResourceType)
+        # query = query.join(ResourceType).filter(ResourceType.id == type_id)
+        # Ou si ResourceSubType a un champ type_id directement:
+        query = query.filter(ResourceSubType.type_id == type_id)
+    return query.order_by(ResourceSubType.value).all()
 
 def count_resources(db: Session, user_id: int) -> int:
     """Compte le nombre total de ressources pour un utilisateur."""

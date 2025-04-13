@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import crud
-from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload
+from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload, ResourceListResponse
+from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
 from database import get_db
-from dependencies import get_current_active_user # Import corrigé
+import crud.resource # Importer spécifiquement le module requis
+from dependencies import get_current_active_user # Import absolu
 from models import User as UserModel # Pour l'info utilisateur
 import logging
 import os
@@ -24,6 +25,26 @@ DISK_UPLOADS_BASE = settings.UPLOADS_BASE_DIR
 
 resource_router = APIRouter()
 logger.info(">>> APIRouter() INSTANTIATED for resources <<<") # <--- ADD LOG 2
+
+# --- Routes pour les Types et Sous-Types --- #
+@resource_router.get("/types", response_model=List[ResourceTypeSchema])
+def read_resource_types(
+    db: Session = Depends(get_db),
+    # current_user: UserModel = Depends(get_current_active_user) # Authentification optionnelle ici
+):
+    """Récupère la liste de tous les types de ressources."""
+    types = crud.resource.get_resource_types(db)
+    return types
+
+@resource_router.get("/sub-types", response_model=List[ResourceSubTypeSchema])
+def read_resource_sub_types(
+    type_id: Optional[int] = Query(None, description="Filtrer les sous-types par l'ID du type parent"),
+    db: Session = Depends(get_db),
+    # current_user: UserModel = Depends(get_current_active_user) # Authentification optionnelle ici
+):
+    """Récupère la liste des sous-types de ressources, éventuellement filtrée par type."""
+    sub_types = crud.resource.get_resource_sub_types(db, type_id=type_id)
+    return sub_types
 
 # --- Routes pour les Ressources ---
 
@@ -164,18 +185,30 @@ async def create_resource_route(
         raise HTTPException(status_code=500, detail="Erreur interne du serveur.")
 
 # --- Route GET pour lister toutes les ressources de l'utilisateur ---
-@resource_router.get("/", response_model=List[ResourceResponse])
+@resource_router.get("/", response_model=ResourceListResponse) # Utiliser le nouveau schéma de réponse
 def read_resources(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
-    skip: int = 0,
-    limit: int = 100
+    page: int = Query(1, ge=1, alias="page"), # Utiliser page au lieu de skip
+    limit: int = Query(10, ge=5, le=100, alias="limit"), # Limite par défaut à 10
+    search_term: Optional[str] = Query(None, min_length=1, max_length=100, alias="search"),
+    type_id: Optional[int] = Query(None, ge=1, alias="typeId"),
+    sub_type_id: Optional[int] = Query(None, ge=1, alias="subTypeId")
 ):
-    """Récupère la liste des ressources pour l'utilisateur courant."""
-    logger.info(f"Lecture des ressources pour l'utilisateur {current_user.id}")
-    resources = crud.resource.get_resources(db, user_id=current_user.id, skip=skip, limit=limit)
-    # FastAPI convertit la liste d'objets SQLAlchemy en List[ResourceResponse]
-    return resources
+    """Récupère la liste paginée des ressources pour l'utilisateur courant, avec options de filtrage."""
+    skip = (page - 1) * limit
+    logger.info(f"Lecture des ressources page {page}, limite {limit} pour l'utilisateur {current_user.id} avec filtres: search='{search_term}', type={type_id}, subtype={sub_type_id}")
+    resources_data = crud.resource.get_resources(
+        db, 
+        user_id=current_user.id, 
+        skip=skip, 
+        limit=limit, 
+        search_term=search_term,
+        type_id=type_id,
+        sub_type_id=sub_type_id
+    )
+    # Le retour doit correspondre à ResourceListResponse
+    return resources_data
 
 # --- Route GET pour les ressources d'une session spécifique ---
 @resource_router.get("/by_session/{session_id}", response_model=list[ResourceResponse])

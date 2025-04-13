@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 from models.resource import ResourceType, ResourceSubType
 from typing import List, Optional
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_resource_types(db: Session, skip: int = 0, limit: int = 100) -> List[ResourceType]:
     """
@@ -58,6 +61,17 @@ def get_resource_subtypes(db: Session, type_id: Optional[int] = None, skip: int 
     query = db.query(ResourceSubType)
     if type_id is not None:
         query = query.filter(ResourceSubType.type_id == type_id)
+    
+    # --- TRACE SQL --- 
+    try:
+        # Tenter d'afficher la requête compilée
+        from sqlalchemy.dialects import postgresql
+        logger.info(f"Executing SQL for get_resource_subtypes: {query.statement.compile(dialect=postgresql.dialect(), compile_kwargs={'literal_binds': True})}\n")
+    except Exception as e:
+        logger.warning(f"Could not compile query for logging: {e}")
+        logger.info(f"Executing SQL for get_resource_subtypes (basic query object): {query}\n")
+    # --- FIN TRACE --- 
+    
     return query.offset(skip).limit(limit).all()
 
 def get_resource_subtype(db: Session, subtype_id: int) -> Optional[ResourceSubType]:

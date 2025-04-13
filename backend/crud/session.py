@@ -3,6 +3,7 @@ from models import Session, Objective, Resource
 from models.association_tables import session_resource_association
 from schemas.session import SessionCreate, SessionUpdate
 from crud.objective import get_objective
+from crud.resource import get_resource
 from sqlalchemy import func
 from typing import List
 
@@ -11,7 +12,9 @@ def get_session(db: Session, session_id: int):
     # Utilisation de options(selectinload(...)) pour charger les relations nécessaires
     return db.query(Session).options(
         selectinload(Session.objectives),
-        selectinload(Session.sequence)
+        selectinload(Session.sequence),
+        selectinload(Session.resources).selectinload(Resource.type), # Charger les ressources puis leur type
+        selectinload(Session.resources).selectinload(Resource.sub_type) # Charger les ressources puis leur sous-type
     ).filter(Session.id == session_id).first()
 
 def get_sessions(db: Session, skip: int = 0, limit: int = 100):
@@ -46,22 +49,38 @@ def create_session(db: Session, session: SessionCreate):
     return db_session
 
 def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
-    """Crée une nouvelle séance liée à un utilisateur."""
+    """Crée une nouvelle séance liée à un utilisateur et à ses ressources."""
     session_data = session.model_dump()
+    resource_ids = session_data.pop('resource_ids', []) # Extraire les IDs de ressources
+
     db_session = Session(**session_data, user_id=user_id)
+
+    # Lier les ressources
+    if resource_ids:
+        resources = []
+        for res_id in resource_ids:
+            db_resource = get_resource(db, resource_id=res_id)
+            if db_resource:
+                resources.append(db_resource)
+            else:
+                # Gérer le cas où un ID de ressource fourni n'existe pas
+                print(f"Warning: Resource with id {res_id} not found, skipping.")
+        db_session.resources = resources
+
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
     return db_session
 
 def update_session(db: Session, session_id: int, session_update: SessionUpdate):
-    """Met à jour une séance existante, y compris ses objectifs associés."""
+    """Met à jour une séance existante, y compris ses objectifs et ressources associés."""
     db_session = get_session(db, session_id=session_id)
     if db_session is None:
         return None
 
     update_data = session_update.model_dump(exclude_unset=True)
     new_objective_ids = update_data.pop('objective_ids', None) # Récupérer et retirer objective_ids
+    new_resource_ids = update_data.pop('resource_ids', None) # Récupérer et retirer resource_ids
 
     # Gérer la mise à jour de la relation many-to-many avec les objectifs
     if new_objective_ids is not None: # Si une liste (même vide) est fournie
@@ -81,8 +100,20 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
         # Assigner la nouvelle liste d'objets Objective à la relation
         db_session.objectives = new_objectives
 
+    # Gérer la mise à jour de la relation many-to-many avec les ressources
+    if new_resource_ids is not None: # Si une liste (même vide) est fournie
+        new_resources = []
+        for res_id in new_resource_ids:
+            db_resource = get_resource(db, resource_id=res_id)
+            if db_resource:
+                new_resources.append(db_resource)
+            else:
+                print(f"Warning: Resource with id {res_id} not found, skipping.")
+        # Assigner la nouvelle liste d'objets Resource à la relation
+        db_session.resources = new_resources
+
     # Mise à jour des autres champs fournis dans session_update via setattr
-    for key, value in update_data.items(): # update_data ne contient plus objective_ids
+    for key, value in update_data.items(): # update_data ne contient plus objective_ids ni resource_ids
         setattr(db_session, key, value)
 
     db.add(db_session)

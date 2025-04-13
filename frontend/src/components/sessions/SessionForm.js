@@ -1,24 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTreeData } from '../../contexts/TreeDataContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   TextField,
   Button,
-  Grid,
+  Container,
+  Typography,
   Box,
+  CircularProgress,
   Alert,
-  Card,
-  CardHeader,
-  CardContent,
+  Chip,
+  Stack,
+  Grid,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
-  CircularProgress
+  Card,
+  CardHeader,
+  CardContent,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../services/api';
+import ResourceSelectorModal from './ResourceSelectorModal';
+import { useTreeData } from '../../contexts/TreeDataContext';
 
 /**
  * Composant de formulaire pour la création et l'édition de séances
@@ -50,6 +60,7 @@ const SessionForm = ({
     date: new Date().toISOString().split('T')[0], // Date au format YYYY-MM-DD
     duration: 60, // Durée par défaut en minutes
     sequence_id: sequenceId || null,
+    resource_ids: [] // Ajout pour les IDs des ressources
   });
   
   const [error, setError] = useState('');
@@ -57,6 +68,9 @@ const SessionForm = ({
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { refreshTreeData } = useTreeData();
+  const [availableResources, setAvailableResources] = useState([]); // Ajout pour les ressources disponibles
+  const [selectedResources, setSelectedResources] = useState([]); // Ajout pour les ressources sélectionnées
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false); // État pour le modal
 
   // --- Effets ---
 
@@ -69,6 +83,7 @@ const SessionForm = ({
         date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         duration: initialData.duration ? (typeof initialData.duration === 'string' ? parseInt(initialData.duration.replace(/PT(\d+)M/, '$1')) : initialData.duration) : 60,
         sequence_id: initialData.sequence_id || sequenceId || null,
+        resource_ids: initialData.resources ? initialData.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
       });
     } else if (sequenceId) {
       setFormData(prev => ({
@@ -95,7 +110,10 @@ const SessionForm = ({
             date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             duration: data.duration ? (typeof data.duration === 'string' ? parseInt(data.duration.replace(/PT(\d+)M/, '$1')) : data.duration) : 60,
             sequence_id: data.sequence_id || null,
+            resource_ids: data.resources ? data.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
           });
+          // Initialiser l'état selectedResources avec les objets ressources complets
+          setSelectedResources(data.resources || []); 
         } catch (err) {
           setError("Erreur lors du chargement de la séance: " + (err.response?.data?.detail || err.message || "Erreur inconnue"));
         }
@@ -104,6 +122,23 @@ const SessionForm = ({
 
     fetchSessionData();
   }, [isEdit, sessionId]);
+
+  // Chargement des ressources disponibles
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await api.get('/resources/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAvailableResources(response.data || []);
+      } catch (err) {
+        console.error('Erreur lors du chargement des ressources:', err);
+      }
+    };
+
+    fetchResources();
+  }, []);
 
   // --- Handlers ---
 
@@ -114,6 +149,26 @@ const SessionForm = ({
       ...prev,
       [name]: value
     }));
+  };
+
+  // Ouvrir le modal de sélection des ressources
+  const handleOpenResourceModal = () => {
+    setIsResourceModalOpen(true);
+  };
+
+  // Fermer le modal et mettre à jour les ressources sélectionnées
+  const handleSaveResources = (newSelection) => {
+    setSelectedResources(newSelection);
+    // Mettre à jour formData.resource_ids pour la soumission
+    setFormData(prev => ({ ...prev, resource_ids: newSelection.map(res => res.id) }));
+    setIsResourceModalOpen(false);
+  };
+
+  // Supprimer une ressource de la sélection via le Chip
+  const handleRemoveResource = (resourceToRemove) => {
+    const updatedSelection = selectedResources.filter(res => res.id !== resourceToRemove.id);
+    setSelectedResources(updatedSelection);
+    setFormData(prev => ({ ...prev, resource_ids: updatedSelection.map(res => res.id) }));
   };
 
   // Soumission du formulaire
@@ -144,6 +199,7 @@ const SessionForm = ({
         date: new Date(formData.date).toISOString(),
         duration: parseInt(formData.duration, 10) || 60, // Durée en minutes (nombre entier)
         sequence_id: parseInt(formData.sequence_id, 10), // S'assurer que c'est bien un nombre
+        resource_ids: formData.resource_ids // Ajout pour les IDs des ressources
       };
       
       console.log('Données envoyées à l\'API:', sessionData);
@@ -265,6 +321,33 @@ const SessionForm = ({
 
         {/* Le champ sequence_id est généralement caché car fourni automatiquement */}
         <input type="hidden" name="sequence_id" value={formData.sequence_id || ''} />
+
+        {/* Affichage des ressources sélectionnées et bouton d'ajout */}
+        <Grid item xs={12} sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>Ressources Associées</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {selectedResources.map((resource) => (
+              <Chip
+                key={resource.id}
+                label={resource.title}
+                onDelete={() => handleRemoveResource(resource)}
+                deleteIcon={<CancelIcon onMouseDown={(event) => event.stopPropagation()} />}
+                size="small"
+              />
+            ))}
+          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={handleOpenResourceModal}
+            disabled={submitting}
+            size="small"
+          >
+            Ajouter/Gérer les Ressources
+          </Button>
+
+
+        </Grid>
       </Grid>
     </>
   );
@@ -319,6 +402,13 @@ const SessionForm = ({
             {actionButtons}
           </DialogActions>
         </form>
+        {/* Modal de sélection des ressources */}
+        <ResourceSelectorModal 
+          open={isResourceModalOpen}
+          onClose={() => setIsResourceModalOpen(false)}
+          initialSelectedResources={selectedResources} // Passer les ressources déjà sélectionnées
+          onSave={handleSaveResources} // Fonction pour récupérer la sélection finale
+        />
       </Dialog>
     );
   }
@@ -338,6 +428,13 @@ const SessionForm = ({
           </form>
         </CardContent>
       </Card>
+      {/* Modal de sélection des ressources */}
+      <ResourceSelectorModal 
+        open={isResourceModalOpen}
+        onClose={() => setIsResourceModalOpen(false)}
+        initialSelectedResources={selectedResources} // Passer les ressources déjà sélectionnées
+        onSave={handleSaveResources} // Fonction pour récupérer la sélection finale
+      />
     </Box>
   );
 };

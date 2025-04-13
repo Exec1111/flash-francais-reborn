@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, field_validator, computed_field
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 import logging
+from datetime import datetime
+from .session import SessionReadSimple # Import pour éviter la dépendance circulaire
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +99,19 @@ class ResourceUpdate(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ResourceTypeBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class ResourceRead(ResourceBase):
+    id: int
+    sessions: List[SessionReadSimple] = [] # Utilisation du schéma simplifié
+
+    class Config:
+        from_attributes = True # Mis à jour de orm_mode
+
+# Nouveau schéma pour la réponse paginée des ressources
+class ResourceListResponse(BaseModel):
+    items: List[ResourceRead]
+    total: int

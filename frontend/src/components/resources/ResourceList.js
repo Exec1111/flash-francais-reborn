@@ -81,7 +81,8 @@ const ResourceList = () => {
       const response = await api.get('/resources'); 
       
       // Axios met les données directement dans response.data
-      setResources(response.data);
+      // Maintenant, l'API retourne un objet { items: [], total: ... }, on prend 'items'
+      setResources(response.data.items);
       
     } catch (err) {
       // L'intercepteur gère le 401, mais on log les autres erreurs

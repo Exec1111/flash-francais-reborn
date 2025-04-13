@@ -4,7 +4,7 @@ from models.user import User, UserRole
 from models.progression import Progression
 from models.sequence import Sequence
 from models.session import Session
-from models.resource import Resource
+from models.resource import Resource, ResourceType, ResourceSubType # Ajout ResourceType, ResourceSubType
 from models.objective import Objective
 from models.association_tables import sequence_objective_association, session_objective_association
 
@@ -17,6 +17,8 @@ __all__ = [
     "Sequence",
     "Session",
     "Resource",
+    "ResourceType",
+    "ResourceSubType",
     "Objective",
     "sequence_objective_association",
     "session_objective_association",

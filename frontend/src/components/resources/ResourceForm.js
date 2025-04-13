@@ -140,6 +140,7 @@ const ResourceForm = ({
 
   // Charger les sous-types
   const fetchSubTypes = useCallback(async (typeId) => {
+    console.log('ResourceForm - Fetching subtypes for Type ID:', typeId); // TRACE
     if (!typeId) {
       setResourceSubTypes([]);
       setFormData(prev => ({ ...prev, resource_sub_type_id: '' })); 
@@ -147,10 +148,12 @@ const ResourceForm = ({
     }
     try {
       const subTypes = await resourceTypeService.getSubtypesByType(typeId); 
+      console.log('ResourceForm - Subtypes received from API:', subTypes); // TRACE
       setResourceSubTypes(subTypes);
+      console.log('ResourceForm - Set ResourceSubTypes state with:', subTypes); // TRACE
     } catch (err) {
       console.error('Erreur lors du chargement des sous-types:', err);
-      setError('Impossible de charger les sous-types');
+      setError("Impossible de charger les sous-types pour ce type. Détails: " + (err.response?.data?.detail || err.message));
     }
   }, []); 
 
@@ -169,6 +172,7 @@ const ResourceForm = ({
 
     // Si le type change, réinitialiser le sous-type et recharger les sous-types
     if (name === 'resource_type_id') {
+        console.log('ResourceForm - Selected Type ID in handleInputChange:', value); // TRACE
         setFormData(prev => ({ ...prev, resource_sub_type_id: '' })); 
         fetchSubTypes(value); 
     }
