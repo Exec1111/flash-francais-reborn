@@ -45,6 +45,15 @@ def create_session(db: Session, session: SessionCreate):
     db.refresh(db_session)
     return db_session
 
+def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
+    """Crée une nouvelle séance liée à un utilisateur."""
+    session_data = session.model_dump()
+    db_session = Session(**session_data, user_id=user_id)
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
 def update_session(db: Session, session_id: int, session_update: SessionUpdate):
     """Met à jour une séance existante, y compris ses objectifs associés."""
     db_session = get_session(db, session_id=session_id)

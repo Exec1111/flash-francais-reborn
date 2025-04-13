@@ -16,7 +16,7 @@ class SessionBase(BaseModel):
     title: str
     date: datetime
     notes: str | None = None
-    duration: timedelta | None = None # Utilisation de timedelta pour la durée
+    duration: int | None = None  # Durée en minutes (entier)
     sequence_id: int
 
 class SessionCreate(SessionBase):
@@ -26,7 +26,7 @@ class SessionUpdate(BaseModel): # Permettre les mises à jour partielles
     title: str | None = None
     date: datetime | None = None
     notes: str | None = None
-    duration: timedelta | None = None
+    duration: int | None = None  # Durée en minutes (entier)
     sequence_id: int | None = None # Moins courant à mettre à jour, mais possible
     objective_ids: List[int] | None = None # Ajout du champ pour la mise à jour des liens
 

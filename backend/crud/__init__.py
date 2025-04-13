@@ -31,6 +31,7 @@ from crud.session import (
     get_sessions,
     get_sessions_by_sequence,
     create_session,
+    create_session_with_user,
     update_session,
     delete_session
 )
@@ -92,6 +93,7 @@ __all__ = [
     "get_sessions",
     "get_sessions_by_sequence",
     "create_session",
+    "create_session_with_user",
     "update_session",
     "delete_session",
     # Resource exports

@@ -19,7 +19,7 @@ import ResourceButton from './resources/ResourceButton';
 export const drawerWidth = 480;
 
 // Composant pour le contenu d'un nœud de l'arbre
-const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence }) => {
+const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, onAddSession, onDeleteSession }) => {
   const navigate = useNavigate();
 
   // Gestion des clics sur les boutons d'action
@@ -111,6 +111,18 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
           <IconButton
             size="small"
+            color="success"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddSession(node.id);
+            }}
+            aria-label={`Ajouter une séance à ${node.name}`}
+            title="Ajouter une séance"
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
             onClick={(e) => {
               e.stopPropagation();
               onEditSequence(node.id);
@@ -131,12 +143,38 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
           </IconButton>
         </Box>
       )}
+      
+      {/* Boutons d'action pour les séances */}
+      {node.type === 'session' && (
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/sessions/edit/${node.id.replace(/^session_/, '')}`);
+            }}
+            aria-label={`Modifier la séance ${node.name}`}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteSession(node.id);
+            }}
+            aria-label={`Supprimer la séance ${node.name}`}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
     </Box>
   );
 };
 
 // Composant récursif pour l'arbre
-const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, loadingNodeId }) => {
+const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, onAddSession, onDeleteSession, loadingNodeId }) => {
 
   return (
     <div>
@@ -156,6 +194,8 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
           onDelete={onDelete}
           onDeleteSequence={onDeleteSequence}
           onEditSequence={onEditSequence}
+          onAddSession={onAddSession}
+          onDeleteSession={onDeleteSession}
         />
       </Box>
 
@@ -190,6 +230,8 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
                   onDelete={onDelete}
                   onDeleteSequence={onDeleteSequence}
                   onEditSequence={onEditSequence}
+                  onAddSession={onAddSession}
+                  onDeleteSession={onDeleteSession}
                   loadingNodeId={loadingNodeId}
                 />
               )
@@ -424,6 +466,33 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
     navigate(`/sequences/edit/${sequenceId}`);
   };
 
+  // Gérer l'ajout d'une séance à une séquence
+  const handleAddSession = (sequenceNodeId) => {
+    const sequenceId = sequenceNodeId.replace(/^sequence_/, '');
+    navigate(`/sessions/new/${sequenceId}`);
+  };
+
+  // Gérer la suppression d'une séance
+  const handleDeleteSession = async (sessionNodeId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')) {
+      return;
+    }
+
+    setLoadingNodeId(sessionNodeId);
+    try {
+      const token = localStorage.getItem('token');
+      const originalId = sessionNodeId.startsWith('session_') ? sessionNodeId.substring(8) : sessionNodeId;
+      await api.delete(`/sessions/${originalId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await refreshTreeData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la séance:', error);
+    } finally {
+      setLoadingNodeId(null);
+    }
+  };
+
   return (
     <Drawer
       sx={{
@@ -512,6 +581,8 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                   onDelete={handleDeleteProgression}
                   onDeleteSequence={handleDeleteSequence}
                   onEditSequence={handleEditSequence}
+                  onAddSession={handleAddSession}
+                  onDeleteSession={handleDeleteSession}
                   loadingNodeId={loadingNodeId}
                 />
               ))

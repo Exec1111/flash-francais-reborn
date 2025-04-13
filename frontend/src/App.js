@@ -36,6 +36,9 @@ import SequenceDetailPage from './pages/sequences/SequenceDetailPage';
 import ManageSequenceObjectivesPage from './pages/sequences/ManageSequenceObjectivesPage';
 import NewSequence from './pages/sequences/NewSequence';
 import SequenceEdit from './pages/sequences/SequenceEdit'; 
+import NewSession from './pages/sessions/NewSession';
+import SessionEdit from './pages/sessions/SessionEdit';
+import SessionDetailPage from './pages/sessions/SessionDetailPage';
 import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
 import ProgressionBuilder from './pages/ProgressionBuilder'; 
@@ -301,6 +304,20 @@ function App() {
         <Route path="edit/:id" element={<SequenceEdit />} />
         <Route path=":id" element={<SequenceDetailPage />} />
         <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
+      </Route>
+
+      <Route
+        path="/sessions"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="new" element={<NewSession />} />
+        <Route path="new/:sequenceId" element={<NewSession />} />
+        <Route path="edit/:id" element={<SessionEdit />} />
+        <Route path=":id" element={<SessionDetailPage />} />
       </Route>
 
       {/* Redirection par défaut */}

@@ -15,12 +15,25 @@ session_router = APIRouter(
 )
 
 @session_router.post("/", response_model=SessionRead)
-def create_session_route(session: SessionCreate, db: Session = Depends(get_db)):
+def create_session_route(
+    session: SessionCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     # Vérifier si la séquence parente existe
     db_sequence = crud.get_sequence(db, sequence_id=session.sequence_id)
     if db_sequence is None:
         raise HTTPException(status_code=404, detail=f"Sequence with id {session.sequence_id} not found")
-    return crud.create_session(db=db, session=session)
+    
+    # Vérifier que l'utilisateur a accès à cette séquence
+    if db_sequence.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous n'avez pas l'autorisation d'ajouter des séances à cette séquence"
+        )
+    
+    # Créer une session liée à l'utilisateur courant
+    return crud.create_session_with_user(db=db, session=session, user_id=current_user.id)
 
 @session_router.get("/", response_model=List[SessionRead])
 def read_sessions_route(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
