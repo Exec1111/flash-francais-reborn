@@ -20,7 +20,11 @@ class Sequence(Base):
     # Relationship with Progression (many-to-one)
     progression = relationship("Progression", back_populates="sequences")
     # Relationship with Session (one-to-many)
-    sessions = relationship("Session", back_populates="sequence")
+    sessions = relationship(
+        "Session", 
+        back_populates="sequence",
+        cascade="all, delete-orphan" # Ajout de la cascade pour la suppression
+    )
     # Relations avec les objectifs (many-to-many)
     objectives = relationship(
         "Objective",

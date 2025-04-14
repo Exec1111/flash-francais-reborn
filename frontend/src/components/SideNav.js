@@ -7,7 +7,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
   Flag as FlagIcon,
-  AddCircleOutline as AddIcon
+  AddCircleOutline as AddIcon,
+  InfoOutlined as InfoOutlinedIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -109,6 +110,34 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
       {/* Boutons d'action pour les séquences */}
       {node.type === 'sequence' && (
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+
+          {/* Icône et Tooltip pour les objectifs */}
+          {node.objectives && node.objectives.length > 0 && (
+            <Tooltip
+              title={
+                <React.Fragment>
+                  <Typography color="inherit" variant="subtitle2">Objectifs:</Typography>
+                  <ul style={{ margin: 0, paddingLeft: '16px', listStyle: 'disc' }}>
+                    {node.objectives.map(obj => (
+                      <li key={obj.id}>{obj.title}</li>
+                    ))}
+                  </ul>
+                </React.Fragment>
+              }
+              arrow
+              placement="top"
+            >
+              <IconButton
+                size="small"
+                sx={{ mr: 0.5 }} // Espacement avant les autres boutons
+                onClick={(e) => e.stopPropagation()} // Empêche la propagation du clic
+                aria-label={`Voir les objectifs de ${node.name}`}
+              >
+                <InfoOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <IconButton
             size="small"
             color="success"
@@ -147,6 +176,34 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
       {/* Boutons d'action pour les séances */}
       {node.type === 'session' && (
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+
+          {/* Icône et Tooltip pour les objectifs de la séance */}
+          {node.objectives && node.objectives.length > 0 && (
+            <Tooltip
+              title={
+                <React.Fragment>
+                  <Typography color="inherit" variant="subtitle2">Objectifs:</Typography>
+                  <ul style={{ margin: 0, paddingLeft: '16px', listStyle: 'disc' }}>
+                    {node.objectives.map(obj => (
+                      <li key={obj.id}>{obj.title}</li>
+                    ))}
+                  </ul>
+                </React.Fragment>
+              }
+              arrow
+              placement="top"
+            >
+              <IconButton
+                size="small"
+                sx={{ mr: 0.5 }} // Espacement avant les autres boutons
+                onClick={(e) => e.stopPropagation()} // Empêche la propagation du clic
+                aria-label={`Voir les objectifs de ${node.name}`}
+              >
+                <InfoOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <IconButton
             size="small"
             onClick={(e) => {
@@ -333,7 +390,9 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
               originalId: session.id,
               name: session.title || `Séance ${session.id}`,
               type: 'session',
+              objectives: session.objectives || [], // Ajouter les objectifs ici
               isExpanded: false,
+              // Conserver le loading pour les ressources
               children: [{ id: `loading-${session.id}`, type: 'loading' }]
             }));
             break;
