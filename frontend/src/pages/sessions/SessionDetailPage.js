@@ -2,17 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Paper,
   Typography,
   Button,
   Grid,
   Card,
+  CardHeader,
   CardContent,
   Divider,
   CircularProgress,
   Alert,
   IconButton,
-  Tooltip
+  Tooltip,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  Stack,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -91,88 +96,91 @@ const SessionDetailPage = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Paper elevation={2} sx={{ p: 3 }}>
-        {/* En-tête */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <IconButton onClick={() => navigate(-1)} sx={{ mr: 2 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" component="h1" flexGrow={1}>
-            {session.name}
+      {/* Bouton Retour en dehors de la Card */}
+      <IconButton onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+        <ArrowBackIcon />
+      </IconButton>
+
+      <Card>
+        <CardHeader
+          title="Détails de la séance" // Titre générique pour la carte
+          action={
+            <Box>
+              <Tooltip title="Modifier">
+                <IconButton
+                  color="primary"
+                  onClick={() => navigate(`/sessions/edit/${id}`)}
+                  sx={{ mr: 1 }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Supprimer">
+                <IconButton color="error" onClick={handleDelete}>
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          }
+        />
+        <CardContent>
+          {/* Titre spécifique de la séance */}
+          <Typography variant="h5" component="h1" gutterBottom>
+            {session.title} { /* Utilisation de session.title ou session.name selon le modèle */}
           </Typography>
-          <Box>
-            <Tooltip title="Modifier">
-              <IconButton 
-                color="primary" 
-                onClick={() => navigate(`/sessions/edit/${id}`)}
-                sx={{ mr: 1 }}
-              >
-                <EditIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Supprimer">
-              <IconButton color="error" onClick={handleDelete}>
-                <DeleteIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
 
-        <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 2 }} />
 
-        {/* Détails de la séance */}
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Description
-                </Typography>
-                <Typography paragraph>
-                  {session.description || 'Aucune description disponible'}
-                </Typography>
-              </CardContent>
-            </Card>
+          {/* Description */}
+          <Typography variant="h6" gutterBottom>
+            Description
+          </Typography>
+          <Typography paragraph sx={{ mb: 3 }}>
+            {session.notes || 'Aucune description disponible'} { /* Utilisation de session.notes ou session.description */}
+          </Typography>
+
+          {/* Informations (Durée, Séquence parente) */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Durée
+              </Typography>
+              <Typography variant="body1">
+                {session.duration ? `${session.duration} minutes` : 'Non spécifiée'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Séquence parente
+              </Typography>
+              <Typography variant="body1">
+                {/* TODO: Afficher le nom de la séquence si disponible */}
+                {/* Par exemple: session.sequence?.title || session.sequence_name || 'Non spécifiée' */}
+                ID: {session.sequence_id || 'Non spécifiée'}
+              </Typography>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Informations
-                </Typography>
-                <Box sx={{ my: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Durée
-                  </Typography>
-                  <Typography variant="body1">
-                    {session.duration} minutes
-                  </Typography>
-                </Box>
-                <Box sx={{ my: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Séquence parente
-                  </Typography>
-                  <Typography variant="body1">
-                    {session.sequence_name || 'Non spécifiée'}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
 
-        {/* Actions */}
-        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={() => navigate(`/sessions/edit/${id}`)}
-            startIcon={<EditIcon />}
-          >
-            Modifier
-          </Button>
-        </Box>
-      </Paper>
+          {/* Section Ressources */}
+          {session.resources && session.resources.length > 0 && (
+            <>
+              <Typography variant="h6" gutterBottom sx={{ mt: 3, mb: 1 }}>
+                Ressources liées
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={1}>
+                {session.resources.map((resource) => (
+                  <Chip
+                    key={resource.id}
+                    label={resource.title || resource.name || `Ressource ${resource.id}`}
+                    size="small"
+                  />
+                ))}
+              </Stack>
+            </>
+          )}
+          {/* Pas de bouton Modifier ici, car il est dans le header */}
+        </CardContent>
+      </Card>
     </Box>
   );
 };

@@ -9,7 +9,8 @@ from typing import List
 def get_sequence(db: Session, sequence_id: int):
     """Récupère une séquence par son ID, en chargeant les objectifs associés."""
     return db.query(Sequence).options(
-        selectinload(Sequence.objectives)
+        selectinload(Sequence.objectives),
+        selectinload(Sequence.sessions) # Charger aussi les sessions
     ).filter(Sequence.id == sequence_id).first()
 
 def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 100):
@@ -25,7 +26,10 @@ def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 
     if user_id is not None:
         query = query.filter(Sequence.user_id == user_id)
     # Ajouter selectinload pour charger les objectifs
-    return query.options(selectinload(Sequence.objectives)).offset(skip).limit(limit).all()
+    return query.options(
+        selectinload(Sequence.objectives),
+        selectinload(Sequence.sessions) # Charger aussi les sessions ici pour la liste
+    ).offset(skip).limit(limit).all()
 
 def count_sequences(db: Session, user_id: int) -> int:
     """Compte le nombre total de séquences pour un utilisateur."""

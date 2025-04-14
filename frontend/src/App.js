@@ -41,7 +41,8 @@ import SessionEdit from './pages/sessions/SessionEdit';
 import SessionDetailPage from './pages/sessions/SessionDetailPage';
 import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
-import ProgressionBuilder from './pages/ProgressionBuilder'; 
+import ProgressionBuilder from './pages/progressions/ProgressionBuilder'; 
+import ProgressionDetailPage from './pages/progressions/ProgressionDetailPage'; // Importer la nouvelle page
 import { ThemeProvider } from '@mui/material/styles';
 import theme from './theme';
 import api from './services/api'; 
@@ -249,6 +250,7 @@ function App() {
         {/* <Route path="settings" element={<Settings />} /> */}
         {/* Route pour le constructeur de progression */}
         <Route path="progressions/new" element={<ProgressionBuilder />} />
+        <Route path="progressions/:id" element={<ProgressionDetailPage />} /> {/* Nouvelle route de consultation */}
         <Route path="progressions/edit/:progressionId" element={<ProgressionBuilder />} />
       </Route>
 
@@ -275,6 +277,7 @@ function App() {
         }
       >
         <Route path="new" element={<ProgressionBuilder />} />
+        <Route path=":id" element={<ProgressionDetailPage />} /> {/* Nouvelle route de consultation */}
         <Route path="edit/:id" element={<ProgressionBuilder />} />
       </Route>
 
@@ -302,8 +305,8 @@ function App() {
         <Route path="new" element={<NewSequence />} />
         <Route path="new/:progressionId" element={<NewSequence />} />
         <Route path="edit/:id" element={<SequenceEdit />} />
-        <Route path=":id" element={<SequenceDetailPage />} />
         <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
+        <Route path=":id" element={<SequenceDetailPage />} /> {/* Doit être APRÈS /:id/objectives/manage */}
       </Route>
 
       <Route

@@ -11,9 +11,9 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import { useAuth } from '../contexts/AuthContext';
-import progressionService from '../services/progressionService';
-import { useTreeData } from '../contexts/TreeDataContext'; // Importer le hook
+import { useAuth } from '../../contexts/AuthContext';
+import progressionService from '../../services/progressionService';
+import { useTreeData } from '../../contexts/TreeDataContext'; // Importer le hook
 
 const ProgressionBuilder = () => {
   const { id } = useParams(); // Récupère l'ID de la progression depuis l'URL

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 from models import Progression, Sequence, User
 from schemas.progression import ProgressionCreate, ProgressionUpdate
 from sqlalchemy import func
@@ -6,6 +7,8 @@ from typing import List, Optional
 
 def get_progression(db: Session, progression_id: int, user_id: int):
     query = db.query(Progression).filter(Progression.id == progression_id)
+    # Charger les séquences associées en même temps
+    query = query.options(selectinload(Progression.sequences))
     if user_id:
         query = query.filter(Progression.user_id == user_id)
     return query.first()

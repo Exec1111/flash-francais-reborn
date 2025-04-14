@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from typing import List, Optional
+from .sequence import SequenceRead
 
 class ProgressionBase(BaseModel):
     title: str
@@ -12,6 +14,9 @@ class ProgressionUpdate(ProgressionBase):
 
 class ProgressionRead(ProgressionBase):
     id: int
+
+    # Inclure la liste des séquences associées
+    sequences: List[SequenceRead] = []
 
     class Config:
         from_attributes = True

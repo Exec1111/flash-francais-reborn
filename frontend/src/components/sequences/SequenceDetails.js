@@ -167,7 +167,7 @@ const SequenceDetails = () => {
             
             <Grid item xs={12}>
               <Typography variant="subtitle1" fontWeight="bold">
-                Sessions:
+                Séances:
               </Typography>
               {sequence.sessions && sequence.sessions.length > 0 ? (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>

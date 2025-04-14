@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button, Tooltip } from '@mui/material';
+import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button, Tooltip, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
   Edit as EditIcon,
@@ -8,7 +8,8 @@ import {
   ChevronRight as ChevronRightIcon,
   Flag as FlagIcon,
   AddCircleOutline as AddIcon,
-  InfoOutlined as InfoOutlinedIcon
+  InfoOutlined as InfoOutlinedIcon,
+  Description as DescriptionIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,19 +25,49 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
   const navigate = useNavigate();
 
   // Gestion des clics sur les boutons d'action
-  const handleAddSequence = (e) => {
+  const handleAddSequence = (e) => { 
     e.stopPropagation();
     onAddSequence(node.id);
   };
 
-  const handleEdit = (e) => {
+  const handleEdit = (e) => { 
     e.stopPropagation();
     onEdit(node.id);
   };
 
-  const handleDelete = (e) => {
+  const handleDelete = (e) => { 
     e.stopPropagation();
     onDelete(node.id);
+  };
+
+  // Navigation pour les progressions
+  const handleProgressionNavigate = (event) => { 
+    event.stopPropagation(); // Empêche l'événement de déclencher onExpand
+    const progressionId = node.id.toString().split('_').pop(); // Extrait la partie numérique après le dernier '_' 
+    console.log(`Navigating to progression: /progressions/${progressionId}`);
+    navigate(`/progressions/${progressionId}`);
+  };
+
+  const handleSequenceNavigate = (event) => { 
+    event.stopPropagation(); // Empêche l'événement de déclencher onExpand
+    const sequenceId = node.id.toString().split('_').pop(); // Extrait la partie numérique après le dernier '_' 
+    console.log(`Navigating to sequence: /sequences/${sequenceId}`);
+    navigate(`/sequences/${sequenceId}`);
+  };
+
+  const handleSessionNavigate = (event) => { 
+    event.stopPropagation(); // Empêche l'événement de déclencher onExpand
+    const sessionId = node.id.toString().split('_').pop(); // Extrait la partie numérique après le dernier '_' 
+    console.log(`Navigating to session: /sessions/${sessionId}`);
+    navigate(`/sessions/${sessionId}`);
+  };
+
+  // Fonction pour la navigation vers les ressources
+  const handleResourceNavigate = (event) => {
+    event.stopPropagation();
+    const resourceId = node.id.toString().split('_').pop(); // Extrait l'ID
+    console.log(`Navigating to resource view: /resources/view/${resourceId}`); // Log corrigé
+    navigate(`/resources/view/${resourceId}`); // URL corrigée pour correspondre à App.js
   };
 
   return (
@@ -65,10 +96,22 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
         <Typography
           variant="body2"
           noWrap
-          onClick={() => onExpand(node)}
+          onClick={
+            node.type === 'progression' ? handleProgressionNavigate :
+            node.type === 'sequence' ? handleSequenceNavigate :
+            node.type === 'session' ? handleSessionNavigate :
+            node.type === 'resource' ? handleResourceNavigate : // Ajouter la navigation pour les ressources
+            null // Ne fait rien pour les autres types au clic sur le texte
+          }
           sx={{
             flexGrow: 1,
-            cursor: 'pointer',
+            // Appliquer le curseur pointeur et le soulignement au survol si navigable
+            cursor: ['progression', 'sequence', 'session', 'resource'].includes(node.type) ? 'pointer' : 'default',
+            ...(['progression', 'sequence', 'session', 'resource'].includes(node.type) && { 
+              '&:hover': { 
+                textDecoration: 'underline', // Soulignement au survol
+              }, 
+            }),
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -77,6 +120,20 @@ const NodeContent = ({ node, onExpand, onAddSequence, onEdit, onDelete, onDelete
           {node.name}
         </Typography>
       </Tooltip>
+
+      {/* Icône Info pour naviguer (alternative/complément au clic sur le nom) */}
+      {node.type === 'progression' && (
+        <Tooltip title="Consulter la progression">
+          <IconButton
+            size="small"
+            onClick={handleProgressionNavigate}
+            sx={{ ml: 1, color: 'text.secondary' }}
+            aria-label={`Consulter la progression ${node.name}`}
+          >
+            <InfoOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
 
       {/* Boutons d'action pour les progressions */}
       {node.type === 'progression' && (
