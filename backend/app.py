@@ -138,6 +138,16 @@ app.add_middleware(
     allow_headers=["*"],    # Autoriser tous les en-têtes
 )
 
+# --- Configuration du service de fichiers statiques ---
+MEDIA_ROOT = "local_uploads"
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)
+    logger.info(f"Création du répertoire pour les médias: {MEDIA_ROOT}")
+
+# Monter le répertoire pour servir les fichiers uploadés
+# Les requêtes vers /media/uploads/X/Y chercheront le fichier Y dans le dossier local_uploads/X
+app.mount("/media/uploads", StaticFiles(directory=MEDIA_ROOT), name="media")
+
 # Inclusion des routes d'authentification
 app.include_router(
     auth_router,

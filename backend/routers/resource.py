@@ -140,6 +140,9 @@ async def create_resource_route(
         user_upload_dir_on_disk.mkdir(parents=True, exist_ok=True) # Crée /var/data/uploads-storage/uploads/USER_ID/
         final_file_path_on_disk = user_upload_dir_on_disk / safe_filename
 
+        # Construire le chemin relatif pour la BDD (incluant user_id)
+        relative_path_for_db = os.path.join(str(current_user.id), safe_filename)
+
         # Sauvegarder le fichier sur le disque
         try:
             with open(final_file_path_on_disk, "wb") as buffer:
@@ -155,9 +158,6 @@ async def create_resource_route(
              # S'assurer que le file descriptor est fermé (important avec UploadFile)
              await file.close()
 
-        # Obtenir le chemin RELATIF pour la BDD
-        file_path_relative_for_db = safe_filename
-
         # Préparer les informations du fichier pour le CRUD
         file_upload_data = ResourceFileUpload(
             file_name=safe_filename,
@@ -170,8 +170,9 @@ async def create_resource_route(
         db_resource = crud.resource.create_resource(
             db=db, 
             resource=resource_data, 
-            user_id=current_user.id, # Rétabli car requis par la signature de la fonction CRUD
-            file_upload=file_upload_data # Passer les infos du fichier
+            user_id=current_user.id, 
+            file_upload=file_upload_data # Utiliser 'file_upload' et passer les données du fichier (peut être None)
+            # Ne pas passer 'file_path_url' car absent de la signature actuelle
         )
         logger.info(f"Ressource créée avec ID: {db_resource.id}")
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
