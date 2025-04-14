@@ -20,6 +20,7 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PeopleIcon from '@mui/icons-material/People';
 import AddIcon from '@mui/icons-material/Add';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const theme = useTheme();
@@ -180,11 +181,14 @@ const Dashboard = () => {
           Actions Rapides
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<AddIcon />}>
-            Nouvelle progression
-          </Button>
-          <Button variant="contained" color="secondary">
-            Voir les statistiques
+        <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AddIcon />}
+            component={RouterLink}
+            to="/progressions/new"
+          >
+            Nouvelle Progression
           </Button>
         </Box>
       </Box>

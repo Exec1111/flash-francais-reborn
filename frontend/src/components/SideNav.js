@@ -661,19 +661,6 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
 
       <Divider sx={{ my: 2 }} />
 
-      {/* Bouton pour créer une nouvelle progression */}
-      <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<AddIcon />}
-          component={RouterLink}
-          to="/progressions/new"
-        >
-          Nouvelle Progression
-        </Button>
-      </Box>
-
       {/* Contenu principal du drawer - l'arbre de navigation */}
       <Box sx={{ overflow: 'auto', flexGrow: 1, p: 1 }}>
         {isTreeLoading ? (
