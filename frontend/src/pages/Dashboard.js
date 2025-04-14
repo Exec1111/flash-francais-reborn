@@ -12,7 +12,9 @@ import {
   useTheme,
   CircularProgress,
   Alert,
-  AlertTitle
+  AlertTitle,
+  List,
+  ListItem
 } from '@mui/material';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -88,16 +90,38 @@ const Dashboard = () => {
       )}
       {summary.warnings.length > 0 && (
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Avertissements</Typography>
-          {summary.warnings.map((warning) => (
-            <Alert severity="warning" key={warning.id} sx={{ mb: 1 }}>
-              {warning.message}
-            </Alert>
-          ))}
+          {summary.warnings.map((warning) => {
+            // Gestion spécifique pour les objectifs non couverts
+            if (warning.id.startsWith('uncovered_objectives_')) {
+              return (
+                <Alert severity="warning" key={warning.id} sx={{ mb: 2 }}>
+                  <AlertTitle>Objectifs non couverts dans "{warning.details.sequence_title}"</AlertTitle>
+                  {warning.message} {/* Le message est déjà formaté côté backend */} 
+                  <List dense disablePadding sx={{ pl: 2, listStyleType: 'disc' }}>
+                    {warning.details.uncovered_objectives.map((obj) => (
+                      <ListItem key={obj.id} sx={{ display: 'list-item', p: 0 }}>
+                        {obj.title} (ID: {obj.id})
+                      </ListItem>
+                    ))}
+                  </List>
+                </Alert>
+              );
+            } else {
+              // Affichage standard pour les autres types d'avertissements
+              return (
+                <Alert severity="warning" key={warning.id} sx={{ mb: 2 }}>
+                  {warning.message}
+                  {/* TODO: Exploiter warning.details si nécessaire pour d'autres types */}
+                </Alert>
+              );
+            }
+          })}
         </Box>
       )}
-
-      <Typography variant="h6" gutterBottom sx={{ mt: summary.warnings.length > 0 ? 4 : 0 }}>Statistiques</Typography>
+      {/* Le titre est déplacé après le loader/erreur principal */}
+      {!loading && !error && (
+        <Typography variant="h6" gutterBottom sx={{ mt: summary.warnings.length > 0 ? 4 : 0 }}>Statistiques</Typography>
+      )}
       <Grid container spacing={3}>
         <Grid item xs={12} sm={6} md={4}>
           <Card>

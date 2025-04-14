@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel # Importer BaseModel depuis Pydantic
 
@@ -10,6 +10,7 @@ from crud.progression import count_progressions, get_progressions_with_no_sequen
 from crud.sequence import count_sequences, get_sequences_with_no_sessions
 from crud.resource import count_resources
 from crud.session import count_sessions, get_sessions_with_no_resources
+from models import Sequence, Session as SessionModel, Objective 
 
 dashboard_router = APIRouter( # Renommé la variable pour cohérence
     # prefix="/api/v1/dashboard", # Préfixe géré dans app.py
@@ -126,5 +127,40 @@ async def get_dashboard_summary(
             message=message,
             details={"count": len(sessions_no_res), "ids": [s.id for s in sessions_no_res]}
         ))
+
+    # --- Vérification des objectifs de séquence non couverts --- 
+    sequences_with_objectives = db.query(Sequence).filter(Sequence.user_id == user_id)\
+        .options(
+            selectinload(Sequence.objectives), # Objectifs de la séquence
+            selectinload(Sequence.sessions).selectinload(SessionModel.objectives) # Séances -> Objectifs des séances
+        ).all()
+
+    for sequence in sequences_with_objectives:
+        sequence_objective_ids = {obj.id for obj in sequence.objectives}
+        if not sequence_objective_ids: continue # Passer si pas d'objectifs définis pour la séquence
+            
+        covered_objective_ids = set()
+        for session in sequence.sessions:
+            for obj in session.objectives:
+                covered_objective_ids.add(obj.id)
+                
+        uncovered_ids = sequence_objective_ids - covered_objective_ids
+        
+        if uncovered_ids:
+            uncovered_objectives_details = [
+                {"id": obj.id, "title": obj.title} 
+                for obj in sequence.objectives if obj.id in uncovered_ids
+            ]
+            warnings_data.append(
+                WarningItem(
+                    id=f"uncovered_objectives_{sequence.id}", # ID unique pour ce type d'alerte
+                    message=f"La séquence '{sequence.title}' a des objectifs non couverts par ses séances.",
+                    details={
+                        "sequence_id": sequence.id,
+                        "sequence_title": sequence.title,
+                        "uncovered_objectives": uncovered_objectives_details
+                    }
+                )
+            )
 
     return DashboardSummary(stats=stats_data, warnings=warnings_data)
