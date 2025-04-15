@@ -74,7 +74,7 @@ const DraggableSessionNode = ({
         opacity: isDragging ? 0.5 : 1,
         cursor: isReordering ? "not-allowed" : "grab",
         position: 'relative',
-        paddingLeft: '24px', // Indentation supplémentaire pour les séances
+        paddingLeft: '8px', // Correction : moins d'indentation pour aligner les séances avec les séquences
       }}
     >
       {/* Utiliser TreeNode pour le rendu du contenu, mais pas pour le drag-and-drop */}
