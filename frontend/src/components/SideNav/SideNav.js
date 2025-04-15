@@ -9,6 +9,7 @@ import ResourceButton from '../resources/ResourceButton';
 import TreeNode from './TreeNode';
 import DraggableProgressionNode from './DraggableProgressionNode';
 import DraggableSequenceNode from './DraggableSequenceNode';
+import DraggableSessionNode from './DraggableSessionNode';
 import { updateNodeStateRecursive, transformNode } from './utils';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -360,6 +361,72 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
     }
   }, [token, refreshTreeData]);
 
+  // Déplacer une séance à l'intérieur d'une même séquence
+  const moveSessionNode = useCallback(async (sequenceId, fromIndex, toIndex) => {
+    setIsReordering(true);
+    try {
+      // Mettre à jour l'état local des nœuds
+      setProcessedNodes(prevNodes => 
+        prevNodes.map(prog => {
+          // Parcourir toutes les progressions pour trouver la séquence concernée
+          if (!prog.children) return prog;
+          
+          // Rechercher dans les séquences enfants
+          const updatedChildren = prog.children.map(seq => {
+            if (seq.id !== sequenceId) return seq;
+            
+            // Réorganiser les séances enfants de cette séquence
+            const sessionChildren = seq.children?.filter(child => child.type === 'session') || [];
+            const otherChildren = seq.children?.filter(child => child.type !== 'session') || [];
+            
+            if (sessionChildren.length < 2) return seq; // Pas besoin de réordonner s'il y a moins de 2 séances
+            
+            // Réordonner les séances
+            const newSessions = [...sessionChildren];
+            const [movedSession] = newSessions.splice(fromIndex, 1);
+            newSessions.splice(toIndex, 0, movedSession);
+            
+            // Mettre à jour l'ordre
+            const updatedSessions = newSessions.map((session, idx) => ({
+              ...session,
+              order: idx
+            }));
+            
+            // Combiner les séances réordonnées avec les autres enfants
+            const newChildren = [...updatedSessions, ...otherChildren];
+            
+            // Préparer les données pour l'API
+            const sessionIds = updatedSessions.map(session => session.originalId);
+            
+            // Appel API pour persister l'ordre
+            (async () => {
+              try {
+                const authToken = token || localStorage.getItem('token');
+                await api.patch('/sessions/reorder', { session_ids: sessionIds }, {
+                  headers: { Authorization: `Bearer ${authToken}` }
+                });
+                console.log(`Ordre des séances mis à jour pour séquence ${sequenceId}:`, sessionIds);
+              } catch (error) {
+                console.error('Erreur lors de la mise à jour de l\'ordre des séances:', error);
+              }
+            })();
+            
+            // Retourner la séquence mise à jour
+            return { ...seq, children: newChildren };
+          });
+          
+          // Retourner la progression avec ses séquences mises à jour
+          return { ...prog, children: updatedChildren };
+        })
+      );
+    } catch (error) {
+      console.error('Erreur lors du drag-and-drop des séances:', error);
+      await refreshTreeData(); // Récupérer les données fraîches en cas d'erreur
+    } finally {
+      setIsReordering(false);
+    }
+  }, [token, refreshTreeData]);
+
   return (
     <Drawer
       sx={{
@@ -467,6 +534,7 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                               onEditSequence={handleEditSequence}
                               onDeleteSession={handleDeleteSession}
                               loadingNodeId={loadingNodeId}
+                              moveSessionNode={moveSessionNode}
                             />
                           ))
                       }

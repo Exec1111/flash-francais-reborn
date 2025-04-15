@@ -35,6 +35,8 @@ def get_sessions_by_sequence(db: Session, sequence_id: int, user_id: int = None,
     if user_id is not None:
         query = query.filter(Session.user_id == user_id)
     # Charger les objectifs en même temps que les sessions pour éviter N+1 requêtes
+    # Trier par ordre (pour le drag-and-drop), puis par ID si l'ordre n'est pas défini
+    query = query.order_by(Session.order.nulls_last(), Session.id)
     return query.options(selectinload(Session.objectives)).offset(skip).limit(limit).all()
 
 def count_sessions(db: Session, user_id: int) -> int:

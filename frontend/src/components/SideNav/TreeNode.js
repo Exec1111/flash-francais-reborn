@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import NodeContent from './NodeContent';
 
-const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, onAddSession, onDeleteSession, loadingNodeId, hideSequenceChildren = false }) => {
+const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, onAddSession, onDeleteSession, loadingNodeId, hideSequenceChildren = false, hideSessionChildren = false }) => {
   return (
     <div>
       {/* Contenu du nœud */}
@@ -35,8 +35,11 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
             </Box>
           ) : (
             node.children && node.children
-              // Ne pas afficher les séquences comme enfants si hideSequenceChildren est true
-              .filter(child => !hideSequenceChildren || child.type !== 'sequence')
+              // Filtrer selon les paramètres hideSequenceChildren et hideSessionChildren
+              .filter(child => 
+                (!hideSequenceChildren || child.type !== 'sequence') && 
+                (!hideSessionChildren || child.type !== 'session')
+              )
               .map((child) => (
                 child.type === 'error' ? (
                   <Typography key={child.id} color="error" sx={{ pl: (level + 1) * 2, py: 1 }}>
@@ -62,6 +65,7 @@ const TreeNode = ({ node, level = 0, onExpand, onAddSequence, onEdit, onDelete, 
                     onDeleteSession={onDeleteSession}
                     loadingNodeId={loadingNodeId}
                     hideSequenceChildren={hideSequenceChildren}
+                    hideSessionChildren={hideSessionChildren}
                   />
                 )
               ))

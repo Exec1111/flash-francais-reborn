@@ -1,8 +1,7 @@
 import React, { useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import TreeNode from './TreeNode';
-import { Box } from '@mui/material';
-import { DragIndicator as DragIndicatorIcon } from '@mui/icons-material';
+import DraggableSessionNode from './DraggableSessionNode';
 
 // Type d'élément pour le drag and drop des séquences
 const ITEM_TYPE = 'SEQUENCE';
@@ -12,6 +11,7 @@ const DraggableSequenceNode = ({
   index, 
   progressionId, 
   moveNode, 
+  moveSessionNode, // Fonction pour déplacer les séances
   isReordering,
   onExpand,
   onAddSession,
@@ -85,15 +85,39 @@ const DraggableSequenceNode = ({
       {/* Pas d'indicateur visuel séparé, utilisons juste TreeNode */}
       
       {/* Utiliser TreeNode pour le rendu du contenu, mais pas pour le drag-and-drop */}
-      <TreeNode
-        node={node}
-        onExpand={onExpand}
-        onAddSession={onAddSession}
-        onDeleteSequence={onDeleteSequence}
-        onEditSequence={onEditSequence}
-        onDeleteSession={onDeleteSession}
-        loadingNodeId={loadingNodeId}
-      />
+      <div>
+        {/* Utiliser TreeNode pour afficher le contenu de la séquence, mais empêcher l'affichage des séances */}
+        <TreeNode
+          node={node}
+          onExpand={onExpand}
+          onAddSession={onAddSession}
+          onDeleteSequence={onDeleteSequence}
+          onEditSequence={onEditSequence}
+          onDeleteSession={onDeleteSession}
+          loadingNodeId={loadingNodeId}
+          hideSessionChildren={true} /* Empêcher TreeNode d'afficher récursivement les séances */
+        />
+        
+        {/* Afficher les séances enfants avec drag-and-drop */}
+        {node.isExpanded && node.children && 
+          node.children
+            .filter(child => child.type === 'session')
+            .map((session, sessionIndex) => (
+              <DraggableSessionNode
+                key={session.id}
+                node={session}
+                index={sessionIndex}
+                sequenceId={node.id} /* Pour limiter le drag-and-drop à cette séquence */
+                moveNode={(fromIndex, toIndex) => 
+                  moveSessionNode ? moveSessionNode(node.id, fromIndex, toIndex) : null
+                }
+                isReordering={isReordering}
+                onExpand={onExpand}
+                loadingNodeId={loadingNodeId}
+              />
+            ))
+        }
+      </div>
     </div>
   );
 };

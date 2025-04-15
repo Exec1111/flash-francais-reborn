@@ -18,6 +18,8 @@ class Session(Base):
     notes = Column(Text, nullable=True)
     # Foreign Key to Sequence
     sequence_id = Column(Integer, ForeignKey("sequences.id"), nullable=False)
+    # Champ pour l'ordre d'affichage et le drag-and-drop
+    order = Column(Integer, nullable=True)
 
     # Relationship with Sequence (many-to-one)
     sequence = relationship("Sequence", back_populates="sessions") # 'sessions' sera ajouté à Sequence

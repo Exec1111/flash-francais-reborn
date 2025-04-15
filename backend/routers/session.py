@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -6,6 +6,7 @@ from database import get_db
 import crud
 from schemas.session import SessionCreate, SessionUpdate, SessionRead
 from models.user import User
+from models.session import Session as SessionModel
 from security import get_current_active_user
 
 session_router = APIRouter(
@@ -13,6 +14,45 @@ session_router = APIRouter(
     tags=["sessions"],
     responses={404: {"description": "Not found"}},
 )
+
+@session_router.patch("/reorder", status_code=204)
+def reorder_sessions(
+    session_ids: List[int] = Body(..., embed=True, description="Liste ordonnée des IDs de séances"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Réordonne les séances d'une séquence selon la liste d'IDs reçue.
+    """
+    # Récupérer toutes les séances concernées et vérifier l'appartenance à l'utilisateur
+    sessions = db.query(SessionModel).filter(SessionModel.id.in_(session_ids)).all()
+    
+    if len(sessions) != len(session_ids):
+        raise HTTPException(status_code=404, detail="Certaines séances n'existent pas.")
+    
+    # Vérification des droits de l'utilisateur
+    for session in sessions:
+        if session.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Séance non autorisée.")
+    
+    # Vérifier que toutes les séances appartiennent à la même séquence
+    first_sequence_id = sessions[0].sequence_id
+    for session in sessions:
+        if session.sequence_id != first_sequence_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Impossible de réordonner des séances appartenant à des séquences différentes."
+            )
+    
+    # Mise à jour des ordres
+    id_to_session = {session.id: session for session in sessions}
+    for idx, session_id in enumerate(session_ids):
+        session = id_to_session[session_id]
+        session.order = idx
+        db.add(session)
+    
+    db.commit()
+    return
 
 @session_router.post("/", response_model=SessionRead)
 def create_session_route(
