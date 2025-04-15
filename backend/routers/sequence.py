@@ -6,6 +6,7 @@ from database import get_db
 import crud
 from schemas.sequence import SequenceCreate, SequenceRead, SequenceUpdate
 from models.user import User
+from models.sequence import Sequence  # Import direct du modèle Sequence
 from security import get_current_active_user, get_current_user
 
 sequence_router = APIRouter(
@@ -14,6 +15,33 @@ sequence_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+from fastapi import Body
+
+@sequence_router.patch("/reorder", status_code=204)
+def reorder_sequences(
+    sequence_ids: List[int] = Body(..., embed=True, description="Liste ordonnée des IDs de séquences"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Réordonne les séquences d'une progression selon la liste d'IDs reçue.
+    """
+    # On récupère toutes les séquences concernées, on vérifie l'appartenance à l'utilisateur
+    sequences = db.query(Sequence).filter(Sequence.id.in_(sequence_ids)).all()
+    if len(sequences) != len(sequence_ids):
+        raise HTTPException(status_code=404, detail="Certaines séquences n'existent pas.")
+    # Vérification de l'utilisateur
+    for seq in sequences:
+        if seq.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Séquence non autorisée.")
+    # Mise à jour des ordres
+    id_to_seq = {seq.id: seq for seq in sequences}
+    for idx, seq_id in enumerate(sequence_ids):
+        seq = id_to_seq[seq_id]
+        seq.order = idx
+        db.add(seq)
+    db.commit()
+    return
 @sequence_router.post("/", response_model=SequenceRead, name="create_sequence")
 def create_sequence_endpoint(
     sequence: SequenceCreate, 

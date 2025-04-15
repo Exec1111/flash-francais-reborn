@@ -8,6 +8,7 @@ import api from '../../services/api';
 import ResourceButton from '../resources/ResourceButton';
 import TreeNode from './TreeNode';
 import DraggableProgressionNode from './DraggableProgressionNode';
+import DraggableSequenceNode from './DraggableSequenceNode';
 import { updateNodeStateRecursive, transformNode } from './utils';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -58,7 +59,9 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
       // Trier les progressions par 'order' avant de les transformer
       const sortedNodes = sortNodesByOrder(treeData.children);
       console.log('Progressions triées (sortedNodes) :', sortedNodes);
-      setProcessedNodes(sortedNodes.map((node, index) => transformNode(node, index)));
+      // N'inclure que les progressions à la racine, pas les séquences
+      const filteredNodes = sortedNodes.filter(node => node.type === 'progression');
+      setProcessedNodes(filteredNodes.map((node, index) => transformNode(node, index)));
     }
   }, [treeData, sortNodesByOrder]);
 
@@ -301,6 +304,62 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
     }
   }, [processedNodes, token, refreshTreeData]);
 
+  // Déplacer une séquence à l'intérieur d'une même progression
+  const moveSequenceNode = useCallback(async (progressionId, fromIndex, toIndex) => {
+    setIsReordering(true);
+    try {
+      // Mettre à jour l'état local des nœuds
+      setProcessedNodes(prevNodes => 
+        prevNodes.map(prog => {
+          // Ne modifier que la progression concernée
+          if (prog.id !== progressionId) return prog;
+          
+          // Réorganiser les séquences enfants
+          const sequenceChildren = prog.children.filter(child => child.type === 'sequence');
+          const otherChildren = prog.children.filter(child => child.type !== 'sequence');
+          
+          // Réordonner les séquences
+          const newSequences = [...sequenceChildren];
+          const [movedSequence] = newSequences.splice(fromIndex, 1);
+          newSequences.splice(toIndex, 0, movedSequence);
+          
+          // Mettre à jour l'ordre
+          const updatedSequences = newSequences.map((seq, idx) => ({
+            ...seq,
+            order: idx
+          }));
+          
+          // Combiner les séquences réordonnées avec les autres enfants
+          const newChildren = [...updatedSequences, ...otherChildren];
+          
+          // Préparer les données pour l'API
+          const sequenceIds = updatedSequences.map(seq => seq.originalId);
+          
+          // Appel API pour persister l'ordre
+          (async () => {
+            try {
+              const authToken = token || localStorage.getItem('token');
+              await api.patch('/sequences/reorder', { sequence_ids: sequenceIds }, {
+                headers: { Authorization: `Bearer ${authToken}` }
+              });
+              console.log(`Ordre des séquences mis à jour pour progression ${progressionId}:`, sequenceIds);
+            } catch (error) {
+              console.error('Erreur lors de la mise à jour de l\'ordre des séquences:', error);
+            }
+          })();
+          
+          // Retourner la progression mise à jour
+          return { ...prog, children: newChildren };
+        })
+      );
+    } catch (error) {
+      console.error('Erreur lors du drag-and-drop des séquences:', error);
+      await refreshTreeData(); // Récupérer les données fraîches en cas d'erreur
+    } finally {
+      setIsReordering(false);
+    }
+  }, [token, refreshTreeData]);
+
   return (
     <Drawer
       sx={{
@@ -367,39 +426,53 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
           <DndProvider backend={HTML5Backend}>
             <div>
               {processedNodes.length > 0 ? (
-                processedNodes.map((node, index) => 
-                  node.type === 'progression' ? (
-                    <DraggableProgressionNode
-                      key={node.id}
-                      node={node}
-                      index={index}
-                      moveNode={moveProgressionNode}
-                      onExpand={handleToggleExpand}
-                      onAddSequence={handleAddSequence}
-                      onEdit={handleEditProgression}
-                      onDelete={handleDeleteProgression}
-                      onDeleteSequence={handleDeleteSequence}
-                      onEditSequence={handleEditSequence}
-                      onAddSession={handleAddSession}
-                      onDeleteSession={handleDeleteSession}
-                      loadingNodeId={loadingNodeId}
-                    />
-                  ) : (
-                    <TreeNode
-                      key={node.id}
-                      node={node}
-                      onExpand={handleToggleExpand}
-                      onAddSequence={handleAddSequence}
-                      onEdit={handleEditProgression}
-                      onDelete={handleDeleteProgression}
-                      onDeleteSequence={handleDeleteSequence}
-                      onEditSequence={handleEditSequence}
-                      onAddSession={handleAddSession}
-                      onDeleteSession={handleDeleteSession}
-                      loadingNodeId={loadingNodeId}
-                    />
-                  )
-                )
+                processedNodes
+                  .filter(node => node.type === 'progression')
+                  .map((progression, index) => (
+                    <React.Fragment key={progression.id}>
+                      {/* Noeud de progression avec drag-and-drop */}
+                      <DraggableProgressionNode
+                        key={progression.id}
+                        node={progression}
+                        index={index}
+                        moveNode={moveProgressionNode}
+                        onExpand={handleToggleExpand}
+                        onAddSequence={handleAddSequence}
+                        onEdit={handleEditProgression}
+                        onDelete={handleDeleteProgression}
+                        onDeleteSequence={handleDeleteSequence}
+                        onEditSequence={handleEditSequence}
+                        onAddSession={handleAddSession}
+                        onDeleteSession={handleDeleteSession}
+                        loadingNodeId={loadingNodeId}
+                      />
+                      
+                      {/* Séquences enfants avec drag-and-drop interne à la progression */}
+                      {progression.isExpanded && Array.isArray(progression.children) && 
+                        progression.children
+                          .filter(child => child.type === 'sequence')
+                          .map((sequence, seqIndex) => (
+                            <DraggableSequenceNode
+                              key={sequence.id}
+                              node={sequence}
+                              index={seqIndex}
+                              progressionId={progression.id} /* Cruciale pour limiter le drag-and-drop */
+                              moveNode={(fromIndex, toIndex) => 
+                                moveSequenceNode(progression.id, fromIndex, toIndex)
+                              }
+                              isReordering={isReordering}
+                              onExpand={handleToggleExpand}
+                              onAddSession={handleAddSession}
+                              onDeleteSequence={handleDeleteSequence}
+                              onEditSequence={handleEditSequence}
+                              onDeleteSession={handleDeleteSession}
+                              loadingNodeId={loadingNodeId}
+                            />
+                          ))
+                      }
+                    </React.Fragment>
+                  ))
+                
               ) : (
                 <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
                   Aucune progression trouvée.

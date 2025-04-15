@@ -12,7 +12,7 @@ class SequenceBase(BaseModel):
     title: str
     description: str | None = None
     progression_id: int
-
+    order: int = 0  # Ajout du champ order dans la base
 class SequenceCreate(SequenceBase):
     # Liste optionnelle d'IDs d'objectifs à associer lors de la création
     objective_ids: Optional[List[int]] = None
@@ -28,6 +28,7 @@ class SequenceUpdate(BaseModel): # Allow partial updates
 class SequenceRead(SequenceBase):
     id: int
     progression_id: int
+    order: int = 0  # Ajout du champ order dans le schéma de lecture
     # Utiliser une Forward Reference (string) pour éviter l'import circulaire
     objectives: List['ObjectiveRead'] = []
     # Ajouter la liste des sessions (séances)

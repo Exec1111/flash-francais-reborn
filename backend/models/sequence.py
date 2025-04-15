@@ -17,6 +17,8 @@ class Sequence(Base):
     # Foreign Key to Progression
     progression_id = Column(Integer, ForeignKey("progressions.id"), nullable=False)
 
+    order = Column(Integer, nullable=False, default=0)  # Ordre d'affichage
+
     # Relationship with Progression (many-to-one)
     progression = relationship("Progression", back_populates="sequences")
     # Relationship with Session (one-to-many)

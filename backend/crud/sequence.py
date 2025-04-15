@@ -29,7 +29,7 @@ def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 
     return query.options(
         selectinload(Sequence.objectives),
         selectinload(Sequence.sessions) # Charger aussi les sessions ici pour la liste
-    ).offset(skip).limit(limit).all()
+    ).order_by(Sequence.order).offset(skip).limit(limit).all()
 
 def count_sequences(db: Session, user_id: int) -> int:
     """Compte le nombre total de séquences pour un utilisateur."""
@@ -48,7 +48,7 @@ def get_sequences_by_progression(db: Session, progression_id: int, user_id: int 
     query = db.query(Sequence).filter(Sequence.progression_id == progression_id)
     if user_id is not None:
         query = query.filter(Sequence.user_id == user_id)
-    return query.options(selectinload(Sequence.objectives)).offset(skip).limit(limit).all()
+    return query.options(selectinload(Sequence.objectives)).order_by(Sequence.order).offset(skip).limit(limit).all()
 
 def create_sequence(db: Session, sequence: SequenceCreate, user_id: int):
     """Crée une nouvelle séquence liée à un utilisateur et potentiellement à des objectifs."""

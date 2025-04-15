@@ -66,6 +66,7 @@ const DraggableProgressionNode = ({ node, index, moveNode, onExpand, ...props })
       <TreeNode 
         node={node} 
         onExpand={onExpand}
+        hideSequenceChildren={true} /* Empêche TreeNode d'afficher récursivement les séquences */
         {...props}
       />
     </div>
