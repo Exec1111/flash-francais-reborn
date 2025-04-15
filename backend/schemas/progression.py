@@ -5,6 +5,7 @@ from .sequence import SequenceRead
 class ProgressionBase(BaseModel):
     title: str
     description: str | None = None
+    order: int = 0
 
 class ProgressionCreate(ProgressionBase):
     pass
@@ -14,7 +15,7 @@ class ProgressionUpdate(ProgressionBase):
 
 class ProgressionRead(ProgressionBase):
     id: int
-
+    order: int
     # Inclure la liste des séquences associées
     sequences: List[SequenceRead] = []
 

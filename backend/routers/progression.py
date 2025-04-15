@@ -31,7 +31,20 @@ def read_progressions_route(
         progressions = crud.get_progressions(db, skip=skip, limit=limit, user_id=user_id)
     else:
         progressions = crud.get_progressions(db, skip=skip, limit=limit, user_id=current_user.id)
+    # Tri par 'order' croissant
+    progressions = sorted(progressions, key=lambda p: p.order)
     return progressions
+
+@progression_router.patch("/reorder", response_model=dict)
+def reorder_progressions(order_list: list[int], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Réordonne les progressions de l'utilisateur courant selon la liste d'IDs transmise."""
+    from models.progression import Progression
+    for idx, progression_id in enumerate(order_list):
+        progression = db.query(Progression).filter_by(id=progression_id, user_id=current_user.id).first()
+        if progression:
+            progression.order = idx
+    db.commit()
+    return {"detail": "Ordre mis à jour"}
 
 @progression_router.get("/{progression_id}", response_model=ProgressionRead)
 def read_progression_route(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

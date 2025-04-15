@@ -13,6 +13,7 @@ class Progression(Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    order = Column(Integer, nullable=False, default=0)  # Ordre d'affichage
+
     # Relations avec les séquences (one-to-many)
     sequences = relationship("Sequence", back_populates="progression")
