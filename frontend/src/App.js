@@ -95,6 +95,7 @@ function ProtectedLayout() {
         name: prog.title, 
         type: 'progression', 
         description: prog.description,
+        order: prog.order, // <-- Ajout du champ order pour le tri !
         // La logique d'expansion dynamique reste dans SideTreeView pour l'instant
         children: [{ id: `loading-${prog.id}`, name: 'Chargement...', type: 'loading' }]
       }));

@@ -7,7 +7,10 @@ import { useTreeData } from '../../contexts/TreeDataContext';
 import api from '../../services/api';
 import ResourceButton from '../resources/ResourceButton';
 import TreeNode from './TreeNode';
+import DraggableProgressionNode from './DraggableProgressionNode';
 import { updateNodeStateRecursive, transformNode } from './utils';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Définir la largeur du drawer
 export const drawerWidth = 480;
@@ -21,16 +24,43 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
 
   // État local pour les nœuds transformés avec état d'expansion
   const [processedNodes, setProcessedNodes] = useState([]);
+  
+  // État pour indiquer qu'une réorganisation est en cours
+  const [isReordering, setIsReordering] = useState(false);
 
   // État de chargement pour les enfants des nœuds
   const [loadingNodeId, setLoadingNodeId] = useState(null);
 
+  // Fonction pour trier les progressions par la colonne 'order'
+  const sortNodesByOrder = useCallback((nodes) => {
+    if (!nodes) return [];
+    
+    return [...nodes].sort((a, b) => {
+      // Si les deux nœuds ont un ordre défini, trier par ordre
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      // Si seulement un nœud a un ordre défini, le mettre en premier
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      // Par défaut, trier par ID
+      return a.id - b.id;
+    });
+  }, []);
+
   // Transformer les données brutes en structure avec état d'expansion
   useEffect(() => {
     if (treeData && treeData.children) {
-      setProcessedNodes(treeData.children.map(node => transformNode(node)));
+      console.log('Progressions reçues (treeData.children, détail par progression) :');
+      treeData.children.forEach((prog, idx) => {
+        console.log(`Progression[${idx}] :`, prog, 'Propriétés :', Object.keys(prog));
+      });
+      // Trier les progressions par 'order' avant de les transformer
+      const sortedNodes = sortNodesByOrder(treeData.children);
+      console.log('Progressions triées (sortedNodes) :', sortedNodes);
+      setProcessedNodes(sortedNodes.map((node, index) => transformNode(node, index)));
     }
-  }, [treeData]);
+  }, [treeData, sortNodesByOrder]);
 
   // Gérer l'expansion/la fermeture d'un nœud
   const handleToggleExpand = useCallback(async (nodeToToggle) => {
@@ -235,6 +265,42 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
     }
   };
 
+  // Déplacer un nœud de progression d'une position à une autre
+  const moveProgressionNode = useCallback(async (fromIndex, toIndex) => {
+    setIsReordering(true);
+    
+    try {
+      // Construire la nouvelle liste réordonnée localement
+      const newNodes = [...processedNodes];
+      const [removed] = newNodes.splice(fromIndex, 1);
+      newNodes.splice(toIndex, 0, removed);
+      // Mettre à jour les index/order
+      const updatedNodes = newNodes.map((node, index) => ({
+        ...node,
+        order: index,
+        index: index
+      }));
+      // Mettre à jour l'état avec la nouvelle liste
+      setProcessedNodes(updatedNodes);
+      // Préparer la liste des IDs à envoyer à l'API
+      const orderList = updatedNodes.map(node => node.originalId);
+      console.log('Nouvel ordre envoyé à l\'API (orderList) :', orderList);
+      // Appel API pour mettre à jour l'ordre des progressions dans la base de données
+      const authToken = token || localStorage.getItem('token');
+      await api.patch('/progressions/reorder', orderList, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      // Rafraîchir les données après la mise à jour (optionnel)
+      // await refreshTreeData();
+    } catch (error) {
+      console.error('Erreur lors de la réorganisation des progressions:', error);
+      // En cas d'erreur, rafraîchir les données pour restaurer l'ordre correct
+      await refreshTreeData();
+    } finally {
+      setIsReordering(false);
+    }
+  }, [processedNodes, token, refreshTreeData]);
+
   return (
     <Drawer
       sx={{
@@ -298,29 +364,55 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
             <Typography color="error">{treeError}</Typography>
           </Box>
         ) : (
-          <div>
-            {processedNodes.length > 0 ? (
-              processedNodes.map(node => (
-                <TreeNode
-                  key={node.id}
-                  node={node}
-                  onExpand={handleToggleExpand}
-                  onAddSequence={handleAddSequence}
-                  onEdit={handleEditProgression}
-                  onDelete={handleDeleteProgression}
-                  onDeleteSequence={handleDeleteSequence}
-                  onEditSequence={handleEditSequence}
-                  onAddSession={handleAddSession}
-                  onDeleteSession={handleDeleteSession}
-                  loadingNodeId={loadingNodeId}
-                />
-              ))
-            ) : (
-              <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-                Aucune progression trouvée.
-              </Typography>
-            )}
-          </div>
+          <DndProvider backend={HTML5Backend}>
+            <div>
+              {processedNodes.length > 0 ? (
+                processedNodes.map((node, index) => 
+                  node.type === 'progression' ? (
+                    <DraggableProgressionNode
+                      key={node.id}
+                      node={node}
+                      index={index}
+                      moveNode={moveProgressionNode}
+                      onExpand={handleToggleExpand}
+                      onAddSequence={handleAddSequence}
+                      onEdit={handleEditProgression}
+                      onDelete={handleDeleteProgression}
+                      onDeleteSequence={handleDeleteSequence}
+                      onEditSequence={handleEditSequence}
+                      onAddSession={handleAddSession}
+                      onDeleteSession={handleDeleteSession}
+                      loadingNodeId={loadingNodeId}
+                    />
+                  ) : (
+                    <TreeNode
+                      key={node.id}
+                      node={node}
+                      onExpand={handleToggleExpand}
+                      onAddSequence={handleAddSequence}
+                      onEdit={handleEditProgression}
+                      onDelete={handleDeleteProgression}
+                      onDeleteSequence={handleDeleteSequence}
+                      onEditSequence={handleEditSequence}
+                      onAddSession={handleAddSession}
+                      onDeleteSession={handleDeleteSession}
+                      loadingNodeId={loadingNodeId}
+                    />
+                  )
+                )
+              ) : (
+                <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                  Aucune progression trouvée.
+                </Typography>
+              )}
+              {isReordering && (
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                  <CircularProgress size={24} sx={{ mr: 1 }} />
+                  <Typography variant="body2">Mise à jour de l'ordre...</Typography>
+                </Box>
+              )}
+            </div>
+          </DndProvider>
         )}
       </Box>
     </Drawer>

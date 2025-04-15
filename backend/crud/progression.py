@@ -17,7 +17,14 @@ def get_progressions(db: Session, user_id: int, skip: int = 0, limit: int = 100)
     query = db.query(Progression)
     if user_id:
         query = query.filter(Progression.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    progressions = query.offset(skip).limit(limit).all()
+    # On s'assure que chaque progression contient bien le champ 'order' (et autres champs utiles)
+    # Mais normalement, le schéma Pydantic ProgressionRead le gère déjà.
+    # Pour debug :
+    for prog in progressions:
+        if not hasattr(prog, 'order'):
+            print(f"[DEBUG] Progression sans champ 'order' : {prog}")
+    return progressions
 
 def count_progressions(db: Session, user_id: int) -> int:
     """Compte le nombre total de progressions pour un utilisateur."""

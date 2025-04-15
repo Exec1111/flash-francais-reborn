@@ -27,14 +27,18 @@ export const updateNodeStateRecursive = (nodes, nodeId, updates) => {
 /**
  * Transforme un nœud pour ajouter les propriétés nécessaires à l'affichage dans l'arbre
  * @param {Object} node - Nœud à transformer
+ * @param {number} index - Index du nœud dans la liste (utilisé pour le drag and drop)
  * @returns {Object} - Nœud transformé
  */
-export const transformNode = (node) => ({
+export const transformNode = (node, index) => ({
   ...node,
   id: `${node.type}_${node.id}`, // Créer un ID unique avec préfixe
+  originalId: node.id, // Garder l'ID original pour les mises à jour
+  order: node.order !== undefined ? node.order : index, // Utiliser l'ordre existant ou l'index par défaut
+  index: index, // Stocker l'index pour le drag and drop
   isExpanded: false,
   // Ajouter un enfant 'loading' si le nœud peut avoir des enfants et n'en a pas déjà
   children: node.type !== 'resource' && (!node.children || node.children.length === 0) ?
     [{ id: `loading-${node.id}`, type: 'loading' }] :
-    (node.children ? node.children.map(transformNode) : [])
+    (node.children ? node.children.map((childNode, childIndex) => transformNode(childNode, childIndex)) : [])
 });
