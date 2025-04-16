@@ -186,7 +186,7 @@ const SequenceDetails = () => {
                 </Box>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Aucune session dans cette séquence.
+                  Aucune séance dans cette séquence.
                 </Typography>
               )}
             </Grid>
@@ -202,15 +202,7 @@ const SequenceDetails = () => {
             color="primary"
             onClick={() => navigate(`/sequences/${id}/sessions/new`)}
           >
-            Ajouter une session
-          </Button>
-          <Button
-            startIcon={<ObjectiveIcon />}
-            variant="outlined"
-            color="secondary"
-            onClick={() => navigate(`/sequences/${id}/objectives/manage`)}
-          >
-            Gérer les objectifs
+            Ajouter une séance
           </Button>
           <Button 
             onClick={() => navigate(-1)} 
