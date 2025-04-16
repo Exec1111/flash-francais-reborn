@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button } from '@mui/material';
 import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon } from '@mui/icons-material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTreeData } from '../../contexts/TreeDataContext';
 import api from '../../services/api';
@@ -19,6 +19,20 @@ export const drawerWidth = 480;
 
 // Composant principal SideNav
 function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
+  const location = useLocation();
+
+  // Extraire l'ID et le type d'élément depuis l'URL
+  let activeNodeType = null;
+  let activeNodeId = null;
+  const pathMatch = location.pathname.match(/\/(progressions|sequences|sessions|resources)(?:\/\w+)?\/(\d+)/);
+  if (pathMatch) {
+    if (pathMatch[1] === 'progressions') activeNodeType = 'progression';
+    if (pathMatch[1] === 'sequences') activeNodeType = 'sequence';
+    if (pathMatch[1] === 'sessions') activeNodeType = 'session';
+    if (pathMatch[1] === 'resources') activeNodeType = 'resource';
+    activeNodeId = parseInt(pathMatch[2], 10);
+  }
+
   const { token } = useAuth();
   const { treeData, isTreeLoading, treeError, refreshTreeData } = useTreeData();
   const theme = useTheme();
@@ -512,6 +526,8 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                         onAddSession={handleAddSession}
                         onDeleteSession={handleDeleteSession}
                         loadingNodeId={loadingNodeId}
+                        activeNodeType={activeNodeType}
+                        activeNodeId={activeNodeId}
                       />
                       
                       {/* Séquences enfants avec drag-and-drop interne à la progression */}
@@ -523,7 +539,7 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                               key={sequence.id}
                               node={sequence}
                               index={seqIndex}
-                              progressionId={progression.id} /* Cruciale pour limiter le drag-and-drop */
+                              progressionId={progression.id}
                               moveNode={(fromIndex, toIndex) => 
                                 moveSequenceNode(progression.id, fromIndex, toIndex)
                               }
@@ -535,6 +551,8 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                               onDeleteSession={handleDeleteSession}
                               loadingNodeId={loadingNodeId}
                               moveSessionNode={moveSessionNode}
+                              activeNodeType={activeNodeType}
+                              activeNodeId={activeNodeId}
                             />
                           ))
                       }

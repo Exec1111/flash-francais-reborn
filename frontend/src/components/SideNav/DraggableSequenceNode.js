@@ -19,6 +19,8 @@ const DraggableSequenceNode = ({
   onEditSequence,
   onDeleteSession,
   loadingNodeId,
+  activeNodeType,
+  activeNodeId,
 }) => {
   const ref = useRef(null);
 
@@ -95,7 +97,9 @@ const DraggableSequenceNode = ({
           onEditSequence={onEditSequence}
           onDeleteSession={onDeleteSession}
           loadingNodeId={loadingNodeId}
-          hideSessionChildren={true} /* Empêcher TreeNode d'afficher récursivement les séances */
+          hideSessionChildren={true}
+          activeNodeType={activeNodeType}
+          activeNodeId={activeNodeId}
         />
         
         {/* Afficher les séances enfants avec drag-and-drop */}
@@ -107,13 +111,15 @@ const DraggableSequenceNode = ({
                 key={session.id}
                 node={session}
                 index={sessionIndex}
-                sequenceId={node.id} /* Pour limiter le drag-and-drop à cette séquence */
+                sequenceId={node.id}
                 moveNode={(fromIndex, toIndex) => 
                   moveSessionNode ? moveSessionNode(node.id, fromIndex, toIndex) : null
                 }
                 isReordering={isReordering}
                 onExpand={onExpand}
                 loadingNodeId={loadingNodeId}
+                activeNodeType={activeNodeType}
+                activeNodeId={activeNodeId}
               />
             ))
         }

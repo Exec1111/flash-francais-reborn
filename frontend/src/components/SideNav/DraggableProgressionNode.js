@@ -5,7 +5,7 @@ import TreeNode from './TreeNode';
 // Type d'élément pour le drag and drop
 const ITEM_TYPE = 'PROGRESSION';
 
-const DraggableProgressionNode = ({ node, index, moveNode, onExpand, ...props }) => {
+const DraggableProgressionNode = ({ node, index, moveNode, onExpand, onAddSequence, onEdit, onDelete, onDeleteSequence, onEditSequence, onAddSession, onDeleteSession, loadingNodeId, activeNodeType, activeNodeId, ...props }) => {
   const ref = useRef(null);
 
   // Configuration du drag (glisser)
@@ -66,6 +66,16 @@ const DraggableProgressionNode = ({ node, index, moveNode, onExpand, ...props })
       <TreeNode 
         node={node} 
         onExpand={onExpand}
+        onAddSequence={onAddSequence}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onDeleteSequence={onDeleteSequence}
+        onEditSequence={onEditSequence}
+        onAddSession={onAddSession}
+        onDeleteSession={onDeleteSession}
+        loadingNodeId={loadingNodeId}
+        activeNodeType={activeNodeType}
+        activeNodeId={activeNodeId}
         hideSequenceChildren={true} /* Empêche TreeNode d'afficher récursivement les séquences */
         {...props}
       />

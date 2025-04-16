@@ -14,6 +14,8 @@ const DraggableSessionNode = ({
   isReordering,
   onExpand,
   loadingNodeId,
+  activeNodeType,
+  activeNodeId,
 }) => {
   const ref = useRef(null);
 
@@ -82,8 +84,10 @@ const DraggableSessionNode = ({
         node={node}
         onExpand={onExpand}
         loadingNodeId={loadingNodeId}
-        level={2} // Niveau 2 pour les séances (sous les séquences)
-        hideSessionChildren={true} // Éviter l'affichage en double
+        level={2}
+        hideSessionChildren={true}
+        activeNodeType={activeNodeType}
+        activeNodeId={activeNodeId}
       />
     </div>
   );
