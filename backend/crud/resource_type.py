@@ -66,10 +66,10 @@ def get_resource_subtypes(db: Session, type_id: Optional[int] = None, skip: int 
     try:
         # Tenter d'afficher la requête compilée
         from sqlalchemy.dialects import postgresql
-        logger.info(f"Executing SQL for get_resource_subtypes: {query.statement.compile(dialect=postgresql.dialect(), compile_kwargs={'literal_binds': True})}\n")
+        #logger.info(f"Executing SQL for get_resource_subtypes: {query.statement.compile(dialect=postgresql.dialect(), compile_kwargs={'literal_binds': True})}\n")
     except Exception as e:
         logger.warning(f"Could not compile query for logging: {e}")
-        logger.info(f"Executing SQL for get_resource_subtypes (basic query object): {query}\n")
+        #logger.info(f"Executing SQL for get_resource_subtypes (basic query object): {query}\n")
     # --- FIN TRACE --- 
     
     return query.offset(skip).limit(limit).all()

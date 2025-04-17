@@ -1,8 +1,7 @@
 import api from './api';
 
-// Récupérer l'URL de base de l'API depuis les variables d'environnement
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
-const AUTH_ENDPOINT = `${API_BASE_URL}/api/v1/auth`;
+// PAS BESOIN de API_BASE_URL ici car la baseURL est déjà dans l'instance api
+const AUTH_ENDPOINT = '/auth';
 
 export const authService = {
   /**

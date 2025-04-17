@@ -1,8 +1,5 @@
 import axios from 'axios';
-
-// Récupérer l'URL de base de l'API depuis les variables d'environnement
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
-const API_URL = `${API_BASE_URL}/api/v1/resource-types`;
+import api from './api';
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {
@@ -13,11 +10,13 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+const RESOURCE_TYPE_ENDPOINT = '/resource-types';
+
 export const resourceTypeService = {
   // Récupérer tous les types de ressources
   getAllTypes: async () => {
     try {
-      const response = await axios.get(`${API_URL}/types`);
+      const response = await api.get(`${RESOURCE_TYPE_ENDPOINT}/types`);
       return response.data;
     } catch (error) {
       throw error;
@@ -27,7 +26,7 @@ export const resourceTypeService = {
   // Récupérer un type de ressource avec ses sous-types
   getTypeWithSubtypes: async (typeId) => {
     try {
-      const response = await axios.get(`${API_URL}/types/${typeId}`);
+      const response = await api.get(`${RESOURCE_TYPE_ENDPOINT}/types/${typeId}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -37,7 +36,7 @@ export const resourceTypeService = {
   // Récupérer tous les sous-types de ressources
   getAllSubtypes: async () => {
     try {
-      const response = await axios.get(`${API_URL}/subtypes`);
+      const response = await api.get(`${RESOURCE_TYPE_ENDPOINT}/subtypes`);
       return response.data;
     } catch (error) {
       throw error;
@@ -47,7 +46,7 @@ export const resourceTypeService = {
   // Récupérer les sous-types pour un type spécifique
   getSubtypesByType: async (typeId) => {
     try {
-      const response = await axios.get(`${API_URL}/subtypes?type_id=${typeId}`);
+      const response = await api.get(`${RESOURCE_TYPE_ENDPOINT}/subtypes?type_id=${typeId}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -57,7 +56,7 @@ export const resourceTypeService = {
   // Récupérer un sous-type spécifique
   getSubtype: async (subtypeId) => {
     try {
-      const response = await axios.get(`${API_URL}/subtypes/${subtypeId}`);
+      const response = await api.get(`${RESOURCE_TYPE_ENDPOINT}/subtypes/${subtypeId}`);
       return response.data;
     } catch (error) {
       throw error;

@@ -1,9 +1,6 @@
 import axios from 'axios';
+import api from './api';
 import authService from './auth'; // Garder l'import si d'autres fonctions d'authService sont utilisées ailleurs
-
-// Récupérer l'URL de base de l'API depuis les variables d'environnement
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback pour sécurité
-const API_URL = `${API_BASE_URL}/api/v1/resources`; // CORRIGÉ: URL absolue du backend
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {
@@ -14,17 +11,13 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// Fonction pour récupérer UNE ressource par son ID
-const getResourceById = async (id) => {
-  const response = await axios.get(`${API_URL}/${id}`); // Appelle GET /api/v1/resources/{id}
-  return response.data;
-};
+const RESOURCE_ENDPOINT = '/resources';
 
 const resourceService = {
   // Récupérer toutes les ressources
   getAll: async () => {
     try {
-      const response = await axios.get(API_URL);
+      const response = await api.get(RESOURCE_ENDPOINT);
       return response.data;
     } catch (error) {
       throw error;
@@ -34,7 +27,7 @@ const resourceService = {
   // Créer une nouvelle ressource
   create: async (resourceData) => {
     try {
-      const response = await axios.post(API_URL, resourceData);
+      const response = await api.post(RESOURCE_ENDPOINT, resourceData);
       return response.data;
     } catch (error) {
       throw error;
@@ -44,7 +37,7 @@ const resourceService = {
   // Mettre à jour une ressource
   update: async (id, resourceData) => {
     try {
-      const response = await axios.put(`${API_URL}/${id}`, resourceData);
+      const response = await api.put(`${RESOURCE_ENDPOINT}/${id}`, resourceData);
       return response.data;
     } catch (error) {
       throw error;
@@ -54,7 +47,7 @@ const resourceService = {
   // Supprimer une ressource
   delete: async (id) => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await api.delete(`${RESOURCE_ENDPOINT}/${id}`);
     } catch (error) {
       throw error;
     }
@@ -63,14 +56,18 @@ const resourceService = {
   // Obtenir une ressource par ID
   getById: async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/${id}`);
+      const response = await api.get(`${RESOURCE_ENDPOINT}/${id}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  getResourceById, // Exporter la nouvelle fonction
+  // Fonction pour récupérer UNE ressource par son ID
+  getResourceById: async (id) => {
+    const response = await api.get(`${RESOURCE_ENDPOINT}/${id}`);
+    return response.data;
+  },
 };
 
 export default resourceService;

@@ -14,8 +14,8 @@ const DraggableSessionNode = ({
   isReordering,
   onExpand,
   loadingNodeId,
-  activeNodeType,
-  activeNodeId,
+  activeNodeType = null,
+  activeNodeId = null,
 }) => {
   const ref = useRef(null);
 

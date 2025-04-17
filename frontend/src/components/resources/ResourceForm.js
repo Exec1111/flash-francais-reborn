@@ -30,6 +30,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
+import DynamicAIForm from '../DynamicAIForm';
+import api from '../../services/api'; // Correction du chemin d'import
 
 /**
  * Composant de formulaire réutilisable pour la création et l'édition de ressources
@@ -60,9 +62,9 @@ const ResourceForm = ({
     resource_type_id: '',
     resource_sub_type_id: '',
     session_ids: session ? [session.id] : [], 
-    ai_prompt: '',
-    ai_model: '',
-    ai_raw_output: ''
+    // ai_prompt: '',
+    // ai_model: '',
+    // ai_raw_output: ''
   });
   const [sourceType, setSourceType] = useState('ai'); 
   const [selectedFile, setSelectedFile] = useState(null);
@@ -78,6 +80,9 @@ const ResourceForm = ({
   const navigate = useNavigate();
   const MAX_FILE_SIZE = 1 * 1024 * 1024; 
   const ALLOWED_FILE_TYPE = 'application/pdf';
+
+  // --- Animation de chargement pour la génération IA ---
+  const [aiLoading, setAiLoading] = useState(false);
 
   // --- Effets --- 
 
@@ -96,9 +101,9 @@ const ResourceForm = ({
             session_ids: initialData.session_ids || (session ? [session.id] : []), // Utiliser session_ids de ResourceEdit
             // source_type est géré par l'état dédié `sourceType`
             url: initialData.url || '', // Inclure l'URL si elle fait partie des initialData
-            ai_prompt: initialData.ai_prompt || '',
-            ai_model: initialData.ai_model || '',
-            ai_raw_output: initialData.ai_raw_output || ''
+            // ai_prompt: initialData.ai_prompt || '',
+            // ai_model: initialData.ai_model || '',
+            // ai_raw_output: initialData.ai_raw_output || ''
             // Remarque: file_path, file_name ne sont pas des champs modifiables ici
         });
 
@@ -180,8 +185,8 @@ const ResourceForm = ({
 
   const handleSourceTypeChange = (e) => {
     setSourceType(e.target.value);
-    // Réinitialiser le fichier/erreur si on passe à 'ai'
-    if (e.target.value === 'ai') {
+    // Réinitialiser le fichier/erreur si on passe à 'file'
+    if (e.target.value === 'file') {
         setSelectedFile(null);
         setFileError('');
     }
@@ -249,9 +254,9 @@ const ResourceForm = ({
         }
     } else { // sourceType === 'ai'
         // Ajouter les champs AI (même s'ils sont vides, le backend les gère comme Nullable)
-        dataToSend.append('ai_prompt', formData.ai_prompt);
-        dataToSend.append('ai_model', formData.ai_model);
-        dataToSend.append('ai_raw_output', formData.ai_raw_output);
+        // dataToSend.append('ai_prompt', formData.ai_prompt);
+        // dataToSend.append('ai_model', formData.ai_model);
+        // dataToSend.append('ai_raw_output', formData.ai_raw_output);
     }
 
     try {
@@ -304,6 +309,43 @@ const ResourceForm = ({
         setSubmitting(false);
     }
   };
+
+  // Fonction dédiée pour la génération d'un QCM via l'API IA
+  const handleQCMGeneration = async (payload) => {
+    // payload : { typeKey, subtypeKey, variables }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post(
+        '/ai/generate-resource',
+        {
+          type_key: payload.typeKey,
+          subtype_key: payload.subtypeKey,
+          variables: payload.variables
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Afficher le résultat ou rappeler onSuccess
+      if (onSuccess) onSuccess(response.data);
+      else alert('QCM généré avec succès !');
+    } catch (err) {
+      alert('Erreur lors de la génération du QCM : ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  // Gestionnaire de génération QCM avec animation
+  const handleQCMGenerationWithLoading = async (payload) => {
+    setAiLoading(true);
+    try {
+      await handleQCMGeneration(payload);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Clé type & sous-type pour QCM (définies avant formContent)
+  const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
+  const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
+  const isQCM = (selectedType?.key === 'exercice' || selectedType?.value?.toLowerCase() === 'exercice') && (selectedSubType?.key === 'qcm' || selectedSubType?.value?.toLowerCase() === 'qcm');
 
   // --- Rendu JSX --- 
 
@@ -383,46 +425,8 @@ const ResourceForm = ({
             </FormControl>
         </Grid>
 
-        {/* Champs conditionnels AI ou Fichier */}
-        {sourceType === 'ai' ? (
-            <>
-                <Grid item xs={12}>
-                    <TextField 
-                        fullWidth 
-                        label="Prompt IA (optionnel)" 
-                        name="ai_prompt" 
-                        value={formData.ai_prompt}
-                        onChange={handleInputChange}
-                        multiline 
-                        rows={2} 
-                        disabled={submitting} 
-                    />
-                </Grid>
-                {/* Ajouter d'autres champs AI si nécessaire (ai_model, ai_raw_output) */}
-                 <Grid item xs={12}>
-                    <TextField 
-                        fullWidth 
-                        label="Modèle IA utilisé (optionnel)" 
-                        name="ai_model" 
-                        value={formData.ai_model}
-                        onChange={handleInputChange}
-                        disabled={submitting} 
-                    />
-                </Grid>
-                 <Grid item xs={12}>
-                    <TextField 
-                        fullWidth 
-                        label="Sortie brute IA (optionnel)" 
-                        name="ai_raw_output" 
-                        value={formData.ai_raw_output}
-                        onChange={handleInputChange}
-                        multiline 
-                        rows={3}
-                        disabled={submitting} 
-                    />
-                </Grid>
-            </>
-        ) : (
+        {/* Sélecteur Fichier */}
+        {sourceType === 'file' && (
             <Grid item xs={12}>
                 <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
                     <input
@@ -453,8 +457,7 @@ const ResourceForm = ({
                             {fileError}
                         </Typography>
                     )}
-                     {/* Afficher le nom du fichier existant en mode édition */}
-                     {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
+                    {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
                         <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
                             Fichier actuel: {initialData.file_name} (choisir un nouveau fichier pour remplacer)
                         </Typography>
@@ -462,23 +465,29 @@ const ResourceForm = ({
                 </Box>
             </Grid>
         )}
-
-        {/* Supprimer l'ancien champ 'content' */}
-        {/* 
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Contenu"
-            name="content"
-            value={formData.content}
-            onChange={handleInputChange}
-            multiline
-            rows={4}
-            disabled={submitting}
-          />
-        </Grid> 
-        */}
       </Grid>
+      {isQCM && sourceType === 'ai' && (
+        <Box sx={{ mt: 2 }}>
+          <Card>
+            <CardHeader title="Ajouter un QCM généré par l'IA" />
+            <CardContent>
+              {aiLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
+                  <CircularProgress size={28} color="primary" />
+                  <span style={{ fontWeight: 500 }}>Génération du QCM en cours...</span>
+                </div>
+              )}
+              <DynamicAIForm
+                typeKey={selectedType.key.toLowerCase()}
+                subtypeKey={selectedSubType.key.toLowerCase()}
+                onSubmit={handleQCMGenerationWithLoading}
+                onCancel={isDialog ? onClose : () => navigate(-1)}
+                loading={aiLoading}
+              />
+            </CardContent>
+          </Card>
+        </Box>
+      )}
     </>
   );
   
