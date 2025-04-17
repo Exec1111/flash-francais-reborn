@@ -84,6 +84,11 @@ const ResourceForm = ({
   // --- Animation de chargement pour la génération IA ---
   const [aiLoading, setAiLoading] = useState(false);
 
+  // Nouveau : contenu généré IA (JSON)
+  const [generatedContent, setGeneratedContent] = useState(null); 
+  const [jsonEditorValue, setJsonEditorValue] = useState(''); // Texte du textarea
+  const [jsonEditorError, setJsonEditorError] = useState('');
+
   // --- Effets --- 
 
   // Initialisation du formulaire avec les données existantes
@@ -312,25 +317,48 @@ const ResourceForm = ({
 
   // Fonction dédiée pour la génération d'un QCM via l'API IA
   const handleQCMGeneration = async (payload) => {
-    // payload : { typeKey, subtypeKey, variables }
     try {
-      const token = localStorage.getItem('token');
       const response = await api.post(
         '/ai/generate-resource',
         {
           type_key: payload.typeKey,
           subtype_key: payload.subtypeKey,
           variables: payload.variables
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
-      // Afficher le résultat ou rappeler onSuccess
-      if (onSuccess) onSuccess(response.data);
-      else alert('QCM généré avec succès !');
+      // Afficher le résultat dans l'éditeur JSON
+      setGeneratedContent(response.data.content);
+      setJsonEditorValue(JSON.stringify(response.data.content, null, 2));
+      setJsonEditorError('');
+      // On n'appelle plus onSuccess ici : on attend la validation de l'utilisateur
     } catch (err) {
       alert('Erreur lors de la génération du QCM : ' + (err.response?.data?.detail || err.message));
     }
   };
+
+  // Fonction de validation/enregistrement du JSON modifié
+  const handleValidateAndSave = () => {
+    try {
+      const parsed = JSON.parse(jsonEditorValue);
+      setJsonEditorError('');
+      // Ici, tu peux appeler la logique d'enregistrement définitif (API, etc.)
+      // Par exemple, tu peux passer le contenu à onSuccess ou lancer une requête d'enregistrement
+      if (onSuccess) onSuccess({ ...generatedContent, ...parsed });
+      else alert('Contenu validé : ' + JSON.stringify(parsed));
+      // Optionnel : reset l'éditeur après enregistrement
+      setGeneratedContent(null);
+      setJsonEditorValue('');
+    } catch (e) {
+      setJsonEditorError('Le contenu n\'est pas un JSON valide : ' + e.message);
+    }
+  };
+
+  // --- Rendu JSX --- 
+
+  // Clé type & sous-type pour QCM (définies avant formContent)
+  const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
+  const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
+  const isQCM = (selectedType?.key === 'exercice' || selectedType?.value?.toLowerCase() === 'exercice') && (selectedSubType?.key === 'qcm' || selectedSubType?.value?.toLowerCase() === 'qcm');
 
   // Gestionnaire de génération QCM avec animation
   const handleQCMGenerationWithLoading = async (payload) => {
@@ -342,151 +370,166 @@ const ResourceForm = ({
     }
   };
 
-  // Clé type & sous-type pour QCM (définies avant formContent)
-  const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
-  const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
-  const isQCM = (selectedType?.key === 'exercice' || selectedType?.value?.toLowerCase() === 'exercice') && (selectedSubType?.key === 'qcm' || selectedSubType?.value?.toLowerCase() === 'qcm');
-
-  // --- Rendu JSX --- 
-
   const formContent = (
     <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Titre"
-            name="title"
-            value={formData.title}
-            onChange={handleInputChange}
-            required
-            disabled={submitting}
+      {/* Affichage de l'éditeur JSON si contenu généré */}
+      {generatedContent && (
+        <Box sx={{ my: 2 }}>
+          <Typography variant="h6" gutterBottom>Contenu généré (modifiable avant enregistrement) :</Typography>
+          <textarea
+            value={jsonEditorValue}
+            onChange={e => setJsonEditorValue(e.target.value)}
+            rows={Math.max(10, jsonEditorValue.split('\n').length + 2)}
+            style={{ width: '100%', fontFamily: 'monospace', fontSize: 14, border: jsonEditorError ? '2px solid red' : '1px solid #ccc', borderRadius: 4, padding: 8 }}
           />
-        </Grid>
-
-        {/* Sélecteur Type / Sous-type */}
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth required>
-            <InputLabel id="type-label">Type</InputLabel>
-            <Select
-              labelId="type-label"
-              name="resource_type_id"
-              value={formData.resource_type_id || ''}
-              onChange={handleInputChange}
-              label="Type"
-              disabled={loadingTypes || resourceTypes.length === 0 || submitting}
-            >
-              {resourceTypes.map((type) => (
-                <MenuItem key={type.id} value={String(type.id)}>
-                  {type.value}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth required>
-            <InputLabel id="subtype-label">Sous-type</InputLabel>
-            <Select
-              labelId="subtype-label"
-              name="resource_sub_type_id"
-              value={formData.resource_sub_type_id || ''}
-              onChange={handleInputChange}
-              label="Sous-type"
-              disabled={!formData.resource_type_id || resourceSubTypes.length === 0 || submitting}
-            >
-              {resourceSubTypes.map((subType) => (
-                <MenuItem key={subType.id} value={String(subType.id)}>
-                  {subType.value}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {/* Sélecteur Source Type */}
-        <Grid item xs={12}>
-             <FormControl component="fieldset" disabled={submitting}>
-                <FormLabel component="legend">Source de la ressource</FormLabel>
-                <RadioGroup
-                    row
-                    aria-label="source-type"
-                    name="source_type"
-                    value={sourceType}
-                    onChange={handleSourceTypeChange}
-                >
-                    <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
-                    <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
-                </RadioGroup>
-            </FormControl>
-        </Grid>
-
-        {/* Sélecteur Fichier */}
-        {sourceType === 'file' && (
-            <Grid item xs={12}>
-                <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
-                    <input
-                        accept={ALLOWED_FILE_TYPE}
-                        style={{ display: 'none' }}
-                        id="raised-button-file"
-                        type="file"
-                        onChange={handleFileChange}
-                        disabled={submitting}
-                    />
-                    <label htmlFor="raised-button-file">
-                        <Button 
-                            variant="outlined" 
-                            component="span" 
-                            startIcon={<UploadFileIcon />} 
-                            disabled={submitting}
-                        >
-                            Choisir un fichier PDF (Max 1 Mo)
-                        </Button>
-                    </label>
-                    {selectedFile && (
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                            Fichier sélectionné: {selectedFile.name}
-                        </Typography>
-                    )}
-                    {fileError && (
-                        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                            {fileError}
-                        </Typography>
-                    )}
-                    {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
-                        <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                            Fichier actuel: {initialData.file_name} (choisir un nouveau fichier pour remplacer)
-                        </Typography>
-                    )}
-                </Box>
-            </Grid>
-        )}
-      </Grid>
-      {isQCM && sourceType === 'ai' && (
-        <Box sx={{ mt: 2 }}>
-          <Card>
-            <CardHeader title="Ajouter un QCM généré par l'IA" />
-            <CardContent>
-              {aiLoading && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
-                  <CircularProgress size={28} color="primary" />
-                  <span style={{ fontWeight: 500 }}>Génération du QCM en cours...</span>
-                </div>
-              )}
-              <DynamicAIForm
-                typeKey={selectedType.key.toLowerCase()}
-                subtypeKey={selectedSubType.key.toLowerCase()}
-                onSubmit={handleQCMGenerationWithLoading}
-                onCancel={isDialog ? onClose : () => navigate(-1)}
-                loading={aiLoading}
-              />
-            </CardContent>
-          </Card>
+          {jsonEditorError && <Typography color="error" sx={{ mt: 1 }}>{jsonEditorError}</Typography>}
+          <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleValidateAndSave}>
+            Valider et enregistrer
+          </Button>
         </Box>
+      )}
+
+      {/* Formulaire classique si pas de contenu généré */}
+      {!generatedContent && (
+        <>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Titre"
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                required
+                disabled={submitting}
+              />
+            </Grid>
+
+            {/* Sélecteur Type / Sous-type */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="type-label">Type</InputLabel>
+                <Select
+                  labelId="type-label"
+                  name="resource_type_id"
+                  value={formData.resource_type_id || ''}
+                  onChange={handleInputChange}
+                  label="Type"
+                  disabled={loadingTypes || resourceTypes.length === 0 || submitting}
+                >
+                  {resourceTypes.map((type) => (
+                    <MenuItem key={type.id} value={String(type.id)}>
+                      {type.value}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="subtype-label">Sous-type</InputLabel>
+                <Select
+                  labelId="subtype-label"
+                  name="resource_sub_type_id"
+                  value={formData.resource_sub_type_id || ''}
+                  onChange={handleInputChange}
+                  label="Sous-type"
+                  disabled={!formData.resource_type_id || resourceSubTypes.length === 0 || submitting}
+                >
+                  {resourceSubTypes.map((subType) => (
+                    <MenuItem key={subType.id} value={String(subType.id)}>
+                      {subType.value}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Sélecteur Source Type */}
+            <Grid item xs={12}>
+                 <FormControl component="fieldset" disabled={submitting}>
+                    <FormLabel component="legend">Source de la ressource</FormLabel>
+                    <RadioGroup
+                        row
+                        aria-label="source-type"
+                        name="source_type"
+                        value={sourceType}
+                        onChange={handleSourceTypeChange}
+                    >
+                        <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
+                        <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
+                    </RadioGroup>
+                </FormControl>
+            </Grid>
+
+            {/* Sélecteur Fichier */}
+            {sourceType === 'file' && (
+                <Grid item xs={12}>
+                    <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
+                        <input
+                            accept={ALLOWED_FILE_TYPE}
+                            style={{ display: 'none' }}
+                            id="raised-button-file"
+                            type="file"
+                            onChange={handleFileChange}
+                            disabled={submitting}
+                        />
+                        <label htmlFor="raised-button-file">
+                            <Button 
+                                variant="outlined" 
+                                component="span" 
+                                startIcon={<UploadFileIcon />} 
+                                disabled={submitting}
+                            >
+                                Choisir un fichier PDF (Max 1 Mo)
+                            </Button>
+                        </label>
+                        {selectedFile && (
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                                Fichier sélectionné: {selectedFile.name}
+                            </Typography>
+                        )}
+                        {fileError && (
+                            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                                {fileError}
+                            </Typography>
+                        )}
+                        {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
+                            <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                                Fichier actuel: {initialData.file_name} (choisir un nouveau fichier pour remplacer)
+                            </Typography>
+                        )}
+                    </Box>
+                </Grid>
+            )}
+          </Grid>
+          {isQCM && sourceType === 'ai' && (
+            <Box sx={{ mt: 2 }}>
+              <Card>
+                <CardHeader title="Ajouter un QCM généré par l'IA" />
+                <CardContent>
+                  {aiLoading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
+                      <CircularProgress size={28} color="primary" />
+                      <span style={{ fontWeight: 500 }}>Génération du QCM en cours...</span>
+                    </div>
+                  )}
+                  <DynamicAIForm
+                    typeKey={selectedType.key.toLowerCase()}
+                    subtypeKey={selectedSubType.key.toLowerCase()}
+                    onSubmit={handleQCMGenerationWithLoading}
+                    onCancel={isDialog ? onClose : () => navigate(-1)}
+                    loading={aiLoading}
+                  />
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+        </>
       )}
     </>
   );

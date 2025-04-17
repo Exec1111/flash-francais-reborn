@@ -13,15 +13,11 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
 
   useEffect(() => {
     console.log('DEBUG [DynamicAIForm] useEffect déclenché avec typeKey:', typeKey, 'subtypeKey:', subtypeKey);
-    // Réinitialiser l'état à chaque changement de typeKey ou subtypeKey
     setFormSchema(null);
     setFormData({});
     setErrors({});
     if (typeKey && subtypeKey) {
-      console.log('DEBUG [DynamicAIForm] useEffect déclenché avec typeKey:', typeKey, 'subtypeKey:', subtypeKey);
       fetchSchema();
-    } else {
-      console.log('DEBUG [DynamicAIForm] useEffect: typeKey ou subtypeKey non défini');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeKey, subtypeKey]);
@@ -31,19 +27,11 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
     try {
       setIsLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError("Aucun jeton d'authentification trouvé.");
-        setIsLoading(false);
-        return;
-      }
-      // Utilise l'instance api (baseURL = http://localhost:10000/api/v1)
       const url = `/ai/resource-types/${typeKey}/${subtypeKey}/schema`;
-      let response;
       try {
-        response = await api.get(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const token = localStorage.getItem('token');
+        console.log('[DEBUG][fetchSchema] Token actuel dans localStorage:', token);
+        const response = await api.get(url);
         setFormSchema(response.data);
       } catch (err) {
         if (err.response) {
@@ -62,16 +50,11 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    
-    // Convertir en nombre si nécessaire
     const processedValue = type === 'number' ? parseFloat(value) : value;
-    
     setFormData({
       ...formData,
       [name]: processedValue
     });
-    
-    // Effacer l'erreur lorsque l'utilisateur modifie le champ
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -83,17 +66,12 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
   const validateForm = () => {
     const newErrors = {};
     let isValid = true;
-    
     if (!formSchema) return true;
-    
     formSchema.fields.forEach(field => {
-      // Vérifier les champs obligatoires
       if (field.required && (formData[field.name] === undefined || formData[field.name] === '')) {
         newErrors[field.name] = `${field.label} est obligatoire`;
         isValid = false;
       }
-      
-      // Vérifier les validations supplémentaires
       if (field.type === 'number' && formData[field.name] !== undefined) {
         if (field.validations?.min !== undefined && formData[field.name] < field.validations.min) {
           newErrors[field.name] = `${field.label} doit être au moins ${field.validations.min}`;
@@ -105,21 +83,49 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
         }
       }
     });
-    
     setErrors(newErrors);
     return isValid;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
     if (validateForm()) {
-      // Priorité à onSubmit si défini, sinon fallback sur onSuccess
       if (typeof onSubmit === 'function') {
-        onSubmit({
+        const token = localStorage.getItem('token');
+        console.log('[DEBUG][handleSubmit] Token actuel dans localStorage:', token);
+        console.log('[DEBUG][handleSubmit] Données envoyées:', {
           typeKey: typeKey,
           subtypeKey: subtypeKey,
           variables: formData
         });
+        try {
+          const response = await api.post(
+            '/ai/generate-resource',
+            {
+              type_key: typeKey,
+              subtype_key: subtypeKey,
+              variables: formData
+            }
+          );
+          console.log('[DEBUG][handleSubmit] Réponse du backend:', response);
+          onSubmit({
+            typeKey: typeKey,
+            subtypeKey: subtypeKey,
+            variables: formData,
+            backendResponse: response.data
+          });
+        } catch (err) {
+          if (err.response) {
+            console.error('[DEBUG][handleSubmit] Erreur backend:', err.response.status, err.response.data);
+            setError('Erreur backend: ' + err.response.status + ' ' + JSON.stringify(err.response.data));
+            if (err.response.status === 401) {
+              alert('Erreur 401 : Token absent ou invalide. Veuillez vous reconnecter.');
+            }
+          } else {
+            console.error('[DEBUG][handleSubmit] Erreur réseau ou inconnue:', err.message);
+            setError('Erreur réseau ou inconnue: ' + err.message);
+          }
+        }
       } else if (typeof onSuccess === 'function') {
         onSuccess({
           typeKey: typeKey,
@@ -137,13 +143,12 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
   if (!formSchema) return <div style={{ color: 'orange', margin: '1em 0' }}>Aucun schéma reçu du backend.</div>;
 
   return (
-    <form onSubmit={handleSubmit} className="dynamic-ai-form">
+    <div className="dynamic-ai-form">
       {formSchema.fields.map((field) => (
         <div key={field.name} className="form-group">
           <label htmlFor={field.name} className="form-label" title={field.description}>
             {field.label} {field.required && <span className="required">*</span>}
           </label>
-          
           {field.type === 'number' ? (
             <input
               type="number"
@@ -165,21 +170,20 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
               className={errors[field.name] ? 'form-control error' : 'form-control'}
             />
           )}
-          
           {errors[field.name] && (
             <div className="error-message">{errors[field.name]}</div>
           )}
         </div>
       ))}
-      
       <button 
-        type="submit" 
+        type="button" 
         className="btn btn-primary"
         disabled={loading}
+        onClick={handleSubmit}
       >
         {loading ? 'Génération en cours...' : 'Générer'}
       </button>
-    </form>
+    </div>
   );
 };
 
