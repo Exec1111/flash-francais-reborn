@@ -14,6 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import logging
+from fastapi.security import HTTPBearer
+from fastapi.openapi.models import APIKey, APIKeyIn, SecuritySchemeType
+from fastapi.openapi.utils import get_openapi
 
 from database import get_db, engine, Base
 from config import get_settings, Settings
@@ -47,6 +50,10 @@ settings = get_settings()
 # from fastapi_cache.decorator import cache
 # --- Fin cache désactivé ---
 
+# --- Ajout du schéma de sécurité Bearer ---
+bearer_scheme = HTTPBearer()
+
+# --- Code d'initialisation de FastAPI ---
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="""
@@ -105,6 +112,33 @@ app = FastAPI(
     redoc_url=settings.REDOC_URL,
     openapi_url=settings.OPENAPI_URL
 )
+
+# --- Patch OpenAPI pour ajouter Bearer Auth dans Swagger UI ---
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+    # Appliquer le schéma Bearer par défaut à tous les endpoints
+    for path in openapi_schema["paths"].values():
+        for method in path.values():
+            method.setdefault("security", []).append({"BearerAuth": []})
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 # --- Cache désactivé temporairement --- 
 # @asynccontextmanager
@@ -223,6 +257,13 @@ app.include_router(
 app.mount(settings.MEDIA_URL_PREFIX, StaticFiles(directory=str(settings.UPLOADS_BASE_DIR)), name="user_uploads")
 logger.info(f"Montage des médias depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
 # --- Fin montage Render Disk --- 
+
+# --- Montage du dossier des ressources générées IA ---
+import os
+STATIC_GEN_DIR = os.path.join(os.path.dirname(__file__), "static", "generated_resources")
+os.makedirs(STATIC_GEN_DIR, exist_ok=True)
+app.mount("/static/generated_resources", StaticFiles(directory=STATIC_GEN_DIR), name="generated_resources")
+logger.info(f"Montage des ressources générées IA sur /static/generated_resources depuis {STATIC_GEN_DIR}")
 
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])

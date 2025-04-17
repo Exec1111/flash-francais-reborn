@@ -30,6 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
+import fusionService from '../../services/fusionService';
 import DynamicAIForm from '../DynamicAIForm';
 import api from '../../services/api'; // Correction du chemin d'import
 
@@ -88,6 +89,10 @@ const ResourceForm = ({
   const [generatedContent, setGeneratedContent] = useState(null); 
   const [jsonEditorValue, setJsonEditorValue] = useState(''); // Texte du textarea
   const [jsonEditorError, setJsonEditorError] = useState('');
+
+  const [fusionLoading, setFusionLoading] = useState(false);
+  const [fusionError, setFusionError] = useState('');
+  const [fusionHtmlUrl, setFusionHtmlUrl] = useState('');
 
   // --- Effets --- 
 
@@ -353,6 +358,27 @@ const ResourceForm = ({
     }
   };
 
+  // Fonction de fusion IA
+  const handleFusion = async () => {
+    setFusionLoading(true);
+    setFusionError('');
+    setFusionHtmlUrl('');
+    try {
+      // Récupérer les infos nécessaires (adapter selon la structure du composant)
+      const typeKey = formData.type_key || formData.typeKey || 'exercice';
+      const subtypeKey = formData.subtype_key || formData.subtypeKey || 'qcm';
+      const dataJson = JSON.stringify(formData.content || formData.variables || jsonEditorValue);
+      const modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html'; // à adapter selon le type/sous-type
+      const userId = formData.user_id || 'user';
+      const res = await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
+      setFusionHtmlUrl(res.html_url);
+    } catch (e) {
+      setFusionError(e.message || 'Erreur lors de la fusion IA');
+    } finally {
+      setFusionLoading(false);
+    }
+  };
+
   // --- Rendu JSX --- 
 
   // Clé type & sous-type pour QCM (définies avant formContent)
@@ -389,6 +415,26 @@ const ResourceForm = ({
           <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleValidateAndSave}>
             Valider et enregistrer
           </Button>
+          {jsonEditorValue && (
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleFusion}
+                disabled={fusionLoading}
+              >
+                {fusionLoading ? 'Fusion en cours...' : 'Fusionner avec le modèle HTML'}
+              </Button>
+              {fusionError && <Alert severity="error" sx={{ mt: 1 }}>{fusionError}</Alert>}
+              {fusionHtmlUrl && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Fichier HTML généré (temporaire) :{' '}
+                  <a href={fusionHtmlUrl} target="_blank" rel="noopener noreferrer">Voir l'aperçu HTML</a><br />
+                  <span style={{fontStyle: 'italic', color: '#888'}}>Ce fichier est temporaire tant que la ressource n'est pas enregistrée définitivement.</span>
+                </Alert>
+              )}
+            </Box>
+          )}
         </Box>
       )}
 

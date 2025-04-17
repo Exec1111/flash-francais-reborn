@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 
@@ -6,11 +6,13 @@ from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
-from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError
+from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
 import logging
+import os
+import uuid
 
 # Configure logging (optional, if not handled globally)
 # logging.basicConfig(level=logging.INFO)
@@ -190,3 +192,51 @@ async def get_resource_type_schema(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Une erreur inattendue s'est produite: {e}"
         )
+
+@router.post(
+    "/merge-resource",
+    summary="Fusionne un contenu JSON avec un modèle HTML (uploadé ou par défaut) pour générer un document HTML final via LLM.",
+    description="Fusionne un contenu JSON édité avec un modèle HTML (uploadé ou par défaut), génère un HTML via Gemini, sauvegarde le fichier temporaire et retourne l'URL du HTML généré."
+)
+async def merge_resource(
+    type_key: str = Form(...),
+    subtype_key: str = Form(...),
+    data_json: str = Form(...),
+    model_file: UploadFile = File(None),
+    model_name: str = Form(None),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Endpoint pour fusionner un contenu JSON édité avec un modèle HTML (uploadé ou par défaut).
+    """
+    logger.info(f"Fusion ressource IA {type_key}/{subtype_key} demandée par {current_user.email}")
+    try:
+        # Gestion du modèle : uploadé ou par défaut
+        if model_file:
+            model_path = f"/tmp/uploaded_models/{uuid.uuid4()}_{model_file.filename}"
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            with open(model_path, "wb") as f:
+                f.write(await model_file.read())
+        elif model_name:
+            model_path = os.path.join("backend", "templates", "qcm_models", model_name)
+            if not os.path.exists(model_path):
+                raise HTTPException(status_code=404, detail=f"Modèle {model_name} introuvable")
+        else:
+            # Modèle par défaut selon type ET sous-type (chemin absolu)
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            model_path = os.path.join(BASE_DIR, "templates", "qcm_models", f"default_{type_key.lower()}_{subtype_key.lower()}.html")
+            if not os.path.exists(model_path):
+                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
+
+        # Appel service de fusion (à implémenter)
+        html_path, html_url = await merge_ai_resource_content(
+            type_key=type_key,
+            subtype_key=subtype_key,
+            data_json=data_json,
+            model_path=model_path,
+            user_id=current_user.id
+        )
+        return {"html_url": html_url, "html_path": html_path}
+    except Exception as e:
+        logger.error(f"Erreur lors de la fusion de ressource: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur fusion ressource: {e}")

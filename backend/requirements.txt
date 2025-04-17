@@ -20,7 +20,7 @@ passlib[bcrypt]
 python-multipart
 Werkzeug # Pour secure_filename et potentiellement d'autres utilitaires
 
-# LangChain dependencies
-langchain-core
-langchain-openai
-langchain-google-genai
+# Gemini Google API
+google-generativeai
+# Version compatible, déjà installée normalement
+# google-ai-generativelanguage==0.6.15
