@@ -27,7 +27,8 @@ const resourceService = {
   // Créer une nouvelle ressource
   create: async (resourceData) => {
     try {
-      const response = await api.post(RESOURCE_ENDPOINT, resourceData);
+      const config = resourceData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const response = await api.post(RESOURCE_ENDPOINT, resourceData, config);
       return response.data;
     } catch (error) {
       throw error;
@@ -37,7 +38,8 @@ const resourceService = {
   // Mettre à jour une ressource
   update: async (id, resourceData) => {
     try {
-      const response = await api.put(`${RESOURCE_ENDPOINT}/${id}`, resourceData);
+      const configUpd = resourceData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const response = await api.put(`${RESOURCE_ENDPOINT}/${id}`, resourceData, configUpd);
       return response.data;
     } catch (error) {
       throw error;
