@@ -7,6 +7,7 @@ from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequ
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
 from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content
+from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
@@ -138,54 +139,34 @@ async def get_resource_type_schema(
     logger.info(f"Récupération du schéma pour {type_key}/{subtype_key} demandée par l'utilisateur {current_user.email}")
     
     # Vérifier que le type et sous-type existent
-    prompt_class = ai_resource_service.PROMPT_REGISTRY.get((type_key.lower(), subtype_key.lower()))
-    if not prompt_class:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Type de ressource '{type_key}/{subtype_key}' non trouvé"
-        )
-    
+    prompt_name = ai_resource_service.PROMPT_REGISTRY.get((type_key.lower(), subtype_key.lower()))
+    if not prompt_name:
+        raise HTTPException(status_code=404, detail=f"Type de ressource '{type_key}/{subtype_key}' non trouvé")
     try:
-        # Obtenir le modèle Pydantic associé aux variables
-        variables_model = prompt_class.get_variables_model()
-        
-        # Extraire le schéma avec les métadonnées (descriptions, validations, etc.)
-        schema = variables_model.model_json_schema()
-        
-        # Formater pour le frontend
+        # Utiliser le générateur config-driven
+        generator = PromptGenerator(prompt_name)
         form_fields = []
-        for field_name, field_properties in schema.get("properties", {}).items():
-            field_type = "string"  # Type par défaut
-            
-            # Déterminer le type de champ
-            if field_properties.get("type") == "integer":
-                field_type = "number"
-            
-            # Ajouter les validations
+        for p in generator.parameters:
+            # Déterminer type de champ
+            field_type = "number" if str(p.get("type")).lower() in ("int", "integer") else "string"
+            # Validations et valeurs par défaut
             validations = {}
-            if "minimum" in field_properties:
-                validations["min"] = field_properties["minimum"]
-            if "maximum" in field_properties:
-                validations["max"] = field_properties["maximum"]
-            
+            if "enum" in p:
+                validations["enum"] = p["enum"]
+            default = p.get("default")
+            # Champ requis si pas de default
+            required = default is None
             form_fields.append({
-                "name": field_name,
-                "label": field_properties.get("title", field_name),
-                "description": field_properties.get("description", ""),
+                "name": p["name"],
+                "label": p.get("label", p["name"]),
+                "description": p.get("description", ""),
                 "type": field_type,
-                "required": field_name in schema.get("required", []),
-                "default": field_properties.get("default"),
+                "required": required,
+                "default": default,
                 "validations": validations
             })
-        
         return {"fields": form_fields}
         
-    except NotImplementedError as e:
-        logger.error(f"La classe de prompt {type_key}/{subtype_key} n'implémente pas get_variables_model(): {e}")
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"Le schéma pour '{type_key}/{subtype_key}' n'est pas disponible: {e}"
-        )
     except Exception as e:
         logger.error(f"Erreur lors de la récupération du schéma pour {type_key}/{subtype_key}: {e}", exc_info=True)
         raise HTTPException(

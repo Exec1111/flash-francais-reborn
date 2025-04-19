@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "titre": {"type": "string"},
+    "description": {"type": "string"},
+    "niveau": {"type": "string", "enum": ["A1", "A2", "B1", "B2", "C1", "C2"]},
+    "theme": {"type": "string"},
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": ["integer", "string"]},
+          "texte": {"type": "string"},
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "texte": {"type": "string"}
+              },
+              "required": ["id", "texte"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["id", "texte", "options"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["titre", "niveau", "theme", "questions"],
+  "additionalProperties": false
+}

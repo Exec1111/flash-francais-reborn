@@ -1,6 +1,5 @@
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 from backend.config import get_settings
 
 settings = get_settings()

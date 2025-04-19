@@ -6,15 +6,18 @@ import logging
 import os
 import uuid
 import json
-from backend.ai.prompts.base import BasePrompt
-from backend.ai.prompts.exercises.qcm import QCMPrompt
+from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.models import ResourceType, ResourceSubType
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+import jsonschema  # validation of dynamic schemas
 
 logger = logging.getLogger(__name__)
 
-# Registre des prompts associés aux types/sous-types de ressources
+# Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
-    ("exercice", "qcm"): QCMPrompt,
+    ("exercice", "qcm"): "qcm",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 
@@ -34,21 +37,29 @@ async def merge_ai_resource_content(
     """
     logger.info(f"[Fusion] Lancement fusion pour user {user_id}, modèle {model_path}")
     try:
-        import google.generativeai as genai
-        from dotenv import load_dotenv
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
         model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-03-25")
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
-        uploaded_file = genai.upload_file(path=model_path)
+        
+        # Configuration du client
+        client = genai.Client(api_key=api_key)
+        
+        # Upload du fichier avec le nouveau SDK
+        uploaded_file = client.files.upload(file=model_path)
+        
         user_data = json.loads(data_json)
         prompt = (
             "Génère-moi un document HTML en utilisant le modèle fourni (fichier joint), en te basant sur les données suivantes (au format JSON) :\n"
             f"{json.dumps(user_data, ensure_ascii=False, indent=2)}\n"
             "Le rendu doit respecter fidèlement la structure et le style du modèle."
         )
-        response = model.generate_content([uploaded_file, "\n\n", prompt])
+        
+        # Fusion via GenAI: passer le fichier et le prompt comme liste de File et str
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[ [ uploaded_file, prompt ] ]
+        )
+        
         html_generated = response.text
         # Nouveau dossier de destination (dans static)
         static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "generated_resources", "tmp", str(user_id))
@@ -75,22 +86,75 @@ async def generate_ai_resource_content(
     Génère le contenu d'une ressource IA en utilisant le prompt approprié.
     """
     try:
-        PromptClass = PROMPT_REGISTRY.get((type_key, subtype_key))
-        if not PromptClass:
+        # Récupérer le nom de prompt depuis le registre
+        prompt_name = PROMPT_REGISTRY.get((type_key, subtype_key))
+        if not prompt_name:
             raise ResourceGenerationError(f"Aucun prompt trouvé pour {type_key}/{subtype_key}")
-        prompt_instance = PromptClass()
-        prompt_text = prompt_instance.format_user_prompt(input_variables)
-        import google.generativeai as genai
-        from dotenv import load_dotenv
+        # Générateur générique basé sur YAML/Jinja
+        generator = PromptGenerator(prompt_name)
+        system, user = generator.build(**input_variables)
+        
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
         model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-03-25")
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content([prompt_text])
-        response_content = response.text
-        logger.info(f"Réponse brute du LLM : {response_content}")
-        parsed_content = prompt_instance.parse_response(response_content)
+        
+        # Configuration du client Google GenAI
+        client = genai.Client(api_key=api_key)
+        
+        # Fusionner instructions système et contenu utilisateur en un seul message user
+        prompt_text = f"{system}\n\n{user}"
+        contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
+        
+        # Construire et nettoyer le schéma dynamique si présent
+        schema = generator.schema
+        if schema:
+            # Retirer $schema et additionalProperties
+            def clean(node):
+                if isinstance(node, dict):
+                    node.pop('$schema', None)
+                    node.pop('additionalProperties', None)
+                    for v in node.values(): clean(v)
+                elif isinstance(node, list):
+                    for item in node: clean(item)
+            clean(schema)
+            # Aplatir listes de types au premier élément
+            def flatten(node):
+                if isinstance(node, dict):
+                    t = node.get('type')
+                    if isinstance(t, list) and t:
+                        node['type'] = t[0]
+                    for v in node.values(): flatten(v)
+                elif isinstance(node, list):
+                    for item in node: flatten(item)
+            flatten(schema)
+            config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=schema
+            )
+        else:
+            config = types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        
+        # Appel API en JSON
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=config
+        )
+        
+        # Extraire le JSON
+        response_content = response.text.strip()
+        logger.info(f"Réponse brute du modèle : {response_content}")
+        
+        # Parsing direct du JSON retourné
+        parsed_content = json.loads(response_content)
+        
+        # Valider localement selon le schéma du prompt, sans bloquer en cas d'erreur
+        try:
+            generator.validate(parsed_content)
+        except Exception as ve:
+            logger.warning(f"Validation du schéma échouée: {ve}")
         return parsed_content
     except Exception as e:
         logger.error(f"Erreur lors de la génération de contenu IA: {e}", exc_info=True)
