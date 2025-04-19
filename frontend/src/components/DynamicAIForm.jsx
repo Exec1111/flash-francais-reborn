@@ -87,54 +87,12 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
     return isValid;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     if (e) e.preventDefault();
-    if (validateForm()) {
-      if (typeof onSubmit === 'function') {
-        const token = localStorage.getItem('token');
-        console.log('[DEBUG][handleSubmit] Token actuel dans localStorage:', token);
-        console.log('[DEBUG][handleSubmit] Données envoyées:', {
-          typeKey: typeKey,
-          subtypeKey: subtypeKey,
-          variables: formData
-        });
-        try {
-          const response = await api.post(
-            '/ai/generate-resource',
-            {
-              type_key: typeKey,
-              subtype_key: subtypeKey,
-              variables: formData
-            }
-          );
-          console.log('[DEBUG][handleSubmit] Réponse du backend:', response);
-          onSubmit({
-            typeKey: typeKey,
-            subtypeKey: subtypeKey,
-            variables: formData,
-            backendResponse: response.data
-          });
-        } catch (err) {
-          if (err.response) {
-            console.error('[DEBUG][handleSubmit] Erreur backend:', err.response.status, err.response.data);
-            setError('Erreur backend: ' + err.response.status + ' ' + JSON.stringify(err.response.data));
-            if (err.response.status === 401) {
-              alert('Erreur 401 : Token absent ou invalide. Veuillez vous reconnecter.');
-            }
-          } else {
-            console.error('[DEBUG][handleSubmit] Erreur réseau ou inconnue:', err.message);
-            setError('Erreur réseau ou inconnue: ' + err.message);
-          }
-        }
-      } else if (typeof onSuccess === 'function') {
-        onSuccess({
-          typeKey: typeKey,
-          subtypeKey: subtypeKey,
-          variables: formData
-        });
-      } else {
-        alert("Aucune fonction de soumission n'est définie (onSubmit/onSuccess)");
-      }
+    if (typeof onSubmit === 'function') {
+      onSubmit({ typeKey, subtypeKey, variables: formData });
+    } else {
+      alert("Aucune fonction de soumission n'est définie (onSubmit/onSuccess)");
     }
   };
 

@@ -6,7 +6,6 @@ system_prompt: |
 user_prompt_template: |
   Crée un QCM en français sur le thème : {{ theme }}.
   Niveau de l'apprenant : {{ niveau }}.
-  Objectif pédagogique : {{ objectif_pedagogique }}.
   Nombre de questions : {{ nombre_questions }}.
   Nombre d'options par question : {{ nb_options }}.
   Contraintes :
@@ -20,8 +19,6 @@ parameters:
   - name: niveau
     type: str
     enum: [A1, A2, B1, B2, C1, C2]
-  - name: objectif_pedagogique
-    type: str
   - name: nombre_questions
     type: int
   - name: nb_options

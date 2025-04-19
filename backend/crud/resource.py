@@ -12,9 +12,8 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 def get_upload_path(user_id: int, file_name: str) -> str:
-    # Crée le chemin RELATIF pour la BDD (ex: uploads/19/fichier.pdf)
-    # La création du dossier physique est maintenant gérée par le routeur au bon endroit (static/uploads/...)
-    user_folder = Path("uploads") / str(user_id) 
+    # Crée le chemin RELATIF pour la BDD (ex: uploads/19/mon_fichier.html)
+    user_folder = Path("uploads") / str(user_id)
     return str(user_folder / file_name)
 
 def get_resource(db: Session, resource_id: int):
@@ -134,9 +133,11 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
     session_ids = resource_data.pop('session_ids', [])
     objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
     resource_data.pop('user_id', None) # Retirer user_id du dict car il est passé explicitement
-    resource_data.pop('source_type', None) # Retirer source_type aussi, car il est défini ci-dessous
-
-    # Gérer le cas où file_upload est None (ressource de type 'ai' ou 'url')
+    
+    # Récupérer et retirer source_type, définir par défaut 'ai' si absent
+    source_type_value = resource_data.get('source_type') or 'ai'
+    resource_data.pop('source_type', None)
+    
     if file_upload:
         file_path_relative = get_upload_path(user_id, file_upload.file_name)
         db_resource = Resource(
@@ -149,12 +150,12 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
             source_type='file' # Défini comme 'file' si upload
         )
     else:
-        # Si pas d'upload, le source_type DOIT être défini dans resource_data
-        if 'source_type' not in resource_data or resource_data['source_type'] == 'file':
-            raise ValueError("source_type doit être défini (ex: 'ai', 'url') si aucun fichier n'est uploadé.")
-        # Utiliser user_id de l'argument, pas de resource_data (déjà poppé)
-        # source_type est défini dans le **resource_data restant si pas d'upload.
-        db_resource = Resource(**resource_data, user_id=user_id)
+        # Ressource IA : on définit toujours source_type à 'ai'
+        db_resource = Resource(
+            **resource_data,
+            user_id=user_id,
+            source_type=source_type_value
+        )
 
     # Lier les sessions initiales
     if session_ids:

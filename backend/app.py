@@ -265,6 +265,12 @@ os.makedirs(STATIC_GEN_DIR, exist_ok=True)
 app.mount("/static/generated_resources", StaticFiles(directory=STATIC_GEN_DIR), name="generated_resources")
 logger.info(f"Montage des ressources générées IA sur /static/generated_resources depuis {STATIC_GEN_DIR}")
 
+# --- Montage du dossier temporaire pour les ressources générées IA avant copie ---
+STATIC_TMP_DIR = os.path.join(os.path.dirname(__file__), "static", "tmp")
+os.makedirs(STATIC_TMP_DIR, exist_ok=True)
+app.mount("/static/tmp", StaticFiles(directory=STATIC_TMP_DIR), name="tmp_resources")
+logger.info(f"Montage du dossier temporaire sur /static/tmp depuis {STATIC_TMP_DIR}")
+
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])
 def test_sequence_route():

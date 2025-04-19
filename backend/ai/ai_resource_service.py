@@ -61,15 +61,19 @@ async def merge_ai_resource_content(
         )
         
         html_generated = response.text
-        # Nouveau dossier de destination (dans static)
-        static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "generated_resources", "tmp", str(user_id))
+        # Dossier de destination temporaire pour la génération
+        from config import get_settings
+        settings = get_settings()
+        # Utiliser un répertoire temporaire dans static pour génération
+        static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "tmp", str(user_id))
         os.makedirs(static_gen_dir, exist_ok=True)
         html_filename = f"qcm_{uuid.uuid4().hex}.html"
         html_path = os.path.join(static_gen_dir, html_filename)
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_generated)
-        # Chemin relatif pour accès public
-        relative_public_path = f"generated_resources/tmp/{user_id}/{html_filename}"
+        # Chemin relatif pour accès public temporaire
+        relative_public_path = f"tmp/{user_id}/{html_filename}"
+        # URL pour accéder au fichier temporaire
         html_url = f"http://localhost:10000/static/{relative_public_path}"
         logger.info(f"[Fusion] HTML généré sauvegardé : {html_path}")
         return html_path, html_url

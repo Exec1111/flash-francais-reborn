@@ -124,6 +124,20 @@ body {
   padding: 1rem 2rem;
 }
 
+/* Overlay global pour bloquer la page lors de la soumission/lenteur */
+.spinner-overlay {
+  position: fixed;  /* couvrir tout l’écran */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
 /* Animation classes */
 .fade-enter {
   opacity: 0;

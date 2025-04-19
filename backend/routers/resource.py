@@ -5,6 +5,7 @@ from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, R
 from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
 from database import get_db
 import crud.resource # Importer spécifiquement le module requis
+from crud.resource import get_upload_path
 from dependencies import get_current_active_user # Import absolu
 from models import User as UserModel # Pour l'info utilisateur
 import logging
@@ -50,17 +51,18 @@ def read_resource_sub_types(
 
 @resource_router.post("/", response_model=ResourceResponse)
 async def create_resource_route(
-    *, # Force les arguments suivants à être keyword-only
+    *, # Force keyword-only args
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
     title: str = Form(...),
     description: Optional[str] = Form(None),
     type_id: int = Form(...),
     sub_type_id: int = Form(...),
-    source_type: str = Form(...), # 'file' ou 'ai'
+    source_type: Optional[str] = Form(None), # 'file' ou 'ai', par défaut 'ai'
     session_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs
     objective_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objectifs
-    file: Optional[UploadFile] = File(None) # Le fichier uploadé
+    file: Optional[UploadFile] = File(None), # Le fichier uploadé
+    html_path: Optional[str] = Form(None) # Chemin HTML généré pour IA
 ):
     """Crée une nouvelle ressource. 
     Si source_type est 'file', un fichier doit être uploadé. 
@@ -69,6 +71,10 @@ async def create_resource_route(
     """
     logger.info(f"Tentative de création de ressource par l'utilisateur {current_user.id}")
     
+    # Si non précisé et pas de fichier, on considère IA
+    if not source_type:
+        source_type = 'ai'
+
     # Parser les IDs de session depuis la string JSON
     try:
         session_ids = json.loads(session_ids_json) if session_ids_json else []
@@ -136,12 +142,13 @@ async def create_resource_route(
              raise HTTPException(status_code=400, detail="Nom de fichier invalide.")
 
         # Construire le chemin ABSOLU sur le disque Render
-        user_upload_dir_on_disk = Path(DISK_UPLOADS_BASE) / str(current_user.id)
+        user_upload_dir_on_disk = Path(DISK_UPLOADS_BASE) / "uploads" / str(current_user.id)
         user_upload_dir_on_disk.mkdir(parents=True, exist_ok=True) # Crée /var/data/uploads-storage/uploads/USER_ID/
         final_file_path_on_disk = user_upload_dir_on_disk / safe_filename
 
-        # Construire le chemin relatif pour la BDD (incluant user_id)
-        relative_path_for_db = os.path.join(str(current_user.id), safe_filename)
+        # Construire le chemin relatif pour la BDD (identique à la structure des ressources IA)
+        # Format: uploads/USER_ID/filename
+        relative_path_for_db = get_upload_path(current_user.id, safe_filename)
 
         # Sauvegarder le fichier sur le disque
         try:
@@ -177,6 +184,25 @@ async def create_resource_route(
         logger.info(f"Ressource créée avec ID: {db_resource.id}")
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
+        if source_type == 'ai' and html_path:
+            # Localiser le fichier généré (chemin local ou URL)
+            if html_path.startswith('http'):
+                # extraire le chemin relatif public après '/static/'
+                rel_public = html_path.split('/static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            else:
+                src = Path(html_path)
+            # Préparer destination
+            filename = src.name
+            rel_path = get_upload_path(current_user.id, filename)
+            dest = Path(settings.UPLOADS_BASE_DIR) / rel_path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(src, dest)
+            # Enregistrer le chemin relatif dans la BDD
+            db_resource.file_path = rel_path
+            db.add(db_resource)
+            db.commit()
+            db.refresh(db_resource)
         return db_resource
     except ValueError as e:
         # Si le CRUD lève une ValueError (ex: user/session non trouvé, fichier manquant)
@@ -358,7 +384,7 @@ async def update_resource_route(
         )
         
         # Utiliser UPLOADS_BASE_DIR des settings
-        user_upload_dir_on_disk = settings.UPLOADS_BASE_DIR / str(current_user.id)
+        user_upload_dir_on_disk = settings.UPLOADS_BASE_DIR / "uploads" / str(current_user.id)
         user_upload_dir_on_disk.mkdir(parents=True, exist_ok=True)
         final_file_path_on_disk = user_upload_dir_on_disk / safe_filename
         temp_saved_file_path = final_file_path_on_disk # Garder une trace pour suppression en cas d'erreur CRUD
@@ -469,7 +495,7 @@ def delete_resource_route(
         # Reconstruire le chemin absolu basé sur UPLOADS_BASE_DIR
         # Note: db_resource_check.file_path devrait contenir le chemin relatif incluant le nom sécurisé
         relative_path = Path(db_resource_check.file_path)
-        file_path_to_delete = settings.UPLOADS_BASE_DIR / str(current_user.id) / relative_path.name
+        file_path_to_delete = settings.UPLOADS_BASE_DIR / "uploads" / str(current_user.id) / relative_path.name
         logger.info(f"Chemin du fichier à supprimer identifié : {file_path_to_delete}")
 
     # Appeler la fonction CRUD pour supprimer l'enregistrement en BDD

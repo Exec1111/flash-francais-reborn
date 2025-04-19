@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Utilisation du titre fourni dans les données JSON -->
-    <title>Conjugaison : Les verbes en -ER au présent</title>
+    <!-- Titre mis à jour avec les données JSON -->
+    <title>Conjuguer les verbes en -ER au présent</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,8 +30,6 @@
             color: #666;
             font-size: 1.1rem;
             margin-bottom: 1.5em;
-            /* Ajout d'une hauteur minimale si la description est vide pour conserver l'espacement */
-            min-height: 1.1rem;
         }
         .question {
             margin-bottom: 2em;
@@ -47,12 +45,11 @@
         .options li {
             margin-bottom: 0.5em;
         }
+        /* Style pour l'explication, même si elle est vide */
         .explication {
             margin-top: 0.7em;
             color: #31708f;
             font-size: 0.98em;
-             /* Ajout d'une hauteur minimale si l'explication est vide pour conserver l'espacement */
-            min-height: 0.98em;
         }
         .submit-btn {
             display: block;
@@ -75,31 +72,45 @@
 </head>
 <body>
     <div class="container">
-        <h1>Conjugaison : Les verbes en -ER au présent</h1>
-        <!-- La description n'est pas fournie dans le JSON, donc cette div sera vide mais conservera le style -->
-        <div class="description"></div>
+        <!-- Titre et description remplacés par les données JSON -->
+        <h1>Conjuguer les verbes en -ER au présent</h1>
+        <div class="description">La conjugaison des verbes du premier groupe</div>
+
+        <!-- Boucle sur les questions (une seule question dans ce cas) -->
         
         <div class="question">
-            <div class="question-title">Elle ______ très bien.</div>
+            <!-- Texte de la question remplacé -->
+            <div class="question-title">Complétez la phrase : Je ______ français.</div>
             <ul class="options">
                 
+                <!-- Option a -->
                 <li>
                     <label>
-                        <input type="radio" name="q1" value="A"> chante
+                        <input type="radio" name="q1" value="a"> parle
                     </label>
                 </li>
                 
+                <!-- Option b -->
                 <li>
                     <label>
-                        <input type="radio" name="q1" value="B"> chantes
+                        <input type="radio" name="q1" value="b"> parles
+                    </label>
+                </li>
+                
+                <!-- Option c -->
+                <li>
+                    <label>
+                        <input type="radio" name="q1" value="c"> parler
                     </label>
                 </li>
                 
             </ul>
-            <!-- L'explication n'est pas fournie dans le JSON, donc cette div sera vide mais conservera le style -->
+            <!-- Explication (vide car non fournie dans le JSON pour cette question) -->
             <div class="explication"></div>
         </div>
         
+        <!-- Fin de la boucle sur les questions -->
+
         <button class="submit-btn">Valider</button>
     </div>
 </body>

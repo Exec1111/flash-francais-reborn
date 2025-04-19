@@ -83,11 +83,9 @@ function ResourceView() {
          );
     }
 
-    // Construire l'URL du fichier si applicable
-    // Le backend retourne le chemin *relatif* au dossier 'uploads' dans file_path (ex: 'uploads/19/mon_fichier.pdf')
-    // Et sert ces fichiers via /media/uploads/...
-    const fileUrl = resource.source_type === 'file' && resource.file_path 
-                    ? `${API_BASE_URL}/media/${resource.file_path.startsWith('/') ? resource.file_path.substring(1) : resource.file_path}` 
+    // Construire l'URL du fichier si applicable (upload ou IA)
+    const fileUrl = resource.file_path
+                    ? `${API_BASE_URL}/media/uploads/${resource.file_path.startsWith('/') ? resource.file_path.substring(1) : resource.file_path}`
                     : null;
 
     return (
@@ -128,15 +126,15 @@ function ResourceView() {
                     </Box>
                 )}
 
-                {resource.source_type === 'IA' && (
+                {resource.source_type.toLowerCase() === 'ai' && (
                     <Box>
-                        <Typography variant="h6">Contenu Généré par IA</Typography>
-                        {resource.content ? (
-                            <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#f5f5f5', p: 1, borderRadius: 1 }}>
-                                {resource.content}
-                            </Typography>
+                        <Typography variant="h6">Fichier généré par IA</Typography>
+                        {fileUrl ? (
+                            <Link href={fileUrl} target="_blank" rel="noopener noreferrer">
+                                Ouvrir le fichier généré ({resource.file_path.split('/').pop()})
+                            </Link>
                         ) : (
-                            <Typography color="textSecondary">Aucun contenu disponible.</Typography>
+                            <Typography color="textSecondary">Aucun fichier généré disponible.</Typography>
                         )}
                     </Box>
                 )}

@@ -93,6 +93,8 @@ const ResourceForm = ({
   const [fusionLoading, setFusionLoading] = useState(false);
   const [fusionError, setFusionError] = useState('');
   const [fusionHtmlUrl, setFusionHtmlUrl] = useState('');
+  // Chemin local du HTML généré par l'IA (file system)
+  const [fusionHtmlPath, setFusionHtmlPath] = useState('');
 
   // --- Effets --- 
 
@@ -269,6 +271,11 @@ const ResourceForm = ({
         // dataToSend.append('ai_raw_output', formData.ai_raw_output);
     }
 
+    // Si IA, transmettre le chemin du HTML généré
+    if (sourceType === 'ai' && fusionHtmlPath) {
+      dataToSend.append('html_path', fusionHtmlPath);
+    }
+
     try {
         let response;
         if (isEdit) {
@@ -363,6 +370,7 @@ const ResourceForm = ({
     setFusionLoading(true);
     setFusionError('');
     setFusionHtmlUrl('');
+    setFusionHtmlPath('');
     try {
       // Récupérer les infos nécessaires (adapter selon la structure du composant)
       const typeKey = formData.type_key || formData.typeKey || 'exercice';
@@ -372,6 +380,8 @@ const ResourceForm = ({
       const userId = formData.user_id || 'user';
       const res = await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
       setFusionHtmlUrl(res.html_url);
+      // Capturer le chemin réel du fichier généré
+      setFusionHtmlPath(res.html_path);
     } catch (e) {
       setFusionError(e.message || 'Erreur lors de la fusion IA');
     } finally {
