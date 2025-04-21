@@ -30,6 +30,7 @@ from routers.objective import objective_router
 from routers.user import user_router
 from routers import ai_router  # Importation du routeur AI
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
+from routers.study_object import router as study_object_router
 from schemas.sequence import SequenceRead
 from schemas.objective import ObjectiveRead
 
@@ -106,6 +107,10 @@ app = FastAPI(
         {
             "name": "dashboard",
             "description": "Opérations du dashboard"
+        },
+        {
+            "name": "study_objects",
+            "description": "Opérations d'étude"
         }
     ],
     docs_url=settings.DOCS_URL,
@@ -250,6 +255,13 @@ app.include_router(
     dashboard_router,
     prefix="/api/v1/dashboard",
     tags=["dashboard"]
+)
+
+# Inclusion des routes d'étude
+app.include_router(
+    study_object_router,
+    prefix="/api/v1/study_objects",
+    tags=["study_objects"]
 )
 
 # --- Monter le dossier d'uploads en utilisant la config --- 

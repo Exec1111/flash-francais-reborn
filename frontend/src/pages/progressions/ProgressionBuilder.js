@@ -9,10 +9,12 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
-  Alert
+  Alert,
+  Autocomplete
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import progressionService from '../../services/progressionService';
+import studyObjectService from '../../services/studyObjectService';
 import { useTreeData } from '../../contexts/TreeDataContext'; // Importer le hook
 
 const ProgressionBuilder = () => {
@@ -31,9 +33,18 @@ const ProgressionBuilder = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [allStudyObjects, setAllStudyObjects] = useState([]);
+  const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
 
   // Obtenir la fonction de rafraîchissement du contexte
   const { refreshTreeData } = useTreeData();
+
+  // --- Chargement des objets d'étude au montage ---
+  useEffect(() => {
+    studyObjectService.getStudyObjects(0, 100).then(objects => {
+      setAllStudyObjects(objects.items || objects);
+    });
+  }, []);
 
   // --- Chargement des données initiales en mode édition ---
   useEffect(() => {
@@ -48,6 +59,13 @@ const ProgressionBuilder = () => {
             title: data.title,
             description: data.description || '' // Gérer le cas où la description est null
           });
+          // Pré-remplir les objets d'étude associés en édition
+          if (data.study_object_ids && data.study_object_ids.length > 0) {
+            Promise.all(data.study_object_ids.map(objId => studyObjectService.getStudyObjectById(objId)))
+              .then(objs => setSelectedStudyObjects(objs));
+          } else {
+            setSelectedStudyObjects([]);
+          }
           setLoading(false);
         })
         .catch(err => {
@@ -81,15 +99,15 @@ const ProgressionBuilder = () => {
       } else {
         // --- Création ---
         console.log("ProgressionBuilder: Création d'une nouvelle progression.");
-        response = await progressionService.createProgression(formData, token);
+        response = await progressionService.createProgression({
+          ...formData,
+          study_object_ids: selectedStudyObjects.map(obj => obj.id)
+        }, token);
         setSuccess('Progression créée avec succès !');
-        // Rediriger vers la page d'édition de la nouvelle progression pour ajouter des séquences ?
-        // Ou simplement revenir à la page précédente/dashboard ?
-        // navigate(`/progressions/edit/${response.id}`); 
+        // navigate(`/progressions/edit/${response.id}`); // Optionnel : rediriger vers édition
       }
       console.log('Réponse du serveur:', response);
       await refreshTreeData(); // Rafraîchir l'arbre après création ou mise à jour
-      // Optionnel: Attendre un peu avant de naviguer
       setTimeout(() => navigate(-1), 1500); // Retour page précédente
 
     } catch (err) {
@@ -139,9 +157,19 @@ const ProgressionBuilder = () => {
               rows={4}
               disabled={submitting}
             />
-            
-            {/* Ici on pourrait ajouter la sélection/gestion des objectifs plus tard */}
-
+            <Autocomplete
+              multiple
+              options={allStudyObjects}
+              getOptionLabel={option => option.title}
+              value={selectedStudyObjects}
+              onChange={(e, newValue) => setSelectedStudyObjects(newValue)}
+              renderInput={params => (
+                <TextField {...params} label="Objets d'étude associés" placeholder="Sélectionner..." margin="normal" />
+              )}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              sx={{ mt: 2 }}
+              disabled={submitting}
+            />
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button 
                 onClick={() => navigate(-1)} // Retour page précédente

@@ -43,10 +43,15 @@ import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
 import ProgressionBuilder from './pages/progressions/ProgressionBuilder'; 
 import ProgressionDetailPage from './pages/progressions/ProgressionDetailPage'; // Importer la nouvelle page
+import ProgressionEditPage from './pages/progressions/ProgressionEditPage';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from './theme';
 import api from './services/api'; 
 import TreeDataContext from './contexts/TreeDataContext'; // Réimporter le contexte
+import StudyObjectList from './pages/studyObjects/StudyObjectList';
+import NewStudyObject from './pages/studyObjects/NewStudyObject';
+import EditStudyObject from './pages/studyObjects/EditStudyObject';
+import StudyObjectDetail from './pages/studyObjects/StudyObjectDetail';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -252,7 +257,7 @@ function App() {
         {/* Route pour le constructeur de progression */}
         <Route path="progressions/new" element={<ProgressionBuilder />} />
         <Route path="progressions/:id" element={<ProgressionDetailPage />} /> {/* Nouvelle route de consultation */}
-        <Route path="progressions/edit/:progressionId" element={<ProgressionBuilder />} />
+        <Route path="progressions/edit/:id" element={<ProgressionEditPage />} />
       </Route>
 
       <Route
@@ -279,7 +284,7 @@ function App() {
       >
         <Route path="new" element={<ProgressionBuilder />} />
         <Route path=":id" element={<ProgressionDetailPage />} /> {/* Nouvelle route de consultation */}
-        <Route path="edit/:id" element={<ProgressionBuilder />} />
+        <Route path="edit/:id" element={<ProgressionEditPage />} />
       </Route>
 
       <Route
@@ -322,6 +327,20 @@ function App() {
         <Route path="new/:sequenceId" element={<NewSession />} />
         <Route path="edit/:id" element={<SessionEdit />} />
         <Route path=":id" element={<SessionDetailPage />} />
+      </Route>
+
+      <Route
+        path="/study-objects"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<StudyObjectList />} />
+        <Route path="new" element={<NewStudyObject />} />
+        <Route path="edit/:id" element={<EditStudyObject />} />
+        <Route path=":id" element={<StudyObjectDetail />} />
       </Route>
 
       {/* Redirection par défaut */}

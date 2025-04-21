@@ -16,6 +16,8 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../services/api'; // Assurez-vous que le chemin est correct
+import studyObjectService from '../../services/studyObjectService';
+import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 
 function ProgressionDetailPage() {
   const { id: progressionId } = useParams();
@@ -23,16 +25,24 @@ function ProgressionDetailPage() {
   const [progression, setProgression] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [studyObjects, setStudyObjects] = useState([]);
 
   useEffect(() => {
     const fetchProgression = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Note: L'API backend doit pouvoir retourner les séquences associées
-        // (potentiellement via eager loading ou un appel séparé si nécessaire)
         const response = await api.get(`/progressions/${progressionId}`);
         setProgression(response.data);
+        // Récupérer les objets d'étude associés à la progression
+        if (response.data.study_object_ids && response.data.study_object_ids.length > 0) {
+          const objects = await Promise.all(
+            response.data.study_object_ids.map(id => studyObjectService.getStudyObjectById(id))
+          );
+          setStudyObjects(objects);
+        } else {
+          setStudyObjects([]);
+        }
       } catch (err) {
         console.error("Erreur lors de la récupération de la progression:", err);
         setError(err.response?.data?.detail || 'Une erreur est survenue lors du chargement de la progression.');
@@ -121,6 +131,15 @@ function ProgressionDetailPage() {
               Aucune séquence n'est associée à cette progression pour le moment.
             </Typography>
           )}
+          
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="h6" gutterBottom>
+            Objets d'étude associés
+          </Typography>
+          <StudyObjectChips studyObjects={studyObjects} onClick={obj => navigate(`/study-objects/${obj.id}`)} />
+
+          <Divider sx={{ my: 3 }} />
           
         </CardContent>
       </Card>

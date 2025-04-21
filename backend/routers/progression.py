@@ -16,8 +16,12 @@ progression_router = APIRouter(
 
 @progression_router.post("/", response_model=ProgressionRead, name="create_progression")
 def create_progression_endpoint(progression: ProgressionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Passer l'ID de l'utilisateur à la fonction CRUD
-    return crud.create_progression(db=db, progression=progression, user_id=current_user.id)
+    print(f"[TRACE ROUTE] POST /progressions/ - Données reçues: {progression}")
+    db_progression = crud.create_progression(db=db, progression=progression, user_id=current_user.id)
+    print(f"[TRACE ROUTE] Progression ORM créée: id={db_progression.id}, study_objects={[obj.id for obj in getattr(db_progression, 'study_objects', [])]}")
+    result = ProgressionRead.from_orm_with_study_objects(db_progression)
+    print(f"[TRACE ROUTE] study_object_ids dans réponse: {result.study_object_ids}")
+    return result
 
 @progression_router.get("/", response_model=List[ProgressionRead])
 def read_progressions_route(
@@ -27,13 +31,19 @@ def read_progressions_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    print(f"[TRACE ROUTE] GET /progressions/ pour user_id={user_id or current_user.id}")
     if user_id:
         progressions = crud.get_progressions(db, skip=skip, limit=limit, user_id=user_id)
     else:
         progressions = crud.get_progressions(db, skip=skip, limit=limit, user_id=current_user.id)
     # Tri par 'order' croissant
     progressions = sorted(progressions, key=lambda p: p.order)
-    return progressions
+    print(f"[TRACE ROUTE] Progressions récupérées: {[p.id for p in progressions]}")
+    # Mapping explicite pour la réponse Pydantic
+    result = [ProgressionRead.from_orm_with_study_objects(p) for p in progressions]
+    for r in result:
+        print(f"[TRACE ROUTE] Progression id={r.id}, study_object_ids={r.study_object_ids}")
+    return result
 
 @progression_router.patch("/reorder", response_model=dict)
 def reorder_progressions(order_list: list[int], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -48,10 +58,16 @@ def reorder_progressions(order_list: list[int], db: Session = Depends(get_db), c
 
 @progression_router.get("/{progression_id}", response_model=ProgressionRead)
 def read_progression_route(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    print(f"[TRACE ROUTE] GET progression_id={progression_id} pour user_id={current_user.id}")
     db_progression = crud.get_progression(db, progression_id=progression_id, user_id=current_user.id)
     if db_progression is None:
+        print("[TRACE ROUTE] Progression non trouvée")
         raise HTTPException(status_code=404, detail="Progression not found")
-    return db_progression
+    print(f"[TRACE ROUTE] ORM progression récupérée: id={db_progression.id}, title={db_progression.title}")
+    print(f"[TRACE ROUTE] study_objects ORM: {[obj.id for obj in getattr(db_progression, 'study_objects', [])]}")
+    result = ProgressionRead.from_orm_with_study_objects(db_progression)
+    print(f"[TRACE ROUTE] study_object_ids dans réponse: {result.study_object_ids}")
+    return result
 
 @progression_router.put("/{progression_id}", response_model=ProgressionRead)
 def update_progression_route(progression_id: int, progression: ProgressionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

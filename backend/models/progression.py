@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
+from .association_tables import progression_study_object
 
 class Progression(Base):
     __tablename__ = "progressions"
@@ -17,3 +18,8 @@ class Progression(Base):
 
     # Relations avec les séquences (one-to-many)
     sequences = relationship("Sequence", back_populates="progression")
+    study_objects = relationship(
+        "StudyObject",
+        secondary=progression_study_object,
+        back_populates="progressions"
+    )

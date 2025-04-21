@@ -489,6 +489,17 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
         >
           Objectifs pédagogiques
         </Button>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<FlagIcon />}
+          component={RouterLink}
+          to="/study-objects"
+          fullWidth
+          sx={{ justifyContent: 'flex-start' }}
+        >
+          Objets d'étude
+        </Button>
       </Box>
 
       <Divider sx={{ my: 2 }} />

@@ -56,6 +56,20 @@ from crud.resource_type import (
     get_resource_subtype_by_key
 )
 
+# Exposer les fonctions du module study_object
+from .study_object import (
+    get_study_object,
+    get_study_objects,
+    get_study_objects_by_progression,
+    create_study_object,
+    update_study_object,
+    delete_study_object,
+    attach_to_progression,
+    detach_from_progression,
+    attach_resource,
+    detach_resource,
+)
+
 # Imports for Objective
 from .objective import (
     get_objective,
@@ -111,6 +125,17 @@ __all__ = [
     "get_resource_subtypes",
     "get_resource_subtype",
     "get_resource_subtype_by_key",
+    # Study Object exports
+    "get_study_object",
+    "get_study_objects",
+    "get_study_objects_by_progression",
+    "create_study_object",
+    "update_study_object",
+    "delete_study_object",
+    "attach_to_progression",
+    "detach_from_progression",
+    "attach_resource",
+    "detach_resource",
     # Objective exports
     "get_objective",
     "get_objective_by_title",

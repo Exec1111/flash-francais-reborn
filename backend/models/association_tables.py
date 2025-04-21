@@ -32,3 +32,19 @@ objective_resource_association = Table(
     Column('objective_id', Integer, ForeignKey('objectives.id'), primary_key=True),
     Column('resource_id', Integer, ForeignKey('resources.id'), primary_key=True)
 )
+
+# Table d'association Many-to-Many entre Progression et StudyObject
+progression_study_object = Table(
+    'progression_study_object',
+    Base.metadata,
+    Column('progression_id', Integer, ForeignKey('progressions.id', ondelete='CASCADE'), primary_key=True),
+    Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True)
+)
+
+# Table d'association Many-to-Many entre StudyObject et Resource
+study_object_resource = Table(
+    'study_object_resource',
+    Base.metadata,
+    Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True),
+    Column('resource_id', Integer, ForeignKey('resources.id', ondelete='CASCADE'), primary_key=True)
+)
