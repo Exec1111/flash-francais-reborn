@@ -177,7 +177,7 @@ async def create_resource_route(
         db_resource = crud.resource.create_resource(
             db=db, 
             resource=resource_data, 
-            user_id=current_user.id, 
+            user_id=current_user.id,
             file_upload=file_upload_data # Utiliser 'file_upload' et passer les données du fichier (peut être None)
             # Ne pas passer 'file_path_url' car absent de la signature actuelle
         )
@@ -313,7 +313,36 @@ def read_resource(
     if db_resource.user_id != current_user.id:
         logger.error(f"Accès non autorisé à la ressource {resource_id} par l'utilisateur {current_user.id}")
         raise HTTPException(status_code=403, detail="Not authorized to access this resource")
-    return db_resource
+    
+    # Construction de l'URL du HTML lié (si IA)
+    html_url = None
+    if db_resource.source_type == 'ai' and db_resource.file_path:
+        # On suppose que file_path est relatif à /static/
+        # Si file_path commence par 'static/', on retire ce préfixe
+        relative_path = db_resource.file_path
+        if relative_path.startswith('static/'):
+            relative_path = relative_path[len('static/'):]
+        html_url = f"/static/{relative_path}" if not relative_path.startswith('/static/') else relative_path
+        # Si déjà /static/ inclus, on garde
+        # Pour Render, il faudra peut-être ajuster l'URL publique
+    return ResourceResponse(
+        id=db_resource.id,
+        title=db_resource.title,
+        description=db_resource.description,
+        type_id=db_resource.type_id,
+        sub_type_id=db_resource.sub_type_id,
+        user_id=db_resource.user_id,
+        source_type=db_resource.source_type,
+        file_path=db_resource.file_path,
+        file_name=db_resource.file_name,
+        file_size=db_resource.file_size,
+        file_type=db_resource.file_type,
+        html_url=html_url,
+        type=db_resource.type,
+        sub_type=db_resource.sub_type,
+        sessions=[SessionMinimalSchema(id=s.id) for s in db_resource.sessions],
+        objectives=[ObjectiveIdentifier(id=o.id, title=getattr(o, 'title', None)) for o in db_resource.objectives]
+    )
 
 @resource_router.put("/{resource_id}", response_model=ResourceResponse)
 async def update_resource_route(
@@ -436,7 +465,6 @@ async def update_resource_route(
             db=db, 
             resource_id=resource_id, 
             resource_update=resource_update_schema, # Passer le schéma Pydantic
-            user_id=current_user.id, # Passer user_id explicitement
             file_upload=file_upload_data # Passer les infos du nouveau fichier s'il y en a un
         )
 

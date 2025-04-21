@@ -41,7 +41,7 @@ const ResourceEdit = () => {
           source_type: data.source_type, // Ajouter le type de source
           file_path: data.file_path || '', // Ajouter le chemin du fichier
           file_name: data.file_name || '', // Ajouter le nom du fichier
-          // Utiliser data.session_ids qui est déjà un tableau d'IDs
+          html_url: data.html_url || '', // Ajouter le lien du fichier HTML généré
           session_ids: Array.isArray(data.session_ids) ? data.session_ids : [],
           // url: data.url || '', // Décommenter si le formulaire gère l'URL
           // ai_generated_content: data.ai_generated_content || '', // Décommenter si pertinent

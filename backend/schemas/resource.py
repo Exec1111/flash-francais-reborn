@@ -72,6 +72,7 @@ class ResourceResponse(BaseModel):
     file_name: Optional[str] = None
     file_size: Optional[int] = None
     file_type: Optional[str] = None
+    html_url: Optional[str] = None  # Ajout pour exposer l'URL du HTML généré
     # Relations chargées
     type: Optional[ResourceTypeSchema] = None
     sub_type: Optional[ResourceSubTypeSchema] = None

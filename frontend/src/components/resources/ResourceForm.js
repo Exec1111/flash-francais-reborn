@@ -57,6 +57,13 @@ const ResourceForm = ({
   onSuccess,
   resourceId
 }) => {
+  // --- DEBUG: Affichage du contenu initialData pour diagnostic ---
+  useEffect(() => {
+    if (isEdit) {
+      console.log('[DEBUG ResourceForm] initialData transmis au formulaire :', initialData);
+    }
+  }, [isEdit, initialData]);
+
   // --- États --- 
   const [formData, setFormData] = useState({
     title: '',
@@ -428,6 +435,151 @@ const ResourceForm = ({
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Titre"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            required
+            disabled={submitting}
+          />
+        </Grid>
+
+        {/* Sélecteur Type / Sous-type */}
+        <Grid item xs={12} sm={6}>
+          <FormControl fullWidth required>
+            <InputLabel id="type-label">Type</InputLabel>
+            <Select
+              labelId="type-label"
+              name="resource_type_id"
+              value={formData.resource_type_id || ''}
+              onChange={handleInputChange}
+              label="Type"
+              disabled={loadingTypes || resourceTypes.length === 0 || submitting}
+            >
+              {resourceTypes.map((type) => (
+                <MenuItem key={type.id} value={String(type.id)}>
+                  {type.value}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} sm={6}>
+          <FormControl fullWidth required>
+            <InputLabel id="subtype-label">Sous-type</InputLabel>
+            <Select
+              labelId="subtype-label"
+              name="resource_sub_type_id"
+              value={formData.resource_sub_type_id || ''}
+              onChange={handleInputChange}
+              label="Sous-type"
+              disabled={!formData.resource_type_id || resourceSubTypes.length === 0 || submitting}
+            >
+              {resourceSubTypes.map((subType) => (
+                <MenuItem key={subType.id} value={String(subType.id)}>
+                  {subType.value}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+
+        {/* Sélecteur Source Type */}
+        <Grid item xs={12}>
+            <FormControl component="fieldset" disabled={submitting}>
+                <FormLabel component="legend">Source de la ressource</FormLabel>
+                <RadioGroup
+                    row
+                    aria-label="source-type"
+                    name="source_type"
+                    value={sourceType}
+                    onChange={handleSourceTypeChange}
+                >
+                    <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
+                    <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
+                </RadioGroup>
+            </FormControl>
+        </Grid>
+
+        {/* Affichage du lien vers le document lié à la ressource en mode édition */}
+        {isEdit && initialData?.html_url && (
+            <Grid item xs={12}>
+                <Alert severity="info" sx={{ mt: 2 }}>
+                    Document actuellement lié :{' '}
+                    <a href={initialData.html_url} target="_blank" rel="noopener noreferrer">Ouvrir le document</a><br />
+                    <span style={{fontStyle: 'italic', color: '#888'}}>Ce document est celui actuellement rattaché à la ressource.</span>
+                </Alert>
+            </Grid>
+        )}
+
+        {/* Sélecteur Fichier */}
+        {sourceType === 'file' && (
+            <Grid item xs={12}>
+                <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
+                    <input
+                        accept={ALLOWED_FILE_TYPE}
+                        style={{ display: 'none' }}
+                        id="raised-button-file"
+                        type="file"
+                        onChange={handleFileChange}
+                        disabled={submitting}
+                    />
+                    <label htmlFor="raised-button-file">
+                        <Button 
+                            variant="outlined" 
+                            component="span" 
+                            startIcon={<UploadFileIcon />} 
+                            disabled={submitting}
+                        >
+                            Choisir un fichier PDF (Max 1 Mo)
+                        </Button>
+                    </label>
+                    {selectedFile && (
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                            Fichier sélectionné: {selectedFile.name}
+                        </Typography>
+                    )}
+                    {fileError && (
+                        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                            {fileError}
+                        </Typography>
+                    )}
+                    {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
+                        <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                            Fichier actuel: {initialData.file_name} (choisir un nouveau fichier pour remplacer)
+                        </Typography>
+                    )}
+                </Box>
+            </Grid>
+        )}
+      </Grid>
+      {showAIGenerationForm && (
+        <Box sx={{ mt: 2 }}>
+          <Card>
+            <CardHeader title={`Ajouter une ressource générée par l'IA`} />
+            <CardContent>
+              {aiLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
+                  <CircularProgress size={28} color="primary" />
+                  <span style={{ fontWeight: 500 }}>Génération en cours...</span>
+                </div>
+              )}
+              <DynamicAIForm
+                typeKey={selectedType.key.toLowerCase()}
+                subtypeKey={selectedSubType.key.toLowerCase()}
+                onSubmit={handleAIGenerationWithLoading}
+                onCancel={isDialog ? onClose : () => navigate(-1)}
+                loading={aiLoading}
+              />
+            </CardContent>
+          </Card>
+        </Box>
+      )}
       {/* Affichage de l'éditeur JSON si contenu généré */}
       {generatedContent && (
         <Box sx={{ my: 2 }}>
@@ -444,6 +596,14 @@ const ResourceForm = ({
           </Button>
           {jsonEditorValue && (
             <Box sx={{ mt: 2 }}>
+              {/* Affichage du lien vers le fichier HTML existant si présent et pas de nouvelle fusion */}
+              {isEdit && initialData?.html_url && !fusionHtmlUrl && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Fichier HTML actuel :{' '}
+                  <a href={initialData.html_url} target="_blank" rel="noopener noreferrer">Voir le fichier HTML</a><br />
+                  <span style={{fontStyle: 'italic', color: '#888'}}>Ce fichier restera inchangé tant qu'aucune nouvelle génération n'est demandée.</span>
+                </Alert>
+              )}
               <Button
                 variant="contained"
                 color="secondary"
@@ -463,146 +623,6 @@ const ResourceForm = ({
             </Box>
           )}
         </Box>
-      )}
-
-      {/* Formulaire classique si pas de contenu généré */}
-      {!generatedContent && (
-        <>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Titre"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                disabled={submitting}
-              />
-            </Grid>
-
-            {/* Sélecteur Type / Sous-type */}
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel id="type-label">Type</InputLabel>
-                <Select
-                  labelId="type-label"
-                  name="resource_type_id"
-                  value={formData.resource_type_id || ''}
-                  onChange={handleInputChange}
-                  label="Type"
-                  disabled={loadingTypes || resourceTypes.length === 0 || submitting}
-                >
-                  {resourceTypes.map((type) => (
-                    <MenuItem key={type.id} value={String(type.id)}>
-                      {type.value}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel id="subtype-label">Sous-type</InputLabel>
-                <Select
-                  labelId="subtype-label"
-                  name="resource_sub_type_id"
-                  value={formData.resource_sub_type_id || ''}
-                  onChange={handleInputChange}
-                  label="Sous-type"
-                  disabled={!formData.resource_type_id || resourceSubTypes.length === 0 || submitting}
-                >
-                  {resourceSubTypes.map((subType) => (
-                    <MenuItem key={subType.id} value={String(subType.id)}>
-                      {subType.value}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Sélecteur Source Type */}
-            <Grid item xs={12}>
-                 <FormControl component="fieldset" disabled={submitting}>
-                    <FormLabel component="legend">Source de la ressource</FormLabel>
-                    <RadioGroup
-                        row
-                        aria-label="source-type"
-                        name="source_type"
-                        value={sourceType}
-                        onChange={handleSourceTypeChange}
-                    >
-                        <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
-                        <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
-                    </RadioGroup>
-                </FormControl>
-            </Grid>
-
-            {/* Sélecteur Fichier */}
-            {sourceType === 'file' && (
-                <Grid item xs={12}>
-                    <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
-                        <input
-                            accept={ALLOWED_FILE_TYPE}
-                            style={{ display: 'none' }}
-                            id="raised-button-file"
-                            type="file"
-                            onChange={handleFileChange}
-                            disabled={submitting}
-                        />
-                        <label htmlFor="raised-button-file">
-                            <Button 
-                                variant="outlined" 
-                                component="span" 
-                                startIcon={<UploadFileIcon />} 
-                                disabled={submitting}
-                            >
-                                Choisir un fichier PDF (Max 1 Mo)
-                            </Button>
-                        </label>
-                        {selectedFile && (
-                            <Typography variant="body2" sx={{ mt: 1 }}>
-                                Fichier sélectionné: {selectedFile.name}
-                            </Typography>
-                        )}
-                        {fileError && (
-                            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                                {fileError}
-                            </Typography>
-                        )}
-                        {isEdit && initialData?.source_type === 'file' && !selectedFile && initialData.file_name && (
-                            <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                                Fichier actuel: {initialData.file_name} (choisir un nouveau fichier pour remplacer)
-                            </Typography>
-                        )}
-                    </Box>
-                </Grid>
-            )}
-          </Grid>
-          {showAIGenerationForm && (
-            <Box sx={{ mt: 2 }}>
-              <Card>
-                <CardHeader title={`Ajouter une ressource générée par l'IA`} />
-                <CardContent>
-                  {aiLoading && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
-                      <CircularProgress size={28} color="primary" />
-                      <span style={{ fontWeight: 500 }}>Génération en cours...</span>
-                    </div>
-                  )}
-                  <DynamicAIForm
-                    typeKey={selectedType.key.toLowerCase()}
-                    subtypeKey={selectedSubType.key.toLowerCase()}
-                    onSubmit={handleAIGenerationWithLoading}
-                    onCancel={isDialog ? onClose : () => navigate(-1)}
-                    loading={aiLoading}
-                  />
-                </CardContent>
-              </Card>
-            </Box>
-          )}
-        </>
       )}
     </>
   );
