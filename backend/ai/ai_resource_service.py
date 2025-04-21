@@ -12,12 +12,14 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 import jsonschema  # validation of dynamic schemas
+from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
 # Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
+    ("oeuvre", "extrait"): "extrait_oeuvre",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 
@@ -51,16 +53,25 @@ async def merge_ai_resource_content(
         prompt = (
             "Génère-moi un document HTML en utilisant le modèle fourni (fichier joint), en te basant sur les données suivantes (au format JSON) :\n"
             f"{json.dumps(user_data, ensure_ascii=False, indent=2)}\n"
-            "Le rendu doit respecter fidèlement la structure et le style du modèle."
+            "Le rendu doit respecter fidèlement la structure et le style du modèle. Ne répond rien d'autre que le HTML produit, pas d'autre texte ni explication, uniquement le HTML/CSS, pas de balise ```html ni de formatage markdown"
         )
         
-        # Fusion via GenAI: passer le fichier et le prompt comme liste de File et str
+        # Afficher le contenu du modèle HTML joint
+        try:
+            with open(model_path, "r", encoding="utf-8") as f:
+                html_model_content = f.read()
+            logger.info(f"[Fusion][LLM] Contenu du modèle HTML joint :\n{html_model_content}")
+        except Exception as e:
+            logger.warning(f"[Fusion][LLM] Impossible de lire le modèle HTML {model_path} : {e}")
+
+        logger.info(f"[Fusion][LLM] Appel API Gemini : model={model_name}, user_id={user_id}, model_path={model_path}, prompt=\n{prompt}")
         response = client.models.generate_content(
             model=model_name,
             contents=[ [ uploaded_file, prompt ] ]
         )
         
         html_generated = response.text
+        logger.info(f"[Fusion][LLM] Réponse brute générée par le LLM :\n{html_generated}")
         # Dossier de destination temporaire pour la génération
         from config import get_settings
         settings = get_settings()

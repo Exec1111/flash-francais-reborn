@@ -191,22 +191,42 @@ async def merge_resource(
     Endpoint pour fusionner un contenu JSON édité avec un modèle HTML (uploadé ou par défaut).
     """
     logger.info(f"Fusion ressource IA {type_key}/{subtype_key} demandée par {current_user.email}")
+    logger.info(f"[Fusion][TRACE] Paramètres POST reçus : type_key={type_key}, subtype_key={subtype_key}, model_file={model_file.filename if model_file else None}, model_name={model_name}, data_json={data_json[:200]}...")
+    if not type_key or not subtype_key:
+        logger.error(f"[Fusion][ERREUR] type_key ou subtype_key manquant dans la requête : type_key={type_key}, subtype_key={subtype_key}")
+        raise HTTPException(status_code=400, detail="type_key et subtype_key sont obligatoires.")
+    logger.info(f"[Fusion][TRACE] Entrée dans merge_resource pour type_key={type_key}, subtype_key={subtype_key}")
     try:
-        # Gestion du modèle : uploadé ou par défaut
+        # Traces détaillées pour le diagnostic du choix du modèle HTML
+        logger.info(f"[Fusion][TRACE] type_key reçu : {type_key} | subtype_key reçu : {subtype_key}")
         if model_file:
+            logger.info(f"[Fusion][TRACE] Modèle uploadé reçu : {model_file.filename}")
             model_path = f"/tmp/uploaded_models/{uuid.uuid4()}_{model_file.filename}"
             os.makedirs(os.path.dirname(model_path), exist_ok=True)
             with open(model_path, "wb") as f:
                 f.write(await model_file.read())
         elif model_name:
+            logger.info(f"[Fusion][TRACE] Modèle nommé explicitement demandé : {model_name}")
             model_path = os.path.join("backend", "templates", "qcm_models", model_name)
             if not os.path.exists(model_path):
                 raise HTTPException(status_code=404, detail=f"Modèle {model_name} introuvable")
         else:
-            # Modèle par défaut selon type ET sous-type (chemin absolu)
+            logger.info(f"[Fusion][TRACE] Sélection du modèle HTML par défaut pour type={type_key}, sous-type={subtype_key}")
+            # Sélection du modèle HTML selon type/sous-type
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            model_path = os.path.join(BASE_DIR, "templates", "qcm_models", f"default_{type_key.lower()}_{subtype_key.lower()}.html")
+            if type_key.lower() == "oeuvre" and subtype_key.lower() == "extrait":
+                model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
+                logger.info(f"[Fusion][TRACE] Dossier modèle sélectionné : {model_dir}")
+            elif type_key.lower() == "exercice" and subtype_key.lower() == "qcm":
+                model_dir = os.path.join(BASE_DIR, "templates", "qcm_models")
+                logger.info(f"[Fusion][TRACE] Dossier modèle sélectionné : {model_dir}")
+            else:
+                logger.warning(f"Aucun modèle HTML disponible pour type={type_key}, sous-type={subtype_key}.")
+                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
+            model_path = os.path.join(model_dir, f"default_{type_key.lower()}_{subtype_key.lower()}.html")
+            logger.info(f"[Fusion][TRACE] Chemin du modèle HTML sélectionné : {model_path}")
             if not os.path.exists(model_path):
+                logger.warning(f"Fichier modèle HTML introuvable : {model_path}")
                 raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
 
         # Appel service de fusion (à implémenter)
@@ -217,7 +237,8 @@ async def merge_resource(
             model_path=model_path,
             user_id=current_user.id
         )
+        logger.info(f"[Fusion][TRACE] Fusion IA terminée pour type_key={type_key}, subtype_key={subtype_key}, html_path={html_path}, html_url={html_url}")
         return {"html_url": html_url, "html_path": html_path}
     except Exception as e:
-        logger.error(f"Erreur lors de la fusion de ressource: {e}", exc_info=True)
+        logger.error(f"[Fusion][ERREUR] Exception lors de la fusion de ressource: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur fusion ressource: {e}")

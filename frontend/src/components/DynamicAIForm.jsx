@@ -32,7 +32,18 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
         const token = localStorage.getItem('token');
         console.log('[DEBUG][fetchSchema] Token actuel dans localStorage:', token);
         const response = await api.get(url);
-        setFormSchema(response.data);
+        const schema = response.data;
+        
+        // Initialiser formData avec les valeurs par défaut
+        const initialData = {};
+        schema.fields.forEach(field => {
+          if (field.default !== null && field.default !== undefined) {
+            initialData[field.name] = field.default;
+          }
+        });
+        
+        setFormSchema(schema);
+        setFormData(initialData);
       } catch (err) {
         if (err.response) {
           console.error('DEBUG DynamicAIForm: backend error response', err.response.status, err.response.data);
@@ -54,6 +65,19 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
     setFormData({
       ...formData,
       [name]: processedValue
+    });
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: null
+      });
+    }
+  };
+
+  const handleListChange = (name, value) => {
+    setFormData({
+      ...formData,
+      [name]: value.split(',').map(item => item.trim()).filter(item => item !== '')
     });
     if (errors[name]) {
       setErrors({
@@ -96,6 +120,11 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
     }
   };
 
+  // Déterminer si un champ est une liste (array)
+  const isListField = (field) => {
+    return Array.isArray(field.default) || field.type === 'list' || field.type === 'array';
+  };
+
   if (isLoading) return <div>Chargement du schéma...</div>;
   if (error) return <div style={{ color: 'red', margin: '1em 0' }}>{error}</div>;
   if (!formSchema) return <div style={{ color: 'orange', margin: '1em 0' }}>Aucun schéma reçu du backend.</div>;
@@ -107,6 +136,7 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
           <label htmlFor={field.name} className="form-label" title={field.description}>
             {field.label} {field.required && <span className="required">*</span>}
           </label>
+          
           {field.type === 'number' ? (
             <input
               type="number"
@@ -118,6 +148,31 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
               max={field.validations?.max}
               className={errors[field.name] ? 'form-control error' : 'form-control'}
             />
+          ) : isListField(field) ? (
+            <textarea
+              id={field.name}
+              name={field.name}
+              value={Array.isArray(formData[field.name]) ? formData[field.name].join(', ') : ''}
+              onChange={(e) => handleListChange(field.name, e.target.value)}
+              placeholder="Entrez les valeurs séparées par des virgules"
+              className={errors[field.name] ? 'form-control error' : 'form-control'}
+              rows={3}
+            />
+          ) : field.validations && field.validations.enum ? (
+            <select
+              id={field.name}
+              name={field.name}
+              value={formData[field.name] || ''}
+              onChange={handleChange}
+              className={errors[field.name] ? 'form-control error' : 'form-control'}
+            >
+              <option value="">-- Sélectionner --</option>
+              {field.validations.enum.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           ) : (
             <input
               type="text"
@@ -128,8 +183,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, loa
               className={errors[field.name] ? 'form-control error' : 'form-control'}
             />
           )}
+          
           {errors[field.name] && (
             <div className="error-message">{errors[field.name]}</div>
+          )}
+          
+          {field.description && (
+            <div className="field-description">{field.description}</div>
           )}
         </div>
       ))}

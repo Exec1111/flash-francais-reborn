@@ -372,11 +372,26 @@ const ResourceForm = ({
     setFusionHtmlUrl('');
     setFusionHtmlPath('');
     try {
-      // Récupérer les infos nécessaires (adapter selon la structure du composant)
-      const typeKey = formData.type_key || formData.typeKey || 'exercice';
-      const subtypeKey = formData.subtype_key || formData.subtypeKey || 'qcm';
+      // Détermination du type_key et subtype_key en fonction du type et sous-type sélectionnés
+      const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
+      const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
+      let typeKey = 'exercice';
+      let subtypeKey = 'qcm';
+      let modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html';
+      if (selectedType && selectedSubType) {
+        // Utiliser les clés du backend (key)
+        typeKey = selectedType.key;
+        subtypeKey = selectedSubType.key;
+        // Sélectionner le bon modèle HTML selon le couple type/sous-type
+        if (typeKey === 'oeuvre' && subtypeKey === 'extrait') {
+          modelPath = '/backend/templates/oeuvre_models/default_oeuvre_extrait.html';
+        } else if (typeKey === 'exercice' && subtypeKey === 'qcm') {
+          modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html';
+        }
+      }
+      // Log de debug pour vérifier les paramètres envoyés
+      console.log('[Fusion IA] typeKey:', typeKey, 'subtypeKey:', subtypeKey, 'modelPath:', modelPath);
       const dataJson = JSON.stringify(formData.content || formData.variables || jsonEditorValue);
-      const modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html'; // à adapter selon le type/sous-type
       const userId = formData.user_id || 'user';
       const res = await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
       setFusionHtmlUrl(res.html_url);
@@ -391,13 +406,15 @@ const ResourceForm = ({
 
   // --- Rendu JSX --- 
 
-  // Clé type & sous-type pour QCM (définies avant formContent)
+  // Clé type & sous-type sélectionnés
   const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
-  const isQCM = (selectedType?.key === 'exercice' || selectedType?.value?.toLowerCase() === 'exercice') && (selectedSubType?.key === 'qcm' || selectedSubType?.value?.toLowerCase() === 'qcm');
 
-  // Gestionnaire de génération QCM avec animation
-  const handleQCMGenerationWithLoading = async (payload) => {
+  // Afficher le formulaire IA si on est en mode IA et que les deux menus sont sélectionnés
+  const showAIGenerationForm = sourceType === 'ai' && selectedType && selectedSubType;
+
+  // Gestionnaire de génération IA avec animation
+  const handleAIGenerationWithLoading = async (payload) => {
     setAiLoading(true);
     try {
       await handleQCMGeneration(payload);
@@ -563,21 +580,21 @@ const ResourceForm = ({
                 </Grid>
             )}
           </Grid>
-          {isQCM && sourceType === 'ai' && (
+          {showAIGenerationForm && (
             <Box sx={{ mt: 2 }}>
               <Card>
-                <CardHeader title="Ajouter un QCM généré par l'IA" />
+                <CardHeader title={`Ajouter une ressource générée par l'IA`} />
                 <CardContent>
                   {aiLoading && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
                       <CircularProgress size={28} color="primary" />
-                      <span style={{ fontWeight: 500 }}>Génération du QCM en cours...</span>
+                      <span style={{ fontWeight: 500 }}>Génération en cours...</span>
                     </div>
                   )}
                   <DynamicAIForm
                     typeKey={selectedType.key.toLowerCase()}
                     subtypeKey={selectedSubType.key.toLowerCase()}
-                    onSubmit={handleQCMGenerationWithLoading}
+                    onSubmit={handleAIGenerationWithLoading}
                     onCancel={isDialog ? onClose : () => navigate(-1)}
                     loading={aiLoading}
                   />

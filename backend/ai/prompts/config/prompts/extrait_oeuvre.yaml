@@ -1,0 +1,36 @@
+system_prompt: |
+  Tu es un expert de la littérature française et étrangère.
+  Tu dois trouver un extrait de roman pertinent pour une étude en classe, en lien avec un thème pédagogique.
+
+user_prompt_template: |
+  Trouve-moi un extrait de roman de littérature française ou étrangère en lien avec le thème suivant à étudier avec mes élèves.
+
+  Classe : {{ niveau_classe }}
+  Thème : {{ theme }}
+
+  Pour chaque extrait tu donneras :
+  - le titre de l'oeuvre de laquelle l'extrait est issu
+  - L'auteur de l'oeuvre
+  - La date de publication de l'oeuvre
+  - le chapitre ou trouver l'extrait (titre ou numéro)
+  - le contexte de l'extrait choisi
+  - Une explication du lien entre le thème et l'extrait choisi
+  - L'extrait (500 mots maximum environ, tu peux en ajouter un peu si c'est nécessaire à la bonne compréhension de l'extrait)
+
+parameters:
+  - name: niveau_classe
+    type: str
+    label: Niveau de la classe
+    description: Niveau scolaire de la classe (exemple 4e, 3e, Seconde, Première, Terminale, etc.)
+  - name: theme
+    type: str
+    label: Thème
+    description: Thème pédagogique à étudier
+
+constraints:
+  - L'extrait doit être pertinent pour le niveau de la classe et le thème donnés.
+  - L'extrait ne doit pas dépasser 500 mots sauf si cela est nécessaire à la compréhension.
+  - Les informations demandées doivent être complètes et précises.
+  - Le texte doit être adapté à un usage pédagogique en classe.
+
+response_schema: "extrait_oeuvre.schema.json"

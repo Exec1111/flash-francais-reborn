@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "titre_oeuvre",
+    "auteur_oeuvre",
+    "date_publication",
+    "chapitre",
+    "contexte_extrait",
+    "explication_lien_theme",
+    "extrait"
+  ],
+  "properties": {
+    "titre_oeuvre": {
+      "type": "string",
+      "description": "Titre de l'œuvre de laquelle l'extrait est issu"
+    },
+    "auteur_oeuvre": {
+      "type": "string",
+      "description": "Nom de l'auteur de l'œuvre"
+    },
+    "date_publication": {
+      "type": "string",
+      "description": "Date de publication de l'œuvre (année ou date complète)"
+    },
+    "chapitre": {
+      "type": "string",
+      "description": "Chapitre ou trouver l'extrait (titre ou numéro)"
+    },
+    "contexte_extrait": {
+      "type": "string",
+      "description": "Contexte de l'extrait choisi"
+    },
+    "explication_lien_theme": {
+      "type": "string",
+      "description": "Explication du lien entre le thème et l'extrait choisi"
+    },
+    "extrait": {
+      "type": "string",
+      "description": "L'extrait textuel (500 mots maximum, tolérance si nécessaire à la compréhension)"
+    }
+  },
+  "additionalProperties": false
+}
