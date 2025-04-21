@@ -121,6 +121,36 @@ const sequenceService = {
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors du retrait de l'objectif de la séquence" };
     }
+  },
+
+  /**
+   * Ajoute un objet d'étude à une séquence
+   * @param {number} sequenceId - ID de la séquence
+   * @param {number} studyObjectId - ID de l'objet d'étude à ajouter
+   * @returns {Promise} - Promesse avec la réponse
+   */
+  addStudyObjectToSequence: async (sequenceId, studyObjectId) => {
+    try {
+      const response = await api.post(`${SEQUENCES_ENDPOINT}/${sequenceId}/study_objects/${studyObjectId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de l'ajout de l'objet d'étude à la séquence" };
+    }
+  },
+
+  /**
+   * Retire un objet d'étude d'une séquence
+   * @param {number} sequenceId - ID de la séquence
+   * @param {number} studyObjectId - ID de l'objet d'étude à retirer
+   * @returns {Promise} - Promesse avec la réponse
+   */
+  removeStudyObjectFromSequence: async (sequenceId, studyObjectId) => {
+    try {
+      const response = await api.delete(`${SEQUENCES_ENDPOINT}/${sequenceId}/study_objects/${studyObjectId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors du retrait de l'objet d'étude de la séquence" };
+    }
   }
 };
 

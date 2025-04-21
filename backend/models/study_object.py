@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
-from .association_tables import progression_study_object, study_object_resource
+from .association_tables import progression_study_object, study_object_resource, sequence_study_object
 
 class StudyObject(Base):
     __tablename__ = "study_objects"
@@ -21,5 +21,10 @@ class StudyObject(Base):
     resources = relationship(
         "Resource",
         secondary=study_object_resource,
+        back_populates="study_objects"
+    )
+    sequences = relationship(
+        "Sequence",
+        secondary=sequence_study_object,
         back_populates="study_objects"
     )

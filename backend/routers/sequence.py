@@ -42,6 +42,7 @@ def reorder_sequences(
         db.add(seq)
     db.commit()
     return
+
 @sequence_router.post("/", response_model=SequenceRead, name="create_sequence")
 def create_sequence_endpoint(
     sequence: SequenceCreate, 
@@ -113,7 +114,33 @@ def read_sequence_route(
     db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
     if db_sequence is None:
         raise HTTPException(status_code=404, detail="Sequence not found")
-    return db_sequence
+    return SequenceRead.from_orm_with_study_objects(db_sequence)
+
+@sequence_router.post("/{sequence_id}/study-objects/{study_object_id}", response_model=SequenceRead)
+def add_study_object(
+    sequence_id: int, 
+    study_object_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    try:
+        db_sequence = crud.add_study_object_to_sequence(db, sequence_id, study_object_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return SequenceRead.from_orm_with_study_objects(db_sequence)
+
+@sequence_router.delete("/{sequence_id}/study-objects/{study_object_id}", response_model=SequenceRead)
+def remove_study_object(
+    sequence_id: int, 
+    study_object_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    try:
+        db_sequence = crud.remove_study_object_from_sequence(db, sequence_id, study_object_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return SequenceRead.from_orm_with_study_objects(db_sequence)
 
 @sequence_router.put("/{sequence_id}", response_model=SequenceRead)
 def update_sequence_route(

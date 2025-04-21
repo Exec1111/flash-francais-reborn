@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
-from models.association_tables import sequence_objective_association
+from models.association_tables import sequence_objective_association, sequence_study_object
 from datetime import datetime
 
 class Sequence(Base):
@@ -31,5 +31,10 @@ class Sequence(Base):
     objectives = relationship(
         "Objective",
         secondary=sequence_objective_association,
+        back_populates="sequences"
+    )
+    study_objects = relationship(
+        "StudyObject",
+        secondary=sequence_study_object,
         back_populates="sequences"
     )

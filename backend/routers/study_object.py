@@ -73,3 +73,7 @@ def detach_res(obj_id: int, rid: int, db: Session = Depends(get_db), current_use
         return crud.detach_resource(db, obj_id, rid)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/by_progression/{progression_id}", response_model=List[StudyObjectRead])
+def get_by_progression(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return crud.get_study_objects_by_progression(db, progression_id)

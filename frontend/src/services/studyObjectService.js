@@ -82,6 +82,16 @@ const studyObjectService = {
     } catch (error) {
       throw error.response?.data || { detail: 'Erreur lors de la dissociation de la ressource' };
     }
+  },
+
+  // Nouvel endpoint : objets d'étude par progression
+  getStudyObjectsByProgression: async (progressionId) => {
+    try {
+      const response = await api.get(`/study_objects/by_progression/${progressionId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la récupération des objets d'étude pour la progression" };
+    }
   }
 };
 

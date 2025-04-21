@@ -20,3 +20,11 @@ class StudyObjectRead(StudyObjectBase):
 
     class Config:
         from_attributes = True
+
+class StudyObjectReadShort(BaseModel):
+    id: int
+    title: str
+    description: str | None = None
+
+    class Config:
+        from_attributes = True

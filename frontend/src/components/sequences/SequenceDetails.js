@@ -23,7 +23,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
-import SequenceForm from './SequenceForm';
 
 /**
  * Composant affichant les détails d'une séquence et permettant
@@ -36,7 +35,6 @@ const SequenceDetails = () => {
   const [sequence, setSequence] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   // Charger les détails de la séquence
   useEffect(() => {
@@ -69,12 +67,6 @@ const SequenceDetails = () => {
           (err.detail || err.message || "Erreur inconnue"));
       }
     }
-  };
-  
-  // Gérer la mise à jour réussie d'une séquence
-  const handleUpdateSuccess = (updatedSequence) => {
-    setSequence(updatedSequence);
-    setEditDialogOpen(false);
   };
   
   if (loading) {
@@ -114,13 +106,14 @@ const SequenceDetails = () => {
           }
           action={
             <Box>
-              <IconButton 
-                color="primary" 
-                onClick={() => setEditDialogOpen(true)} 
-                title="Modifier la séquence"
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/sequences/edit/${id}`)}
+                sx={{ mr: 2 }}
               >
-                <EditIcon />
-              </IconButton>
+                Modifier
+              </Button>
               <IconButton 
                 color="error" 
                 onClick={handleDelete} 
@@ -159,6 +152,27 @@ const SequenceDetails = () => {
                       variant="outlined" 
                       color="secondary"
                       onClick={() => navigate(`/objectives/${objective.id}`)}
+                    />
+                  ))}
+                </Box>
+              </Grid>
+            )}
+            
+            {/* --- Objets d'étude associés à la séquence --- */}
+            {sequence.study_objects && sequence.study_objects.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Objets d'étude associés :
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  {sequence.study_objects.map(obj => (
+                    <Chip
+                      key={obj.id}
+                      label={obj.title}
+                      variant="outlined"
+                      color="primary"
+                      sx={{ cursor: 'pointer' }}
+                      title={obj.description || ''}
                     />
                   ))}
                 </Box>
@@ -213,17 +227,6 @@ const SequenceDetails = () => {
           </Button>
         </CardActions>
       </Card>
-      
-      {/* Dialogue pour l'édition */}
-      <SequenceForm
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        isDialog={true}
-        isEdit={true}
-        sequenceId={id}
-        initialData={sequence}
-        onSuccess={handleUpdateSuccess}
-      />
     </Box>
   );
 };

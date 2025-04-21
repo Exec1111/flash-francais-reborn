@@ -48,3 +48,10 @@ study_object_resource = Table(
     Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True),
     Column('resource_id', Integer, ForeignKey('resources.id', ondelete='CASCADE'), primary_key=True)
 )
+
+# Association Sequence <-> StudyObject
+sequence_study_object = Table(
+    'sequence_study_object', Base.metadata,
+    Column('sequence_id', Integer, ForeignKey('sequences.id', ondelete='CASCADE'), primary_key=True),
+    Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True)
+)

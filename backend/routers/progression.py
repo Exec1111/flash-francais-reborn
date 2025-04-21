@@ -71,11 +71,10 @@ def read_progression_route(progression_id: int, db: Session = Depends(get_db), c
 
 @progression_router.put("/{progression_id}", response_model=ProgressionRead)
 def update_progression_route(progression_id: int, progression: ProgressionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_progression = crud.get_progression(db, progression_id=progression_id, user_id=current_user.id)
+    db_progression = crud.update_progression(db, progression_id=progression_id, progression_update=progression, user_id=current_user.id)
     if db_progression is None:
-        raise HTTPException(status_code=404, detail="Progression not found or not accessible")
-    db_progression = crud.update_progression(db=db, progression_id=progression_id, progression_update=progression, user_id=current_user.id)
-    return db_progression
+        raise HTTPException(status_code=404, detail="Progression not found")
+    return ProgressionRead.from_orm_with_study_objects(db_progression)
 
 @progression_router.delete("/{progression_id}", status_code=204) # No content on successful deletion
 def delete_progression_route(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
