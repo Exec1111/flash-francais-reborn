@@ -86,7 +86,7 @@ const ResourceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [resourceTypes, setResourceTypes] = useState([]);
   const [resourceSubTypes, setResourceSubTypes] = useState([]);
-  const { /* token */ } = useAuth(); 
+  const { } = useAuth(); 
   const navigate = useNavigate();
   const MAX_FILE_SIZE = 1 * 1024 * 1024; 
   const ALLOWED_FILE_TYPE = 'application/pdf';
@@ -195,7 +195,7 @@ const ResourceForm = ({
     if (formData.resource_type_id) {
         fetchSubTypes(formData.resource_type_id);
     }
-  }, [formData.resource_type_id, fetchSubTypes]); 
+  }, [formData.resource_type_id, fetchSubTypes]); // Ajout de fetchSubTypes dans les dépendances
 
   // Charger tous les objets d'étude pour l'autocomplete
   useEffect(() => {
@@ -222,7 +222,7 @@ const ResourceForm = ({
       const selected = allStudyObjects.filter(obj => initialData.study_object_ids.includes(obj.id));
       setSelectedStudyObjects(selected);
     }
-  }, [isEdit, initialData, allStudyObjects]); // Dépendances réduites - selectedStudyObjects retiré pour éviter boucle
+  }, [isEdit, initialData, allStudyObjects, selectedStudyObjects.length]); // Ajout de selectedStudyObjects.length dans les dépendances
 
   // --- Gestionnaires d'événements ---
 
