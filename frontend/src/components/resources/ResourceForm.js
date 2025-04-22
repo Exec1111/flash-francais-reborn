@@ -86,7 +86,7 @@ const ResourceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [resourceTypes, setResourceTypes] = useState([]);
   const [resourceSubTypes, setResourceSubTypes] = useState([]);
-  const { token } = useAuth(); 
+  const { /* token */ } = useAuth(); 
   const navigate = useNavigate();
   const MAX_FILE_SIZE = 1 * 1024 * 1024; 
   const ALLOWED_FILE_TYPE = 'application/pdf';
@@ -550,11 +550,17 @@ const ResourceForm = ({
         </Grid>
 
         {/* Affichage du lien vers le document lié à la ressource en mode édition */}
-        {isEdit && initialData?.html_url && (
+        {isEdit && initialData?.source_type === 'ai' && initialData?.file_path && (
             <Grid item xs={12}>
                 <Alert severity="info" sx={{ mt: 2 }}>
                     Document actuellement lié :{' '}
-                    <a href={initialData.html_url} target="_blank" rel="noopener noreferrer">Ouvrir le document</a><br />
+                    <a
+                        href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'}/media/uploads/${initialData.file_path.startsWith('/') ? initialData.file_path.substring(1) : initialData.file_path}`.replace(/\\/g, '/')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Ouvrir le document généré
+                    </a><br />
                     <span style={{fontStyle: 'italic', color: '#888'}}>Ce document est celui actuellement rattaché à la ressource.</span>
                 </Alert>
             </Grid>

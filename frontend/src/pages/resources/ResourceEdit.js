@@ -2,13 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
 import ResourceForm from '../../components/resources/ResourceForm';
 
 const ResourceEdit = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { id } = useParams();
   const [resource, setResource] = useState(null);
   const [loading, setLoading] = useState(true);

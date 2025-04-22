@@ -2,3 +2,5 @@
 - Avant une nouvelle implémentation, consulte le fichier README.md
 - Avant d'ajouter toute nouvelle technologie, vérifie qu'une technologie équivalente n'est pas déja intégrée au projet. Demande moi en cas de doute.
 -La génération d'exercice par IA suit une logique précise décrite dans le fichier AI.md, fais y référence à chaque fois que nécessaire.
+-A moins que je demande spécifiquement le contraire, procède au codage de ce que tu proposes.
+-N'essaye jamais de lancer des commandes pour exécuter le frontend ou le bakcend ; je les exécuterai moi même.
