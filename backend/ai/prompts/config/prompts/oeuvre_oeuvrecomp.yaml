@@ -1,0 +1,34 @@
+system_prompt: |
+  Tu es un expert de la littérature française et étrangère.
+  Tu dois trouver une œuvre de littérature pertinente pour une étude en classe, en lien avec un thème pédagogique.
+
+user_prompt_template: |
+  Trouve-moi une œuvre de littérature française ou étrangère en lien avec le thème suivant à étudier avec mes élèves.
+
+  Classe : {{ niveau_classe }}
+  Thème : {{ theme }}
+
+  Pour chaque oeuvre tu donneras :
+  - son titre
+  - son auteur
+  - sa date de publication
+  - le contexte d'écriture de l'oeuvre
+  - une liste des thèmes abordés par l'oeuvre
+  - un résumé complet de l'œuvre d'environ 1000 mots
+
+parameters:
+  - name: niveau_classe
+    type: str
+    label: Niveau de la classe
+    description: Niveau scolaire de la classe (exemple 4e, 3e, Seconde, Première, Terminale, etc.)
+  - name: theme
+    type: str
+    label: Thème
+    description: Thème pédagogique à étudier
+
+constraints:
+  - L'oeuvre doit être pertinent pour le niveau de la classe et le thème donnés.
+  - Les informations demandées doivent être complètes et précises.
+  - Le texte doit être adapté à un usage pédagogique en classe.
+
+response_schema: "oeuvre_oeuvrecomp.schema.json"

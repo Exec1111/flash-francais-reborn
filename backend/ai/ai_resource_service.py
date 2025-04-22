@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
     ("oeuvre", "extrait"): "extrait_oeuvre",
+    ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 

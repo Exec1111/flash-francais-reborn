@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titre_oeuvre }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 2em; background: #f9f9f9; }
+        .fiche-oeuvre { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px #0001; padding: 2em; max-width: 800px; margin: auto; }
+        h1 { color: #3f51b5; }
+        .meta { color: #444; margin-bottom: 1.5em; }
+        .themes { margin: 1em 0; }
+        .resume { margin-top: 2em; background: #f5f5f5; border-radius: 4px; padding: 1em; }
+        .contexte { margin: 1em 0; font-style: italic; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="fiche-oeuvre">
+        <h1>{{ titre_oeuvre }}</h1>
+        <div class="meta">
+            <strong>Auteur :</strong> {{ auteur }}<br>
+            <strong>Date de parution :</strong> {{ date_parution }}
+        </div>
+        <div class="contexte">
+            <strong>Contexte d'écriture :</strong><br>
+            {{ contexte_ecriture }}
+        </div>
+        <div class="themes">
+            <strong>Principaux thèmes abordés :</strong>
+            <ul>
+                {% for theme in themes %}
+                    <li>{{ theme }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="resume">
+            <strong>Résumé complet de l'œuvre :</strong>
+            <p>{{ resume }}</p>
+        </div>
+    </div>
+</body>
+</html>

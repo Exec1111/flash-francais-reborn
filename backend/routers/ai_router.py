@@ -216,13 +216,14 @@ async def merge_resource(
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             if type_key.lower() == "oeuvre" and subtype_key.lower() == "extrait":
                 model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
-                logger.info(f"[Fusion][TRACE] Dossier modèle sélectionné : {model_dir}")
             elif type_key.lower() == "exercice" and subtype_key.lower() == "qcm":
                 model_dir = os.path.join(BASE_DIR, "templates", "qcm_models")
-                logger.info(f"[Fusion][TRACE] Dossier modèle sélectionné : {model_dir}")
+            elif type_key.lower() == "oeuvre" and subtype_key.lower() == "oeuvrecomp":
+                model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
             else:
                 logger.warning(f"Aucun modèle HTML disponible pour type={type_key}, sous-type={subtype_key}.")
                 raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
+            logger.info(f"[Fusion][TRACE] Dossier modèle sélectionné : {model_dir}")
             model_path = os.path.join(model_dir, f"default_{type_key.lower()}_{subtype_key.lower()}.html")
             logger.info(f"[Fusion][TRACE] Chemin du modèle HTML sélectionné : {model_path}")
             if not os.path.exists(model_path):

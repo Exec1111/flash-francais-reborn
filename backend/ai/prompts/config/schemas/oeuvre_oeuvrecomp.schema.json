@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FicheOeuvreComplete",
+  "description": "Schéma de sortie pour la fiche d'une œuvre complète (type OEUVRE / sous-type OEUVRECOMP)",
+  "type": "object",
+  "properties": {
+    "titre_oeuvre": {
+      "type": "string",
+      "description": "Titre de l'œuvre littéraire."
+    },
+    "auteur": {
+      "type": "string",
+      "description": "Auteur de l'œuvre."
+    },
+    "date_parution": {
+      "type": "string",
+      "description": "Date de parution de l'œuvre."
+    },
+    "contexte_ecriture": {
+      "type": "string",
+      "description": "Contexte d'écriture de l'œuvre."
+    },
+    "themes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Principaux thèmes abordés dans l'œuvre."
+    },
+    "resume": {
+      "type": "string",
+      "description": "Résumé complet de l'œuvre (max 1000 mots)."
+    }
+  },
+  "required": ["titre_oeuvre", "auteur", "date_parution", "contexte_ecriture", "themes", "resume"]
+}
