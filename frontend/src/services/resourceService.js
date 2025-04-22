@@ -70,6 +70,16 @@ const resourceService = {
     const response = await api.get(`${RESOURCE_ENDPOINT}/${id}`);
     return response.data;
   },
+
+  // Récupérer les objets d'étude associés à une ressource
+  getStudyObjects: async (resourceId) => {
+    try {
+      const response = await api.get(`${RESOURCE_ENDPOINT}/${resourceId}/study_objects`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default resourceService;

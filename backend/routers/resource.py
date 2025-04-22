@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload, ResourceListResponse
 from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
+from schemas.study_object import StudyObjectReadShort # Import global
 from database import get_db
 import crud.resource # Importer spécifiquement le module requis
 from crud.resource import get_upload_path
@@ -304,45 +305,24 @@ def read_resource(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """Récupère une ressource spécifique par son ID."""
-    logger.info(f"Lecture de la ressource {resource_id} pour l'utilisateur {current_user.id}")
+    """Récupère une ressource spécifique par son ID, avec les objets d'étude associés."""
     db_resource = crud.resource.get_resource(db, resource_id=resource_id)
     if db_resource is None:
-        logger.warning(f"Ressource {resource_id} non trouvée.")
-        raise HTTPException(status_code=404, detail="Resource not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
     if db_resource.user_id != current_user.id:
-        logger.error(f"Accès non autorisé à la ressource {resource_id} par l'utilisateur {current_user.id}")
-        raise HTTPException(status_code=403, detail="Not authorized to access this resource")
-    
-    # Construction de l'URL du HTML lié (si IA)
-    html_url = None
-    if db_resource.source_type == 'ai' and db_resource.file_path:
-        # On suppose que file_path est relatif à /static/
-        # Si file_path commence par 'static/', on retire ce préfixe
-        relative_path = db_resource.file_path
-        if relative_path.startswith('static/'):
-            relative_path = relative_path[len('static/'):]
-        html_url = f"/static/{relative_path}" if not relative_path.startswith('/static/') else relative_path
-        # Si déjà /static/ inclus, on garde
-        # Pour Render, il faudra peut-être ajuster l'URL publique
-    return ResourceResponse(
-        id=db_resource.id,
-        title=db_resource.title,
-        description=db_resource.description,
-        type_id=db_resource.type_id,
-        sub_type_id=db_resource.sub_type_id,
-        user_id=db_resource.user_id,
-        source_type=db_resource.source_type,
-        file_path=db_resource.file_path,
-        file_name=db_resource.file_name,
-        file_size=db_resource.file_size,
-        file_type=db_resource.file_type,
-        html_url=html_url,
-        type=db_resource.type,
-        sub_type=db_resource.sub_type,
-        sessions=[SessionMinimalSchema(id=s.id) for s in db_resource.sessions],
-        objectives=[ObjectiveIdentifier(id=o.id, title=getattr(o, 'title', None)) for o in db_resource.objectives]
-    )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resource")
+    # Construction de la liste des objets d'étude associés (id, title, description)
+    from schemas.study_object import StudyObjectReadShort
+    study_objects = [StudyObjectReadShort.from_orm(obj) for obj in getattr(db_resource, "study_objects", [])]
+    study_object_ids = [obj.id for obj in study_objects]
+    # Construction de la réponse enrichie
+    response = ResourceResponse.model_validate(db_resource)
+    response_dict = response.model_dump()
+    # Sérialisation explicite des objets Pydantic
+    response_dict['study_objects'] = [obj.model_dump() for obj in study_objects]
+    response_dict['study_object_ids'] = study_object_ids
+    logger.info(f"[DEBUG API] ResourceResponse retourné : {response_dict}")
+    return response_dict
 
 @resource_router.put("/{resource_id}", response_model=ResourceResponse)
 async def update_resource_route(
@@ -356,6 +336,7 @@ async def update_resource_route(
     sub_type_id: Optional[int] = Form(None),
     session_ids_json: Optional[str] = Form(None),
     objective_ids_json: Optional[str] = Form(None), # Ajout pour les objectifs
+    study_object_ids_json: Optional[str] = Form(None), # Ajout pour les objets d'étude
     source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
     file: Optional[UploadFile] = File(None)
 ):
@@ -398,6 +379,19 @@ async def update_resource_route(
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Erreur parsing JSON pour objective_ids dans MAJ: {e}")
             raise HTTPException(status_code=400, detail=f"Format invalide pour objective_ids_json: {e}")
+
+    # --- Parsing des IDs d'objets d'étude --- 
+    study_object_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
+    if study_object_ids_json is not None:
+        try:
+            parsed_ids = json.loads(study_object_ids_json) # Peut être une liste vide []
+            if not isinstance(parsed_ids, list):
+                raise ValueError("study_object_ids_json doit être une liste JSON.")
+            study_object_ids = [int(oid) for oid in parsed_ids if oid is not None]
+            logger.info(f"Study Object IDs parsés pour MAJ: {study_object_ids}")
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Erreur parsing JSON pour study_object_ids dans MAJ: {e}")
+            raise HTTPException(status_code=400, detail=f"Format invalide pour study_object_ids_json: {e}")
 
     # --- Gestion de l'upload de fichier --- 
     file_upload_data: Optional[ResourceFileUpload] = None
@@ -445,6 +439,8 @@ async def update_resource_route(
         update_data_dict["session_ids"] = session_ids
     if objective_ids_json is not None:
         update_data_dict["objective_ids"] = objective_ids
+    if study_object_ids_json is not None:
+        update_data_dict["study_object_ids"] = study_object_ids
         
     # Filtrer les clés dont la valeur est None pour ne pas écraser les valeurs existantes par None
     update_data_filtered = {k: v for k, v in update_data_dict.items() if v is not None}
@@ -454,6 +450,8 @@ async def update_resource_route(
          update_data_filtered["session_ids"] = update_data_dict["session_ids"] # Peut être []
     if "objective_ids" in update_data_dict:
          update_data_filtered["objective_ids"] = update_data_dict["objective_ids"] # Peut être []
+    if "study_object_ids" in update_data_dict:
+         update_data_filtered["study_object_ids"] = update_data_dict["study_object_ids"] # Peut être []
 
     resource_update_schema = ResourceUpdate(**update_data_filtered)
     logger.debug(f"Schéma ResourceUpdate préparé: {resource_update_schema.model_dump_json(exclude_none=True)}")
@@ -560,3 +558,14 @@ async def test_route_for_session(session_id: int):
     logger.info(f">>> SIMPLE TEST ROUTE CALLED for session {session_id} <<<")
     return {"message": f"Simple test route ok for session {session_id}"}
 # --- Fin Route de TEST ---
+
+@resource_router.get("/{resource_id}/study_objects", response_model=List[StudyObjectReadShort])
+def get_study_objects_for_resource(
+    resource_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Retourne la liste des objets d'étude associés à une ressource donnée."""
+    from crud.study_object import get_study_objects_by_resource
+    study_objects = get_study_objects_by_resource(db, resource_id)
+    return [StudyObjectReadShort.from_orm(obj) for obj in study_objects]

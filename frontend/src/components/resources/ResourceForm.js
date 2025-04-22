@@ -22,7 +22,8 @@ import {
   RadioGroup, 
   FormControlLabel, 
   Radio, 
-  FormLabel 
+  FormLabel,
+  Autocomplete
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile'; 
@@ -31,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
 import fusionService from '../../services/fusionService';
+import studyObjectService from '../../services/studyObjectService';
 import DynamicAIForm from '../DynamicAIForm';
 import api from '../../services/api'; // Correction du chemin d'import
 
@@ -103,31 +105,38 @@ const ResourceForm = ({
   // Chemin local du HTML généré par l'IA (file system)
   const [fusionHtmlPath, setFusionHtmlPath] = useState('');
 
+  const [allStudyObjects, setAllStudyObjects] = useState([]);
+  const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
+
   // --- Effets --- 
 
   // Initialisation du formulaire avec les données existantes
   useEffect(() => {
     // Vérifier que initialData existe et que les types sont chargés
     if (initialData && resourceTypes.length > 0) {
+        console.log('[DEBUG ResourceForm] initialData avant traitement:', initialData); // Log pour debug
         const initialTypeId = initialData.type_id ? String(initialData.type_id) : '';
         const initialSubTypeId = initialData.sub_type_id ? String(initialData.sub_type_id) : '';
 
-        setFormData({ // Utiliser setFormData directement au lieu de l'updater
+        // Créer un nouvel objet formData avec TOUS les champs d'initialData
+        const newFormData = {
+            ...initialData, // Copier TOUS les champs d'initialData d'abord
             title: initialData.title || '',
             description: initialData.description || '',
             resource_type_id: initialTypeId,       // Clé correcte pour l'état
             resource_sub_type_id: initialSubTypeId, // Clé correcte pour l'état
             session_ids: initialData.session_ids || (session ? [session.id] : []), // Utiliser session_ids de ResourceEdit
-            // source_type est géré par l'état dédié `sourceType`
             url: initialData.url || '', // Inclure l'URL si elle fait partie des initialData
-            // ai_prompt: initialData.ai_prompt || '',
-            // ai_model: initialData.ai_model || '',
-            // ai_raw_output: initialData.ai_raw_output || ''
-            // Remarque: file_path, file_name ne sont pas des champs modifiables ici
-        });
-
+        };
+        
+        setFormData(newFormData); // Utiliser le nouvel objet complet
         setSourceType(initialData.source_type || 'ai'); // Mettre à jour aussi l'état sourceType
-
+        if (Array.isArray(initialData.study_objects)) {
+          setSelectedStudyObjects(initialData.study_objects);
+        } else if (Array.isArray(initialData.study_object_ids) && Array.isArray(allStudyObjects) && allStudyObjects.length > 0) {
+          // fallback si study_objects absent mais study_object_ids présent
+          setSelectedStudyObjects(allStudyObjects.filter(obj => initialData.study_object_ids.includes(obj.id)));
+        }
         // Charger les sous-types correspondants si un type est sélectionné
         if (initialTypeId) {
             fetchSubTypes(initialTypeId);
@@ -142,7 +151,7 @@ const ResourceForm = ({
         // setSourceType('ai');
         // setSelectedFile(null);
     }
-  }, [initialData, resourceTypes, session, isEdit]); // Garder les dépendances
+  }, [initialData, resourceTypes, session, isEdit, allStudyObjects]); // Ajout allStudyObjects pour fallback
 
   // Charger les types
   const fetchResourceTypes = useCallback(async () => {
@@ -187,6 +196,33 @@ const ResourceForm = ({
         fetchSubTypes(formData.resource_type_id);
     }
   }, [formData.resource_type_id, fetchSubTypes]); 
+
+  // Charger tous les objets d'étude pour l'autocomplete
+  useEffect(() => {
+    const fetchStudyObjects = async () => {
+      try {
+        const objs = await studyObjectService.getStudyObjects(0, 100);
+        setAllStudyObjects(objs.items || objs);
+      } catch (err) {
+        setAllStudyObjects([]);
+      }
+    };
+    fetchStudyObjects();
+  }, []);
+
+  // Synchronisation INITIALE des objets d'étude sélectionnés en édition - Une seule fois au chargement
+  useEffect(() => {
+    if (
+      isEdit &&
+      initialData &&
+      Array.isArray(initialData.study_object_ids) &&
+      allStudyObjects.length > 0 &&
+      selectedStudyObjects.length === 0 // Seulement si aucune sélection manuelle n'a été faite
+    ) {
+      const selected = allStudyObjects.filter(obj => initialData.study_object_ids.includes(obj.id));
+      setSelectedStudyObjects(selected);
+    }
+  }, [isEdit, initialData, allStudyObjects]); // Dépendances réduites - selectedStudyObjects retiré pour éviter boucle
 
   // --- Gestionnaires d'événements ---
 
@@ -261,6 +297,12 @@ const ResourceForm = ({
     const sessionIdsJson = JSON.stringify(formData.session_ids || []);
     dataToSend.append('session_ids_json', sessionIdsJson);
 
+    // --- AJOUT : transmettre les associations d'objets d'étude ---
+    const studyObjectIds = selectedStudyObjects.map(obj => obj.id);
+    dataToSend.append('study_object_ids_json', JSON.stringify(studyObjectIds));
+    console.log('[DEBUG] Objets d\'étude sélectionnés:', selectedStudyObjects);
+    console.log('[DEBUG] IDs objets d\'étude à envoyer:', studyObjectIds);
+
     if (sourceType === 'file') {
         if (selectedFile) { 
             dataToSend.append('file', selectedFile);
@@ -303,11 +345,12 @@ const ResourceForm = ({
         }, 1500);
 
     } catch (err) {
-        console.error(`Erreur lors de ${isEdit ? 'la modification' : 'l\'ajout'} de la ressource:`, err);
+        const ajoutOuModif = isEdit ? 'la modification' : 'l’ajout';
+        console.error(`Erreur lors de ${ajoutOuModif} de la ressource:`, err);
         console.error("Backend Error Detail:", err.response?.data?.detail);
         
         // Formatage du message d'erreur pour l'affichage
-        let displayError = `Échec de ${isEdit ? 'la modification' : 'l\'ajout'}.`; // Message par défaut
+        let displayError = `Échec de ${ajoutOuModif}.`; // Message par défaut
         const detail = err.response?.data?.detail;
 
         if (Array.isArray(detail)) {
@@ -557,6 +600,23 @@ const ResourceForm = ({
                 </Box>
             </Grid>
         )}
+        <Grid item xs={12}>
+          <Autocomplete
+            multiple
+            options={allStudyObjects || []}
+            getOptionLabel={option => option && option.title ? option.title : ''}
+            value={selectedStudyObjects || []}
+            onChange={(e, newValue) => {
+              setSelectedStudyObjects(newValue || []);
+            }}
+            renderInput={params => (
+              <TextField {...params} label="Objets d'étude associés" placeholder="Sélectionner..." margin="normal" />
+            )}
+            isOptionEqualToValue={(option, value) => option && value && option.id === value.id}
+            sx={{ mt: 2, zIndex: 1000 }}
+            disabled={submitting}
+          />
+        </Grid>
       </Grid>
       {showAIGenerationForm && (
         <Box sx={{ mt: 2 }}>

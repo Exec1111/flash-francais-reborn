@@ -12,11 +12,18 @@ def get_study_object(db: Session, study_object_id: int) -> Optional[StudyObject]
 
 
 def get_study_objects(db: Session, skip: int = 0, limit: int = 100) -> List[StudyObject]:
-    return db.query(StudyObject).offset(skip).limit(limit).all()
+    return db.query(StudyObject)\
+        .options(selectinload(StudyObject.progressions), selectinload(StudyObject.resources))\
+        .offset(skip).limit(limit).all()
 
 
 def get_study_objects_by_progression(db: Session, progression_id: int) -> List[StudyObject]:
     return db.query(StudyObject).join(StudyObject.progressions).filter(Progression.id == progression_id).all()
+
+
+def get_study_objects_by_resource(db: Session, resource_id: int) -> List[StudyObject]:
+    """Récupère tous les objets d'étude associés à une ressource donnée."""
+    return db.query(StudyObject).join(StudyObject.resources).filter(Resource.id == resource_id).all()
 
 
 def create_study_object(db: Session, obj_in: StudyObjectCreate) -> StudyObject:
@@ -42,6 +49,9 @@ def update_study_object(db: Session, study_object_id: int, obj_update: StudyObje
         db_obj.title = update_data["title"]
     if "description" in update_data:
         db_obj.description = update_data["description"]
+    if "resource_ids" in update_data and update_data["resource_ids"] is not None:
+        db_resources = db.query(Resource).filter(Resource.id.in_(update_data["resource_ids"])).all()
+        db_obj.resources = db_resources
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)

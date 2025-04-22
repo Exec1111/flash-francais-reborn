@@ -24,14 +24,16 @@ def create(obj: StudyObjectCreate, db: Session = Depends(get_db), current_user: 
 
 @router.get("/", response_model=List[StudyObjectRead])
 def read_all(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crud.get_study_objects(db)
+    db_objs = crud.get_study_objects(db)
+    return [StudyObjectRead.from_orm_with_resources(obj) for obj in db_objs]
 
 @router.get("/{obj_id}", response_model=StudyObjectRead)
 def read_one(obj_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_obj = crud.get_study_object(db, obj_id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="StudyObject not found")
-    return db_obj
+    # Utilise la méthode from_orm_with_resources pour garantir le retour des resource_ids
+    return StudyObjectRead.from_orm_with_resources(db_obj)
 
 @router.patch("/{obj_id}", response_model=StudyObjectRead)
 def update(obj_id: int, obj: StudyObjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

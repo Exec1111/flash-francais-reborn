@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from .session import SessionReadSimple
 from .common import ObjectiveIdentifier
+from schemas.study_object import StudyObjectReadShort
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,8 @@ class ResourceResponse(BaseModel):
     sub_type: Optional[ResourceSubTypeSchema] = None
     sessions: List[SessionMinimalSchema] = []
     objectives: List[ObjectiveIdentifier] = []
+    study_objects: Optional[List['StudyObjectReadShort']] = None  # Correction: utiliser le schéma Pydantic
+    study_object_ids: Optional[List[int]] = None  # Ajout pour faciliter le pré-remplissage frontend
 
     class Config:
         from_attributes = True
@@ -90,6 +93,7 @@ class ResourceUpdate(BaseModel):
     sub_type_id: Optional[int] = None
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
+    study_object_ids: Optional[List[int]] = None  # Ajout pour la gestion des objets d'étude associés
     # Pas de mise à jour de source_type ici, c'est généralement fixé à la création
     # Pas de file_* ici, la mise à jour de fichier est gérée séparément dans la route/CRUD
 

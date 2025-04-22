@@ -7,10 +7,13 @@ import {
   Card,
   CardContent,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Chip
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
+import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
+import resourceService from '../../services/resourceService';
 
 const EditStudyObject = () => {
   const { id } = useParams();
@@ -19,6 +22,10 @@ const EditStudyObject = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // Gestion des ressources associées
+  const [associatedResources, setAssociatedResources] = useState([]);
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -30,6 +37,16 @@ const EditStudyObject = () => {
         const data = await studyObjectService.getStudyObjectById(id);
         setTitle(data.title);
         setDescription(data.description || '');
+        // Charger les ressources associées si présentes
+        if (data.resource_ids && data.resource_ids.length > 0) {
+          // Récupérer les objets complets pour affichage
+          const resObjs = await Promise.all(
+            data.resource_ids.map(rid => resourceService.getResourceById(rid))
+          );
+          setAssociatedResources(resObjs);
+        } else {
+          setAssociatedResources([]);
+        }
       } catch (err) {
         setError(err.detail || err.message || 'Erreur inconnue');
       } finally {
@@ -45,14 +62,22 @@ const EditStudyObject = () => {
     setError(null);
     setSuccess(null);
     try {
-      await studyObjectService.updateStudyObject(id, { title, description });
-      setSuccess('Objet d\'étude mis à jour avec succès !');
+      await studyObjectService.updateStudyObject(id, {
+        title,
+        description,
+        resource_ids: associatedResources.map(r => r.id)
+      });
+      setSuccess("Objet d'étude mis à jour avec succès !");
       setTimeout(() => navigate('/study-objects'), 1000);
     } catch (err) {
       setError(err.detail || err.message || "Erreur inconnue");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRemoveResource = (rid) => {
+    setAssociatedResources(associatedResources.filter(r => r.id !== rid));
   };
 
   if (loading && !success) {
@@ -88,6 +113,35 @@ const EditStudyObject = () => {
               multiline
               minRows={3}
             />
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                Ressources associées
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setResourceModalOpen(true)}
+                sx={{ mb: 1 }}
+              >
+                Associer une ressource existante
+              </Button>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {associatedResources.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Aucune ressource associée.
+                  </Typography>
+                ) : (
+                  associatedResources.map(res => (
+                    <Chip
+                      key={res.id}
+                      label={res.title || res.name || `Ressource ${res.id}`}
+                      onDelete={() => handleRemoveResource(res.id)}
+                      sx={{ maxWidth: 220 }}
+                    />
+                  ))
+                )}
+              </Box>
+            </Box>
             {error && (
               <Alert severity="error" sx={{ my: 2 }} onClose={() => setError(null)}>
                 {error}
@@ -121,6 +175,12 @@ const EditStudyObject = () => {
           </form>
         </CardContent>
       </Card>
+      <ResourceSelectorModal
+        open={resourceModalOpen}
+        onClose={() => setResourceModalOpen(false)}
+        initialSelectedResources={associatedResources}
+        onSave={setAssociatedResources}
+      />
     </Box>
   );
 };

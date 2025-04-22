@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import resourceService from '../services/resourceService'; // Ajuster le chemin si nécessaire
 import { 
-    Box, Typography, Paper, CircularProgress, Alert, Button, Link, Divider 
+    Box, Typography, Paper, CircularProgress, Alert, Button, Link, Divider, List, ListItem 
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import StudyObjectChips from '../components/studyObjects/StudyObjectChips';
 
 // Fonction pour formater les dates (peut être centralisée)
 const formatDate = (dateString) => {
@@ -22,6 +23,9 @@ function ResourceView() {
     const [resource, setResource] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [studyObjects, setStudyObjects] = useState([]);
+    const [loadingStudyObjects, setLoadingStudyObjects] = useState(false);
+    const [errorStudyObjects, setErrorStudyObjects] = useState(null);
 
     useEffect(() => {
         const fetchResource = async () => {
@@ -44,6 +48,25 @@ function ResourceView() {
         } else {
             setError("ID de ressource manquant.");
             setLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        const fetchStudyObjects = async () => {
+            setLoadingStudyObjects(true);
+            try {
+                const objects = await resourceService.getStudyObjects(id);
+                setStudyObjects(objects);
+                setErrorStudyObjects(null);
+            } catch (err) {
+                setErrorStudyObjects(err.response?.data?.detail || err.message || "Impossible de charger les objets d'étude.");
+                setStudyObjects([]);
+            } finally {
+                setLoadingStudyObjects(false);
+            }
+        };
+        if (id) {
+            fetchStudyObjects();
         }
     }, [id]);
 
@@ -99,7 +122,7 @@ function ResourceView() {
                 Retour à la liste
             </Button>
             <Paper sx={{ padding: 3 }}>
-                <Typography variant="h4" component="h1" gutterBottom>
+                <Typography variant="h4" gutterBottom>
                     {resource.title || "Détail de la Ressource"}
                 </Typography>
                 <Divider sx={{ my: 2 }} />
@@ -139,9 +162,16 @@ function ResourceView() {
                     </Box>
                 )}
 
-                {/* TODO: Afficher les sessions associées si nécessaire */}
-                {/* resource.sessions */}
+                <Divider sx={{ my: 2 }} />
 
+                <Typography variant="h6">Objets d'étude associés</Typography>
+                {loadingStudyObjects ? (
+                    <CircularProgress size={24} />
+                ) : errorStudyObjects ? (
+                    <Alert severity="error">{errorStudyObjects}</Alert>
+                ) : (
+                    <StudyObjectChips studyObjects={studyObjects} onClick={obj => navigate(`/study-objects/${obj.id}`)} />
+                )}
             </Paper>
         </Box>
     );

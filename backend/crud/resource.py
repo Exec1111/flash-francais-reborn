@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session, joinedload
-from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType, Objective
+from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType, Objective, StudyObject
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceFileUpload
 from crud.objective import get_objective
 from sqlalchemy import or_
@@ -21,7 +21,8 @@ def get_resource(db: Session, resource_id: int):
         joinedload(Resource.type),
         joinedload(Resource.sub_type),
         joinedload(Resource.sessions),
-        joinedload(Resource.objectives) # Charger aussi les objectifs associés
+        joinedload(Resource.objectives), # Charger aussi les objectifs associés
+        joinedload(Resource.study_objects) # Charger aussi les objets d'étude associés
     ).filter(Resource.id == resource_id).first()
     return resource
 
@@ -188,9 +189,11 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
     update_data = resource_update.model_dump(exclude_unset=True)
     new_session_ids_provided = 'session_ids' in update_data
     new_objective_ids_provided = 'objective_ids' in update_data # Vérifier si la clé est présente
+    new_study_object_ids_provided = 'study_object_ids' in update_data
 
     new_session_ids = update_data.pop('session_ids', None) if new_session_ids_provided else None
     new_objective_ids = update_data.pop('objective_ids', None) if new_objective_ids_provided else None # Pop seulement si présente
+    new_study_object_ids = update_data.pop('study_object_ids', None) if new_study_object_ids_provided else None
 
     new_file_provided = file_upload is not None
 
@@ -275,10 +278,19 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
             db_resource.objectives = new_objectives
             logger.info(f"Objectifs mis à jour pour la ressource {resource_id}: {valid_objective_ids}")
 
+    # Gestion des objets d'étude associés
+    if new_study_object_ids_provided:
+        from models.study_object import StudyObject
+        if new_study_object_ids is not None:
+            db_resource.study_objects = db.query(StudyObject).filter(StudyObject.id.in_(new_study_object_ids)).all()
+        else:
+            db_resource.study_objects = []
+        logger.info(f"Objets d'étude mis à jour pour la ressource {resource_id}: {new_study_object_ids}")
+
     db.add(db_resource) 
     db.commit()
     db.refresh(db_resource)
-    db.refresh(db_resource, attribute_names=['sessions', 'objectives']) # Recharger les relations
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects']) # Recharger les relations
 
     # Recharger explicitement après refresh pour être sûr d'avoir l'état à jour
     # db_resource_loaded = get_resource(db, db_resource.id)

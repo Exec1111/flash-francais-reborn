@@ -30,21 +30,24 @@ const ResourceEdit = () => {
         }
 
         const data = await response.json();
+        console.log('[DEBUG API] Données brutes de l\'API:', data); // Debug complet
+
         // Construire l'objet initialData pour ResourceForm
-        // en utilisant les clés exactes de la réponse API
-        // et en s'assurant que les types correspondent (ex: array pour session_ids)
+        // en conservant TOUS les champs de la réponse API (spread operator)
         setResource({
+          ...data, // Garder tous les champs de la réponse API
           title: data.title,
           description: data.description || '',
           type_id: data.type_id,
           sub_type_id: data.sub_type_id,
-          source_type: data.source_type, // Ajouter le type de source
-          file_path: data.file_path || '', // Ajouter le chemin du fichier
-          file_name: data.file_name || '', // Ajouter le nom du fichier
-          html_url: data.html_url || '', // Ajouter le lien du fichier HTML généré
+          source_type: data.source_type, 
+          file_path: data.file_path || '', 
+          file_name: data.file_name || '', 
+          html_url: data.html_url || '', 
           session_ids: Array.isArray(data.session_ids) ? data.session_ids : [],
-          // url: data.url || '', // Décommenter si le formulaire gère l'URL
-          // ai_generated_content: data.ai_generated_content || '', // Décommenter si pertinent
+          // Préserver explicitement les associations avec les objets d'étude
+          study_objects: data.study_objects || [],
+          study_object_ids: data.study_object_ids || [],
         });
         setLoading(false);
       } catch (err) {
