@@ -52,6 +52,7 @@ import StudyObjectList from './pages/studyObjects/StudyObjectList';
 import NewStudyObject from './pages/studyObjects/NewStudyObject';
 import EditStudyObject from './pages/studyObjects/EditStudyObject';
 import StudyObjectDetail from './pages/studyObjects/StudyObjectDetail';
+import ProposeWorks from './pages/studyObjects/ProposeWorks';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -341,6 +342,7 @@ function App() {
         <Route path="new" element={<NewStudyObject />} />
         <Route path="edit/:id" element={<EditStudyObject />} />
         <Route path=":id" element={<StudyObjectDetail />} />
+        <Route path=":id/propose-works" element={<ProposeWorks />} />
       </Route>
 
       {/* Redirection par défaut */}

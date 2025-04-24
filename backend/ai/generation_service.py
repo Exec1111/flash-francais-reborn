@@ -19,7 +19,7 @@ async def get_chat_response(input_data: ChatInput) -> ChatOutput:
         # Chargement des variables d'environnement
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-03-25")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
         
         # Configuration de l'API google-genai
         client = genai.Client(api_key=api_key)

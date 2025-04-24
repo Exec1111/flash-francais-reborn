@@ -7,6 +7,7 @@ user_prompt_template: |
 
   Classe : {{ niveau_classe }}
   Thème : {{ theme }}
+  Instructions personnalisées : {{ instructions_personnalisees }}
 
   Pour chaque extrait tu donneras :
   - le titre de l'oeuvre de laquelle l'extrait est issu
@@ -16,6 +17,7 @@ user_prompt_template: |
   - le contexte de l'extrait choisi
   - Une explication du lien entre le thème et l'extrait choisi
   - L'extrait (500 mots maximum environ, tu peux en ajouter un peu si c'est nécessaire à la bonne compréhension de l'extrait)
+  - Tu respecteras les éventuelles instructions personnalisées
 
 parameters:
   - name: niveau_classe
@@ -26,7 +28,10 @@ parameters:
     type: str
     label: Thème
     description: Thème pédagogique à étudier
-
+  - name: instructions_personnalisees
+    type: str
+    label: Instructions personnalisées
+    description: Instructions personnalisées complémentaires
 constraints:
   - L'extrait doit être pertinent pour le niveau de la classe et le thème donnés.
   - L'extrait ne doit pas dépasser 500 mots sauf si cela est nécessaire à la compréhension.

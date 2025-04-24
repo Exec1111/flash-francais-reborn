@@ -42,7 +42,7 @@ async def merge_ai_resource_content(
     try:
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-03-25")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
         
         # Configuration du client
         client = genai.Client(api_key=api_key)
@@ -72,7 +72,7 @@ async def merge_ai_resource_content(
         )
         
         html_generated = response.text
-        logger.info(f"[Fusion][LLM] Réponse brute générée par le LLM :\n{html_generated}")
+        # logger.info(f"[Fusion][LLM] Réponse brute générée par le LLM :\n{html_generated}")
         # Dossier de destination temporaire pour la génération
         from config import get_settings
         settings = get_settings()
@@ -112,7 +112,7 @@ async def generate_ai_resource_content(
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-03-25")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
         
         # Configuration du client Google GenAI
         client = genai.Client(api_key=api_key)
@@ -153,6 +153,9 @@ async def generate_ai_resource_content(
             )
         
         # Appel API en JSON
+        logger.info(f"Modèle : {model_name}")
+        logger.info(f"contents : {contents}")
+        logger.info(f"config : {config}")
         response = client.models.generate_content(
             model=model_name,
             contents=contents,
@@ -161,7 +164,7 @@ async def generate_ai_resource_content(
         
         # Extraire le JSON
         response_content = response.text.strip()
-        logger.info(f"Réponse brute du modèle : {response_content}")
+        # logger.info(f"Réponse brute du modèle : {response_content}")
         
         # Parsing direct du JSON retourné
         parsed_content = json.loads(response_content)

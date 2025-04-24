@@ -52,7 +52,7 @@ Le module se compose principalement de deux fonctions asynchrones dans `backen
 ## 4. Variables d’environnement
 
 - `GOOGLE_API_KEY` : clé API Google GenAI.
-- `GEMINI_CHAT_MODEL` : nom du modèle (par ex. `gemini-2.5-pro-preview-03-25`).
+- `GEMINI_CHAT_MODEL` : nom du modèle (par ex. `gemini-2.5-flash-preview-04-17`).
 
 ---
 

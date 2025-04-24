@@ -7,6 +7,7 @@ user_prompt_template: |
 
   Classe : {{ niveau_classe }}
   Thème : {{ theme }}
+  Instructions personnalisées : {{ instructions_personnalisees }}
 
   Pour chaque oeuvre tu donneras :
   - son titre
@@ -15,6 +16,8 @@ user_prompt_template: |
   - le contexte d'écriture de l'oeuvre
   - une liste des thèmes abordés par l'oeuvre
   - un résumé complet de l'œuvre d'environ 1000 mots
+
+  Tu veilleras à respecter les instructions personnalisées.
 
 parameters:
   - name: niveau_classe
@@ -25,7 +28,10 @@ parameters:
     type: str
     label: Thème
     description: Thème pédagogique à étudier
-
+  - name: instructions_personnalisees
+    type: str
+    label: Instructions personnalisées
+    description: Instructions personnalisées complémentaires
 constraints:
   - L'oeuvre doit être pertinent pour le niveau de la classe et le thème donnés.
   - Les informations demandées doivent être complètes et précises.
