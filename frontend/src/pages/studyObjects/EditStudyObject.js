@@ -8,20 +8,24 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Chip
+  Chip,
+  Snackbar
 } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
 import resourceService from '../../services/resourceService';
 
 const EditStudyObject = () => {
   const { id } = useParams();
+  const location = useLocation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // Gestion des ressources associées
   const [associatedResources, setAssociatedResources] = useState([]);
@@ -29,30 +33,47 @@ const EditStudyObject = () => {
 
   const navigate = useNavigate();
 
+  // Vérifier si on revient d'une autre page avec une demande de rafraîchissement
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await studyObjectService.getStudyObjectById(id);
-        setTitle(data.title);
-        setDescription(data.description || '');
-        // Charger les ressources associées si présentes
-        if (data.resource_ids && data.resource_ids.length > 0) {
-          // Récupérer les objets complets pour affichage
-          const resObjs = await Promise.all(
-            data.resource_ids.map(rid => resourceService.getResourceById(rid))
-          );
-          setAssociatedResources(resObjs);
-        } else {
-          setAssociatedResources([]);
-        }
-      } catch (err) {
-        setError(err.detail || err.message || 'Erreur inconnue');
-      } finally {
-        setLoading(false);
+    if (location.state?.refresh) {
+      fetchData();
+      
+      // Afficher le message de succès si présent
+      if (location.state.messageSuccess) {
+        setSuccessMessage(location.state.messageSuccess);
+        setSnackbarOpen(true);
       }
-    };
+      
+      // Nettoyer l'état de l'URL pour éviter des rafraîchissements répétés
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await studyObjectService.getStudyObjectById(id);
+      setTitle(data.title);
+      setDescription(data.description || '');
+      // Charger les ressources associées si présentes
+      if (data.resource_ids && data.resource_ids.length > 0) {
+        // Récupérer les objets complets pour affichage
+        const resObjs = await Promise.all(
+          data.resource_ids.map(rid => resourceService.getResourceById(rid))
+        );
+        setAssociatedResources(resObjs);
+      } else {
+        setAssociatedResources([]);
+      }
+    } catch (err) {
+      setError(err.detail || err.message || 'Erreur inconnue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [id]);
 
@@ -189,6 +210,14 @@ const EditStudyObject = () => {
         onClose={() => setResourceModalOpen(false)}
         initialSelectedResources={associatedResources}
         onSave={setAssociatedResources}
+      />
+      
+      {/* Notification de succès */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        message={successMessage}
       />
     </Box>
   );

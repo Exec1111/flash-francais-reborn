@@ -14,11 +14,18 @@ import {
   ListItemIcon,
   ListItemText,
   Paper,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Link
 } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import axios from "axios";
+import ResourceEditorForm from '../../components/ResourceEditorForm';
 
 const ProposeWorks = () => {
   const { id } = useParams();
@@ -33,6 +40,15 @@ const ProposeWorks = () => {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState([]); // [{status, url}]
   const [excludedAuthors, setExcludedAuthors] = useState([]);
+  const [rawResults, setRawResults] = useState(null);
+  const [editedResults, setEditedResults] = useState([]);
+  const [editing, setEditing] = useState(false);
+  const [currentEditIndex, setCurrentEditIndex] = useState(0);
+  const [resourceTypes, setResourceTypes] = useState([]);
+  const [resourceSubTypes, setResourceSubTypes] = useState([]);
+  const [toSave, setToSave] = useState([]);
+  const [generatedTitles, setGeneratedTitles] = useState([]);
+  const [currentFormData, setCurrentFormData] = useState(null);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
@@ -46,106 +62,221 @@ const ProposeWorks = () => {
     }
   }, [location.state]);
 
+  // Charger types et sous-types pour l'enregistrement
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    axios.get(`${API_BASE_URL}/api/v1/resources/types`, { headers:{ Authorization:`Bearer ${token}` } })
+      .then(res => {
+        setResourceTypes(res.data);
+        const t = res.data.find(t => t.key === 'oeuvre');
+        if (t) axios.get(`${API_BASE_URL}/api/v1/resources/sub-types?type_id=${t.id}`, { headers:{ Authorization:`Bearer ${token}` } })
+          .then(r => setResourceSubTypes(r.data));
+      });
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGenerating(true);
-    setResults([]);
     setError("");
-    setProgress(Array.from({ length: numWorks }, (_, i) => ({ status: i === 0 ? "génération en cours" : "dans la file d'attente", url: null })));
+    // Initialise les titres explicitement avec des valeurs vides pour forcer une mise à jour
+    const initialTitles = Array.from({ length: numWorks }, () => "");
+    setGeneratedTitles(initialTitles);
+    setProgress(Array.from({ length: numWorks }, (_, i) => ({ status: 'attente', url: null })));
+    
     try {
-      const links = [];
-      let currentAuthors = [...excludedAuthors]; // Utiliser la liste existante des auteurs exclus
+      const contents = [];
+      const titles = [...initialTitles]; // Crée une copie pour les mises à jour locales
+      let currentAuthors = [...excludedAuthors];
+      
       for (let i = 0; i < numWorks; i++) {
-        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: "génération en cours" } : item));
-        const type_key = "oeuvre";
-        const subtype_key = workType === "extrait" ? "extrait" : "oeuvrecomp";
-        // Préparation des instructions personnalisées
-        let customInstructions = "";
-        if (instructions && instructions.trim().length > 0) {
-          customInstructions = instructions.trim();
-        }
-        // Toujours ajouter les auteurs exclus s'il y en a, qu'il y ait des instructions ou non
+        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'génération en cours' } : item));
+        
+        // Construire les instructions personnalisées en ajoutant les auteurs exclus
+        let finalInstructions = instructions;
         if (currentAuthors.length > 0) {
-          if (customInstructions) {
-            customInstructions += "\n";
-          }
-          customInstructions += `Evite les auteurs et œuvres suivants : ${currentAuthors.join(", ")}`;
+          finalInstructions += (finalInstructions ? '\n\n' : '') + `Ne pas proposer les auteurs ou œuvres suivants : ${currentAuthors.join(', ')}.`;
         }
         
-        const variables = {
-          theme: studyObjectTitle,
-          niveau_classe: "3ème",
-          instructions_personnalisees: customInstructions || instructions // Utiliser les instructions originales si pas de modifications
+        const variables = { 
+          theme: studyObjectTitle, 
+          niveau_classe: '3ème', 
+          instructions_personnalisees: finalInstructions 
         };
-        // 1. Générer le contenu IA
-        const genResponse = await axios.post(
-          `${API_BASE_URL}/api/v1/ai/generate-resource`,
-          {
-            type_key,
-            subtype_key,
-            variables
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }
-        );
         
-        // Extraction de l'auteur et du titre immédiatement après la génération
-        const aiData = genResponse.data;
-        let author = null;
-        let title = null;
+        const genResponse = await axios.post(`${API_BASE_URL}/api/v1/ai/generate-resource`, { 
+          type_key: 'oeuvre', 
+          subtype_key: workType==='extrait' ? 'extrait' : 'oeuvrecomp', 
+          variables 
+        }, { 
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
         
-        try {
-          if (aiData && aiData.content) {
-            author = aiData.content.auteur_oeuvre;
-            title = aiData.content.titre_oeuvre;
-            
-            // Ajouter l'auteur et le titre à la liste d'exclusion s'ils ne sont pas déjà présents
-            if (author && !currentAuthors.includes(author)) {
-              currentAuthors.push(author);
-            }
-            if (title && !currentAuthors.includes(title)) {
-              currentAuthors.push(title);
-            }
-          }
-        } catch (e) {
-          console.error("Erreur lors de l'extraction des données :", e);
-        }
+        const data = genResponse.data.content;
+        console.log('DEBUG GEN', data);
         
-        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: "fusion en cours" } : item));
+        // Mettre à jour les titres immédiatement
+        const oeuvreTitle = data.titre_oeuvre || data.chapitre || data.title || `Œuvre ${i+1}`;
+        console.log('TITRE DÉTECTÉ:', oeuvreTitle);
         
-        // 2. Fusionner pour obtenir le HTML
-        const mergeForm = new FormData();
-        mergeForm.append("type_key", type_key);
-        mergeForm.append("subtype_key", subtype_key);
-        mergeForm.append("data_json", JSON.stringify(aiData));
-        const mergeResponse = await axios.post(
-          `${API_BASE_URL}/api/v1/ai/merge-resource`,
-          mergeForm,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }
-        );
-        const htmlUrl = mergeResponse.data?.html_url;
-        links.push(htmlUrl);
-        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: "généré", url: htmlUrl } : item));
-        if (i + 1 < numWorks) {
-          setProgress(prev => prev.map((item, idx) => idx === i + 1 ? { ...item, status: "génération en cours" } : item));
-        }
+        titles[i] = oeuvreTitle;
+        // Mettre à jour l'état avec le nouveau titre immédiatement
+        setGeneratedTitles([...titles]);
+        
+        contents.push(data);
+        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'généré', url: data.html_url || null } : item));
+        
+        // mettre à jour auteurs exclus
+        if (data.auteur_oeuvre && !currentAuthors.includes(data.auteur_oeuvre)) currentAuthors.push(data.auteur_oeuvre);
+        if (data.titre_oeuvre && !currentAuthors.includes(data.titre_oeuvre)) currentAuthors.push(data.titre_oeuvre);
       }
-      setResults(links);
-      // Mettre à jour la liste des auteurs exclus à la fin
+      
       setExcludedAuthors(currentAuthors);
+      setRawResults(contents);
+      setEditedResults(contents);
+      setCurrentEditIndex(0);
+      setEditing(true);
+      setResults(contents.map(c => c.html_url));
+      
+      // Afficher les titres finaux dans la console pour vérification
+      console.log('TITRES FINAUX:', titles);
     } catch (err) {
-      setError(err?.response?.data?.detail || err.message || "Erreur lors de la génération");
+      console.error('ERREUR DE GÉNÉRATION:', err);
+      setError(err.message || "Erreur lors de la génération des œuvres.");
+      setGenerating(false);
+    }
+    
+    setGenerating(false);
+  };
+
+  const handleMergeAll = async () => {
+    // Sauvegarder les dernières modifications avant la fusion
+    let updatedResults = [...editedResults];
+    
+    if (currentFormData && currentEditIndex >= 0 && currentEditIndex < editedResults.length) {
+      updatedResults[currentEditIndex] = currentFormData;
+      // Mise à jour synchrone pour la fusion
+      setEditedResults(updatedResults);
+    }
+    
+    setGenerating(true);
+    setError(''); // Réinitialiser l'erreur
+    const links = [];
+    // Conserver les titres des œuvres après la fusion
+    const mergedTitles = [...generatedTitles];
+    let mergeError = null;
+    
+    // Utiliser updatedResults au lieu de editedResults pour garantir l'utilisation des données les plus récentes
+    for (let i = 0; i < updatedResults.length; i++) {
+      setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'fusion en cours' } : item));
+      const mergeForm = new FormData();
+      mergeForm.append('type_key','oeuvre');
+      mergeForm.append('subtype_key', workType==='extrait'?'extrait':'oeuvrecomp');
+      
+      // Ici, nous utilisons updatedResults qui contient les modifications les plus récentes
+      mergeForm.append('data_json', JSON.stringify(updatedResults[i]));
+      
+      try {
+        console.log(`Fusion document ${i+1}:`, updatedResults[i]); // Log pour debug
+        const mergeResponse = await axios.post(`${API_BASE_URL}/api/v1/ai/merge-resource`, mergeForm, { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` }});
+        links.push(mergeResponse.data.html_url);
+        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'généré', url: mergeResponse.data.html_url } : item));
+      } catch (err) {
+        console.error(`Erreur fusion document ${i+1}:`, err);
+        mergeError = `Erreur lors de la fusion du document ${i+1}.`;
+        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'erreur fusion' } : item));
+        // Optionnel: arrêter la boucle ici si une fusion échoue ?
+        // break;
+      }
+    }
+    if (mergeError) {
+      setError(mergeError + " Certains documents n'ont pas pu être générés.");
+    } else {
+      setResults(links);
+      setToSave(links.map(() => false));
+      // Conserver les titres après la fusion
+      setGeneratedTitles(mergedTitles);
+      setEditing(false); // Ne passer à l'étape suivante que si tout réussit
+    }
+    setGenerating(false);
+  };
+
+  // Enregistrer en base les ressources sélectionnées
+  const handleSaveSelected = async () => {
+    setGenerating(true);
+    const token = localStorage.getItem('token');
+    
+    try {
+      for (let i = 0; i < results.length; i++) {
+        if (!toSave[i]) continue;
+        // Correction : forcer les bons IDs selon le type d'œuvre
+        let typeId = 4;
+        let subTypeId = workType === 'extrait' ? 7 : 8;
+        const formData = new FormData();
+        formData.append('title', `${studyObjectTitle} - ${generatedTitles[i] || `Œuvre ${i+1}`}`);
+        formData.append('description', '');
+        formData.append('type_id', typeId);
+        formData.append('sub_type_id', subTypeId);
+        formData.append('html_path', results[i]);
+        formData.append('source_type', 'ai');
+        formData.append('session_ids_json', JSON.stringify([]));
+        formData.append('objective_ids_json', JSON.stringify([]));
+        formData.append('study_object_ids_json', JSON.stringify([id]));
+        await axios.post(`${API_BASE_URL}/api/v1/resources/`, formData, { headers:{ Authorization:`Bearer ${token}` } });
+      }
+      
+      // Naviguer vers la page précédente avec une indication pour rafraîchir
+      navigate(-1, { 
+        state: { 
+          refresh: true,
+          messageSuccess: 'Les ressources ont été enregistrées avec succès.'
+        } 
+      });
+      
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement des ressources:", error);
+      setError("Une erreur est survenue lors de l'enregistrement des ressources.");
     } finally {
       setGenerating(false);
     }
   };
+
+  if (editing && rawResults) {
+    return (
+      <Box sx={{ p:2 }}>
+        <Typography variant="h6">Édition des données brutes avant fusion</Typography>
+        <Box sx={{ display:'flex', alignItems:'center', justifyContent:'space-between', mb:2 }}>
+          <Button onClick={() => setCurrentEditIndex(i => Math.max(i - 1, 0))} disabled={currentEditIndex === 0}>
+            <ArrowBackIcon />
+          </Button>
+          <Typography>Document {currentEditIndex + 1} sur {editedResults.length}</Typography>
+          <Button onClick={() => setCurrentEditIndex(i => Math.min(i + 1, editedResults.length - 1))} disabled={currentEditIndex === editedResults.length - 1}>
+            <ArrowForwardIcon />
+          </Button>
+        </Box>
+        <ResourceEditorForm
+          hideButtons={true}
+          initialData={editedResults[currentEditIndex]}
+          onSubmit={(newData) => {
+            const arr = [...editedResults];
+            arr[currentEditIndex] = newData;
+            setEditedResults(arr);
+          }}
+          onChange={(formData) => {
+            // Stocker les modifications en cours sans soumettre
+            setCurrentFormData(formData);
+          }}
+          onCancel={() => {
+            setEditing(false);
+            setCurrentEditIndex(0);
+          }}
+        />
+        <Box sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={handleMergeAll} disabled={generating}>Fusionner et générer</Button>
+          <Button sx={{ ml: 2 }} onClick={() => { setEditing(false); setCurrentEditIndex(0); }}>Annuler</Button>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: 600, mx: "auto", mt: 4 }}>
@@ -209,32 +340,40 @@ const ProposeWorks = () => {
           </form>
           {generating && (
             <Paper elevation={3} sx={{ mt: 2, p: 2, background: '#0a1929', color: 'white' }}>
-              <Typography variant="h6" sx={{ color: '#03e9f4', mb: 1 }}>
+              <Typography variant="h6" sx={{ color: 'primary.main', mb: 1 }}>
                 Avancement de la génération
               </Typography>
               <List>
                 {progress.map((item, idx) => (
-                  <ListItem key={idx} sx={{
-                    borderRadius: 2,
-                    mb: 1,
-                    background: item.status === 'généré' ? 'rgba(0,200,83,0.08)' : 'rgba(3,233,244,0.06)',
-                    border: item.status === 'généré' ? '1px solid #00c853' : '1px solid #03e9f4',
-                    color: 'inherit',
-                  }}>
+                  <ListItem 
+                    key={`progress-${idx}-${generatedTitles[idx] || 'oeuvre'}`} // Utiliser une clé qui change avec le titre
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      background: item.status === 'généré' ? 'rgba(0,200,83,0.08)' : 'rgba(99,102,241,0.06)', // theme.palette.primary.main (bleu)
+                      border: item.status === 'généré' ? '1px solid #00c853' : '1px solid',
+                      borderColor: item.status === 'généré' ? '#00c853' : 'primary.main',
+                      color: 'inherit',
+                    }}
+                  >
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       {item.status === 'généré' && <CheckCircleIcon sx={{ color: '#00e676' }} />}
-                      {(item.status === 'génération en cours' || item.status === 'fusion en cours') && <CircularProgress size={22} color="info" />}
-                      {item.status === "dans la file d'attente" && <HourglassEmptyIcon sx={{ color: '#03e9f4' }} />}
+                      {(item.status === 'génération en cours' || item.status === 'fusion en cours') && <CircularProgress size={22} color="primary" />} 
+                      {item.status === "dans la file d'attente" && <HourglassEmptyIcon sx={{ color: 'primary.main' }} />}
                     </ListItemIcon>
                     <ListItemText
-                      primary={`Œuvre ${idx + 1}`}
+                      primary={
+                        <Typography variant="body1">
+                          {generatedTitles[idx] || `Œuvre ${idx + 1}`}
+                        </Typography>
+                      }
                       secondary={
                         item.status === 'généré' && item.url ? (
                           <span style={{ color: '#00e676', fontWeight: 500 }}>
-                            Généré – <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: '#03e9f4', textDecoration: 'underline' }}>Ouvrir le fichier</a>
+                            Généré – <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'primary.main', textDecoration: 'underline' }}>Ouvrir le fichier</a>
                           </span>
                         ) : (
-                          <span style={{ color: '#03e9f4' }}>
+                          <span style={{ color: 'primary.main' }}>
                             {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                           </span>
                         )
@@ -250,28 +389,20 @@ const ProposeWorks = () => {
               <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: '#00e676', mb: 1 }}>
                 <CheckCircleIcon sx={{ mr: 1 }} /> Œuvres générées :
               </Typography>
-              <List>
+              <FormGroup>
                 {results.map((url, idx) => (
-                  <ListItem key={idx} sx={{
-                    borderRadius: 2,
-                    mb: 1,
-                    background: 'rgba(0,200,83,0.08)',
-                    border: '1px solid #00c853',
-                  }}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <CheckCircleIcon sx={{ color: '#00e676' }} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={`Œuvre générée ${idx + 1}`}
-                      secondary={
-                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#03e9f4', textDecoration: 'underline' }}>
-                          Ouvrir l'œuvre générée
-                        </a>
-                      }
-                    />
-                  </ListItem>
+                  <FormControlLabel
+                    key={idx}
+                    control={<Checkbox checked={toSave[idx]} onChange={() => { const arr=[...toSave]; arr[idx]=!arr[idx]; setToSave(arr); }} />}
+                    label={<span>{generatedTitles[idx] || `Œuvre ${idx+1}`} – <Link href={url} target="_blank" rel="noopener">Ouvrir</Link></span>}
+                  />
                 ))}
-              </List>
+              </FormGroup>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button variant="contained" disabled={generating} onClick={handleSaveSelected}>
+                  Enregistrer les ressources sélectionnées
+                </Button>
+              </Box>
             </Paper>
           )}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}

@@ -134,7 +134,8 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
     session_ids = resource_data.pop('session_ids', [])
     objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
     resource_data.pop('user_id', None) # Retirer user_id du dict car il est passé explicitement
-    
+    resource_data.pop('study_object_ids', None) # Retirer study_object_ids du dict pour éviter l'erreur SQLAlchemy
+    #
     # Récupérer et retirer source_type, définir par défaut 'ai' si absent
     source_type_value = resource_data.get('source_type') or 'ai'
     resource_data.pop('source_type', None)
