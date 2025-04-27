@@ -66,6 +66,9 @@ const ResourceForm = ({
     }
   }, [isEdit, initialData]);
 
+  // --- Utiliser useNavigate pour la redirection ---
+  const navigate = useNavigate(); 
+  
   // --- États --- 
   const [formData, setFormData] = useState({
     title: '',
@@ -87,7 +90,6 @@ const ResourceForm = ({
   const [resourceTypes, setResourceTypes] = useState([]);
   const [resourceSubTypes, setResourceSubTypes] = useState([]);
   const { } = useAuth(); 
-  const navigate = useNavigate();
   const MAX_FILE_SIZE = 1 * 1024 * 1024; 
   const ALLOWED_FILE_TYPE = 'application/pdf';
 
@@ -638,9 +640,37 @@ const ResourceForm = ({
               <DynamicAIForm
                 typeKey={selectedType.key.toLowerCase()}
                 subtypeKey={selectedSubType.key.toLowerCase()}
-                onSubmit={handleAIGenerationWithLoading}
-                onCancel={isDialog ? onClose : () => navigate(-1)}
-                loading={aiLoading}
+                typeId={selectedType.id}
+                subtypeId={selectedSubType.id}
+                initialTitle={formData.title}
+                initialDescription={formData.description}
+                onSuccess={(resourceId) => {
+                  console.log('[DEBUG] Ressource créée avec succès, ID:', resourceId);
+                  // Informer le parent du succès
+                  if (onSuccess) {
+                    onSuccess(resourceId);
+                  }
+                  
+                  // Fermer le dialog si c'est un dialog
+                  if (isDialog && onClose) {
+                    console.log('[DEBUG] Fermeture du dialog');
+                    onClose();
+                  } else {
+                    // Sinon rediriger vers la liste des ressources
+                    console.log('[DEBUG] Redirection vers /resources');
+                    navigate('/resources');
+                  }
+                }}
+                onClose={() => {
+                  console.log('[DEBUG] Fermeture du formulaire via onClose');
+                  if (isDialog && onClose) {
+                    onClose();
+                  } else {
+                    // Rediriger vers la liste des ressources en utilisant useNavigate qui préserve le contexte d'authentification
+                    console.log('[DEBUG] Redirection vers /resources via navigate()');
+                    navigate('/resources');
+                  }
+                }}
               />
             </CardContent>
           </Card>
