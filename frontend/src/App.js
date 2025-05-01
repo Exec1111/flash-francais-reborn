@@ -53,6 +53,7 @@ import NewStudyObject from './pages/studyObjects/NewStudyObject';
 import EditStudyObject from './pages/studyObjects/EditStudyObject';
 import StudyObjectDetail from './pages/studyObjects/StudyObjectDetail';
 import ProposeWorks from './pages/studyObjects/ProposeWorks';
+import ProposeSeances from './pages/studyObjects/ProposeSeances';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -314,6 +315,7 @@ function App() {
         <Route path="edit/:id" element={<SequenceEdit />} />
         <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
         <Route path=":id" element={<SequenceDetailPage />} /> {/* Doit être APRÈS /:id/objectives/manage */}
+        <Route path=":id/propose-seances" element={<ProposeSeances />} />
       </Route>
 
       <Route

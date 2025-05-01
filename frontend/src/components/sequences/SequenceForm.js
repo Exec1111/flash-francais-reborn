@@ -16,7 +16,8 @@ import {
   CircularProgress,
   Typography,
   Stack,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
@@ -68,6 +69,21 @@ const SequenceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { refreshTreeData } = useTreeData();
+
+  // --- Nouvelle logique : détection de modifications non sauvegardées ---
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Détection des changements dans les champs principaux
+  useEffect(() => {
+    if (!initialData) return;
+    const dirty =
+      formData.title !== (initialData.title || '') ||
+      formData.description !== (initialData.description || '') ||
+      formData.progression_id !== (initialData.progression_id || progressionId || null) ||
+      JSON.stringify(selectedObjectives.map(o => o.id).sort()) !== JSON.stringify((initialData.objectives || []).map(o => o.id).sort()) ||
+      JSON.stringify(selectedStudyObjects.map(o => o.id).sort()) !== JSON.stringify((initialData.study_objects || []).map(o => o.id).sort());
+    setIsDirty(dirty);
+  }, [formData, selectedObjectives, selectedStudyObjects, initialData, progressionId]);
 
   // --- Effets ---
 
@@ -443,6 +459,31 @@ const SequenceForm = ({
             
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               {actionButtons}
+              {isEdit && (
+                <Tooltip
+                  title={
+                    isDirty
+                      ? "Veuillez d'abord sauvegarder vos modifications avant de proposer des séances."
+                      : selectedStudyObjects.length === 0
+                        ? "Ajoutez au moins un objet d'étude à la séquence pour accéder à la génération de séances"
+                        : ""
+                  }
+                  arrow
+                  disableHoverListener={!(isDirty || selectedStudyObjects.length === 0)}
+                >
+                  <span>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      disabled={isDirty || selectedStudyObjects.length === 0}
+                      onClick={() => navigate(`/sequences/${sequenceId}/propose-seances`, { state: { title: formData.title } })}
+                      style={{ pointerEvents: isDirty || selectedStudyObjects.length === 0 ? 'none' : 'auto' }}
+                    >
+                      Proposer des séances
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
             </Box>
           </form>
         </CardContent>

@@ -6,11 +6,15 @@ from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
-from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content
+from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content, generate_ai_sessions
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
+from backend.schemas.session import SessionCreate
+from backend.crud.sequence import get_sequence
+from backend.crud.session import create_session_with_user
+from pydantic import BaseModel
 import logging
 import os
 import uuid
@@ -243,3 +247,108 @@ async def merge_resource(
     except Exception as e:
         logger.error(f"[Fusion][ERREUR] Exception lors de la fusion de ressource: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur fusion ressource: {e}")
+
+# Création de nouveaux schémas pour la génération de séances
+class AISessionGenerationRequest(BaseModel):
+    sequence_id: int
+    nombre_seances: str  # nombre numérique ou "auto"
+    inclure_ressources: bool = False
+    instructions_supplementaires: str = ""
+    niveau: str = "B1"  # Niveau par défaut
+
+class AISessionGenerationResponse(BaseModel):
+    sessions: List[SessionCreate]
+
+@router.post(
+    "/generate-sessions",
+    response_model=AISessionGenerationResponse,
+    summary="Génère des séances pour une séquence avec l'IA",
+    description="Génère des séances (sessions) adaptées à une séquence pédagogique en utilisant l'IA."
+)
+async def generate_sessions(
+    request: AISessionGenerationRequest,
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint pour générer des séances avec l'IA pour une séquence donnée.
+    """
+    logger.info(f"Génération de séances pour la séquence {request.sequence_id} demandée par l'utilisateur {current_user.email}")
+    
+    try:
+        # Vérifier que la séquence existe et appartient à l'utilisateur
+        sequence = get_sequence(db, sequence_id=request.sequence_id)
+        if not sequence:
+            logger.warning(f"Séquence {request.sequence_id} non trouvée")
+            raise HTTPException(status_code=404, detail="Séquence non trouvée")
+        
+        if sequence.user_id != current_user.id:
+            logger.warning(f"Accès non autorisé à la séquence {request.sequence_id} par l'utilisateur {current_user.id}")
+            raise HTTPException(status_code=403, detail="Vous n'avez pas accès à cette séquence")
+        
+        # Récupérer les ressources de la séquence si nécessaire
+        ressources_disponibles = []
+        if request.inclure_ressources:
+            # Récupérer les ressources disponibles pour cette séquence
+            resources = []
+            for resource in resources:
+                ressources_disponibles.append({
+                    "id": resource.id,
+                    "title": resource.title,
+                    "type": resource.type.name if resource.type else "inconnu"
+                })
+        
+        # Debug : afficher les objectifs liés à la séquence
+        logger.info(f"sequence.objectives = {getattr(sequence, 'objectives', None)}")
+        objectifs = []
+        sequence_objectives = sequence.objectives if sequence else []
+        for objective in sequence_objectives:
+            objectifs.append({
+                "id": objective.id,
+                "title": objective.title
+            })
+        
+        # Récupérer les objets d'étude de la séquence
+        study_objects = []
+        sequence_study_objects = sequence.study_objects if sequence else []
+        for so in sequence_study_objects:
+            study_objects.append({
+                "id": so.id,
+                "title": so.title
+            })
+
+        # Génération des séances
+        generation_result = await generate_ai_sessions(
+            sequence_id=request.sequence_id,
+            sequence_title=sequence.title,
+            niveau=request.niveau,
+            nombre_seances=request.nombre_seances,
+            inclure_ressources=request.inclure_ressources,
+            ressources_disponibles=ressources_disponibles,
+            objectifs=objectifs,
+            study_objects=study_objects,
+            instructions_supplementaires=request.instructions_supplementaires
+        )
+        
+        # Vérifier que nous avons bien les séances dans la réponse
+        if "sessions" not in generation_result or not generation_result["sessions"]:
+            logger.warning("Aucune séance n'a été générée dans la réponse de l'IA")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Aucune séance n'a été générée. Veuillez réessayer."
+            )
+        
+        return {"sessions": generation_result["sessions"]}
+        
+    except ResourceGenerationError as e:
+        logger.error(f"Erreur lors de la génération de séances: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur de génération : {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue lors de la génération de séances: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Une erreur inattendue s'est produite: {str(e)}"
+        )

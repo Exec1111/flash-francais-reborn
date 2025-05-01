@@ -1,0 +1,98 @@
+system_prompt: |
+  Tu es un expert en pédagogie du français.
+  Ta tâche est de planifier des séances d'apprentissage (sessions) pour une séquence pédagogique.
+  Chaque séance doit avoir un objectif clair, une durée appropriée, et éventuellement des ressources associées.
+  Les séances doivent suivre une progression logique et être adaptées au niveau des apprenants.
+
+user_prompt_template: |
+  Je souhaite créer {{ nombre_seances }} séance(s) pour une séquence pédagogique en français avec les caractéristiques suivantes :
+  
+  Niveau des apprenants : {{ niveau }}
+  {% if study_objects %}
+  Objets d'étude de la séquence :
+  {% for study_object in study_objects %}
+  - {{ study_object.title }} (ID: {{ study_object.id }})
+  {% endfor %}
+  {% endif %}
+  {% if objectifs %}
+  Objectifs pédagogiques de la séquence :
+  {% for objectif in objectifs %}
+  - {{ objectif.title }} (ID: {{ objectif.id }})
+  {% endfor %}
+  {% endif %}
+  
+  {% if inclure_ressources %}
+  Voici les ressources disponibles que tu peux inclure dans les séances :
+  {% for ressource in ressources_disponibles %}
+  - {{ ressource.title }} (ID: {{ ressource.id }}, Type: {{ ressource.type }})
+  {% endfor %}
+  {% endif %}
+  
+  {% if instructions_supplementaires %}
+  Instructions supplémentaires :
+  {{ instructions_supplementaires }}
+  {% endif %}
+  
+  Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date, 
+  des notes d'organisation, et une durée estimée en minutes.
+  {% if nombre_seances == "auto" %}
+  Tu es libre de déterminer le nombre optimal de séances nécessaires pour couvrir les objectifs pédagogiques.
+  {% endif %}
+  Si des objectifs sont fournis, associe-les aux séances appropriées.
+
+parameters:
+  - name: nombre_seances
+    type: str
+    description: Nombre de séances à générer ou "auto" pour laisser l'IA décider
+  - name: titre_sequence
+    type: str
+    description: Titre de la séquence pédagogique pour laquelle générer des séances
+  - name: niveau
+    type: str
+    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
+    enum: [A1, A2, B1, B2, C1, C2]
+  - name: inclure_ressources
+    type: bool
+    description: Indique si les ressources doivent être incluses dans les séances
+  - name: ressources_disponibles
+    type: list
+    description: Liste des ressources disponibles pour les séances
+    schema:
+      type: object
+      properties:
+        id: 
+          type: integer
+        title: 
+          type: string
+        type: 
+          type: string
+  - name: objectifs
+    type: list
+    description: Liste des objectifs pédagogiques de la séquence
+    schema:
+      type: object
+      properties:
+        id: 
+          type: integer
+        title: 
+          type: string
+  - name: study_objects
+    type: list
+    description: Liste des objets d'étude de la séquence
+    schema:
+      type: object
+      properties:
+        id: 
+          type: integer
+        title: 
+          type: string
+  - name: instructions_supplementaires
+    type: str
+    description: Instructions supplémentaires pour la génération des séances
+    default: ""
+
+constraints:
+  - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants.
+  - Les séances doivent inclure des activités variées et complémentaires.
+  - L'ensemble des séances doit couvrir tous les objectifs pédagogiques.
+  - Les dates des séances doivent être réalistes et progressives.

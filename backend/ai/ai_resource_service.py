@@ -1,7 +1,7 @@
 """
 Service pour la génération de ressources IA à partir de prompts.
 """
-from typing import Dict, Any
+from typing import Dict, Any, List
 import logging
 import os
 import uuid
@@ -13,6 +13,9 @@ from google.genai import types
 from dotenv import load_dotenv
 import jsonschema  # validation of dynamic schemas
 from starlette.responses import Response
+from pydantic.json_schema import model_json_schema
+from pydantic import BaseModel
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
+    ("seance", "generator"): "session_generator",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 
@@ -119,6 +123,7 @@ async def generate_ai_resource_content(
         
         # Fusionner instructions système et contenu utilisateur en un seul message user
         prompt_text = f"{system}\n\n{user}"
+        logger.info(f"Prompt généré (après rendu Jinja) : {prompt_text}")
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         
         # Construire et nettoyer le schéma dynamique si présent
@@ -196,3 +201,190 @@ def get_available_ai_resource_types() -> Dict[str, Dict[str, list]]:
         result[type_key]["subtypes"].append(subtype_key)
     
     return result
+
+def get_session_json_schema():
+    """
+    Génère dynamiquement le schéma JSON pour la génération de séances à partir du modèle Pydantic.
+    
+    Returns:
+        Le schéma JSON pour guider l'IA dans la génération de séances
+    """
+    try:
+        # Import ici pour éviter les dépendances circulaires
+        from schemas.session import SessionCreate
+        
+        # Créer un modèle qui contient une liste de sessions
+        class SessionsGenerationOutput(BaseModel):
+            sessions: List[SessionCreate]
+        
+        # Générer le schéma JSON à la volée
+        schema = model_json_schema(SessionsGenerationOutput)
+        logger.info(f"Schéma JSON généré pour les séances : {schema}")
+        return schema
+    except Exception as e:
+        logger.error(f"Erreur lors de la génération du schéma JSON pour séances: {e}", exc_info=True)
+        # En cas d'erreur, retourner un schéma minimal pour que l'IA puisse fonctionner
+        return {
+            "type": "object",
+            "properties": {
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "date": {"type": "string", "format": "date-time"},
+                            "notes": {"type": "string"},
+                            "duration": {"type": "integer"},
+                            "sequence_id": {"type": "integer"},
+                            "objective_ids": {
+                                "type": "array", 
+                                "items": {"type": "integer"}
+                            },
+                            "resource_ids": {
+                                "type": "array",
+                                "items": {"type": "integer"}
+                            }
+                        },
+                        "required": ["title", "date", "sequence_id"]
+                    }
+                }
+            },
+            "required": ["sessions"]
+        }
+
+def remove_defaults_from_schema(schema):
+    if isinstance(schema, dict):
+        schema.pop('default', None)
+        for value in schema.values():
+            remove_defaults_from_schema(value)
+    elif isinstance(schema, list):
+        for item in schema:
+            remove_defaults_from_schema(item)
+
+async def generate_ai_sessions(
+    sequence_id: int,
+    sequence_title: str,
+    niveau: str,
+    nombre_seances: str,
+    inclure_ressources: bool,
+    ressources_disponibles: List[Dict[str, Any]],
+    objectifs: List[Dict[str, Any]],
+    study_objects: List[Dict[str, Any]],
+    instructions_supplementaires: str = ""
+) -> Dict[str, Any]:
+    """
+    Génère des séances (sessions) pour une séquence à l'aide de l'IA.
+    
+    Args:
+        sequence_id: ID de la séquence pour laquelle générer des séances
+        sequence_title: Titre de la séquence
+        niveau: Niveau des apprenants (A1-C2)
+        nombre_seances: Nombre de séances à générer ou "auto"
+        inclure_ressources: Si True, inclure des ressources dans les séances
+        ressources_disponibles: Liste des ressources disponibles pour les séances
+        objectifs: Liste des objectifs pédagogiques de la séquence
+        study_objects: Liste des objets d'étude pour la séquence
+        instructions_supplementaires: Instructions supplémentaires pour la génération
+    
+    Returns:
+        Dictionnaire contenant la liste des séances générées
+    """
+    try:
+        # Préparer les variables d'entrée pour le prompt
+        input_variables = {
+            "nombre_seances": nombre_seances,
+            "titre_sequence": sequence_title,
+            "niveau": niveau,
+            "inclure_ressources": inclure_ressources,
+            "ressources_disponibles": ressources_disponibles,
+            "objectifs": objectifs,
+            "study_objects": study_objects,
+            "instructions_supplementaires": instructions_supplementaires
+        }
+        
+        # Générer le contenu en utilisant le prompt "session_generator"
+        prompt_name = "session_generator"
+        generator = PromptGenerator(prompt_name)
+        system, user = generator.build(**input_variables)
+        
+        load_dotenv()
+        api_key = os.getenv("GOOGLE_API_KEY")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
+        
+        # Configuration du client Google GenAI
+        client = genai.Client(api_key=api_key)
+        
+        # Fusionner instructions système et contenu utilisateur en un seul message user
+        prompt_text = f"{system}\n\n{user}"
+        logger.info(f"Prompt généré (après rendu Jinja) : {prompt_text}")
+        contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
+        
+        # Obtenir le schéma dynamique pour les séances
+        schema = get_session_json_schema()
+        
+        # Nettoyer le schéma généré pour le rendre compatible avec l'API Gemini
+        def clean(node):
+            if isinstance(node, dict):
+                node.pop('$schema', None)
+                node.pop('additionalProperties', None)
+                for v in node.values(): clean(v)
+            elif isinstance(node, list):
+                for item in node: clean(item)
+        clean(schema)
+        
+        # Aplatir les listes de types au premier élément
+        def flatten(node):
+            if isinstance(node, dict):
+                t = node.get('type')
+                if isinstance(t, list) and t:
+                    node['type'] = t[0]
+                for v in node.values(): flatten(v)
+            elif isinstance(node, list):
+                for item in node: flatten(item)
+        flatten(schema)
+        
+        # Supprimer toutes les clés 'default' du schéma pour compatibilité Gemini
+        remove_defaults_from_schema(schema)
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=schema
+        )
+        
+        prompt_context = {
+            "titre_sequence": sequence_title,
+            "niveau": niveau,
+            "nombre_seances": nombre_seances,
+            "objectifs": objectifs,
+            "study_objects": study_objects,
+            "instructions_supplementaires": instructions_supplementaires,
+            # autres champs...
+        }
+        logger.info(f"Contexte du prompt : {prompt_context}")
+        
+        # Appel API en JSON
+        logger.info(f"Génération de séances - Modèle : {model_name}")
+        logger.info(f"Génération de séances - Prompt : {prompt_text}...")
+        logger.info(f"Génération de séances - Schema : {schema}")
+        
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=config
+        )
+        
+        # Extraire le JSON
+        response_content = response.text.strip()
+        logger.info(f"Réponse brute du modèle (tronquée) : {response_content[:500]}...")
+        
+        # Parsing du JSON retourné
+        parsed_content = json.loads(response_content)
+        
+        # Ajouter l'ID de séquence à chaque séance générée
+        for session in parsed_content.get("sessions", []):
+            session["sequence_id"] = sequence_id
+        
+        return parsed_content
+    except Exception as e:
+        logger.error(f"Erreur lors de la génération de séances: {e}", exc_info=True)
+        raise ResourceGenerationError(f"Erreur de génération de séances: {str(e)}")

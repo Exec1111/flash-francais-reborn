@@ -22,6 +22,8 @@ backend/instance/
 backend/*.log
 backend/.coverage*
 backend/htmlcov/
+backend/local_uploads/uploads/
+backend/static/tmp/
 backend/*.sqlite3
 backend/*.db
 backend/alembic/__pycache__/
