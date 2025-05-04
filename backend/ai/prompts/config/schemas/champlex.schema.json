@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schéma de données pour l'exercice de champs lexicaux",
+    "description": "Définit la structure des données pour configurer un exercice interactif de tri de mots par champ lexical.",
+    "type": "object",
+    "properties": {
+        "champs": {
+            "type": "array",
+            "description": "La configuration doit être un tableau contenant au moins un objet représentant un champ lexical.",
+            "items": {
+                "type": "object",
+                "description": "Représente un champ lexical et ses mots associés.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Le nom du champ lexical (ex: 'la peur', 'l'amour'). Ce nom sera affiché et utilisé pour associer les mots."
+                    },
+                    "words": {
+                        "type": "array",
+                        "description": "Un tableau contenant la liste exacte des mots qui appartiennent à ce champ lexical.",
+                        "items": {
+                            "type": "string",
+                            "description": "Un mot spécifique appartenant au champ lexical."
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "name",
+                    "words"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1
+        }
+    },
+    "required": ["champs"]
+}

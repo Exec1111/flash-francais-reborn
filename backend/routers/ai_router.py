@@ -226,6 +226,8 @@ async def merge_resource(
                 model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
             elif type_key.lower() == "exercice" and subtype_key.lower() == "vocabulaire":
                 model_dir = os.path.join(BASE_DIR, "ai", "template", "vocabulaire_models")
+            elif type_key.lower() == "exercice" and subtype_key.lower() == "champlex":
+                model_dir = os.path.join(BASE_DIR, "ai", "template", "champlex_models")
             else:
                 logger.warning(f"Aucun modèle HTML disponible pour type={type_key}, sous-type={subtype_key}.")
                 raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")

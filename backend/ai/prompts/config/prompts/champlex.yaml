@@ -1,0 +1,94 @@
+system_prompt: |
+  Tu es un expert en enseignement du français et en lexicologie.
+  Ta tâche est de générer un exercice sur les champs lexicaux adapté au niveau demandé.
+  Pour chaque champ lexical que tu définis, fournis une liste de mots qui appartiennent strictement à ce champ.
+
+user_prompt_template: |
+  Je souhaite créer un exercice sur les champs lexicaux pour des apprenants de niveau {{ niveau }}.
+  
+  {% if nombre_champs %}
+  Je souhaite que tu génères {{ nombre_champs }} champs lexicaux distincts.
+  {% else %}
+  Je souhaite que tu génères entre 3 et 5 champs lexicaux distincts.
+  {% endif %}
+  
+  {% if champs_specifiques %}
+  Voici les champs lexicaux à utiliser :
+  {% for champ in champs_specifiques %}
+  - {{ champ }}
+  {% endfor %}
+  {% elif theme %}
+  Le thème général de l'exercice est : {{ theme }}
+  Génère des champs lexicaux pertinents pour ce thème.
+  {% endif %}
+  
+  {% if min_mots_par_champ %}
+  Chaque champ lexical doit contenir au moins {{ min_mots_par_champ }} mots.
+  {% else %}
+  Chaque champ lexical doit contenir au moins 5 mots.
+  {% endif %}
+  
+  {% if max_mots_par_champ %}
+  Chaque champ lexical ne doit pas dépasser {{ max_mots_par_champ }} mots.
+  {% endif %}
+  
+  {% if instructions_supplementaires %}
+  Instructions supplémentaires :
+  {{ instructions_supplementaires }}
+  {% endif %}
+  
+  Génère les données au format requis pour l'exercice : un objet avec une propriété "champs" qui contient un tableau d'objets, chacun ayant un "name" (nom du champ lexical) et "words" (la liste des mots appartenant au champ lexical).
+  
+  Format attendu :
+  {
+    "champs": [
+      {
+        "name": "nom du champ",
+        "words": ["mot1", "mot2", "mot3", ...]
+      },
+      ...
+    ]
+  }
+
+parameters:
+  - name: niveau
+    type: str
+    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
+    enum: [A1, A2, B1, B2, C1, C2]
+    default: "B1"
+  - name: champs_specifiques
+    type: list
+    description: Liste spécifique de champs lexicaux à utiliser (optionnel, prioritaire si fourni)
+    default: []
+  - name: theme
+    type: str
+    description: Thème général pour lequel générer des champs lexicaux (optionnel, utilisé si champs_specifiques est absent)
+    default: ""
+  - name: nombre_champs
+    type: int
+    description: Nombre de champs lexicaux à générer (optionnel)
+    default: 0
+  - name: min_mots_par_champ
+    type: int
+    description: Nombre minimum de mots par champ lexical (optionnel)
+    default: 5
+  - name: max_mots_par_champ
+    type: int
+    description: Nombre maximum de mots par champ lexical (optionnel)
+    default: 10
+  - name: instructions_supplementaires
+    type: str
+    description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
+    default: ""
+
+constraints:
+  - Chaque mot doit appartenir clairement et sans ambiguïté au champ lexical dans lequel il est classé.
+  - Les mots doivent être adaptés au niveau des apprenants ({{ niveau }}).
+  - Éviter les mots trop rares ou trop techniques sauf pour les niveaux C1-C2.
+  - Ne pas utiliser de mots qui pourraient appartenir à plusieurs champs lexicaux proposés.
+  - Chaque champ lexical doit avoir un nom clair et descriptif (par exemple "la peur", "la joie", etc.).
+  - Pour les niveaux A1-A2, privilégier des mots simples et courants.
+  - Pour les niveaux B1-B2, inclure des synonymes et vocabulaire plus varié.
+  - Pour les niveaux C1-C2, inclure du vocabulaire riche et nuancé.
+
+response_schema: "champlex.schema.json"

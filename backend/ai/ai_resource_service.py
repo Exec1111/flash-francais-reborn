@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
     ("exercice", "vocabulaire"): "vocabulaire",
+    ("exercice", "champlex"): "champlex",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
