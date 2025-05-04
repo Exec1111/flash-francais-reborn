@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schéma pour les données de vocabulaire du jeu",
+    "description": "Définit la structure attendue pour la liste des mots et de leurs définitions pour le jeu de vocabulaire.",
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "Le mot à associer ou à trouver (la réponse)."
+        },
+        "definition": {
+          "type": "string",
+          "description": "La définition ou le synonyme du mot."
+        }
+      },
+      "required": [
+        "word",
+        "definition"
+      ],
+      "additionalProperties": false
+    }
+  }

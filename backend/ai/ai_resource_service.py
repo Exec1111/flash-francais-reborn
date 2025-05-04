@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
+    ("exercice", "vocabulaire"): "vocabulaire",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
