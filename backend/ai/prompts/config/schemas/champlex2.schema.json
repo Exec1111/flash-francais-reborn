@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schéma de données pour l'exercice de reconnaissance de champ lexical",
+  "description": "Structure pour un exercice où l'élève doit indiquer si chaque mot appartient à un champ lexical donné.",
+  "type": "object",
+  "properties": {
+    "champ": {
+      "type": "string",
+      "description": "Le nom du champ lexical (ex: 'la peur')."
+    },
+    "mots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Liste des mots à classer."
+    },
+    "solution": {
+      "type": "array",
+      "items": { "type": "boolean" },
+      "minItems": 1,
+      "description": "Pour chaque mot, true s'il appartient au champ lexical, false sinon (même ordre que 'mots')."
+    }
+  },
+  "required": ["champ", "mots", "solution"],
+  "additionalProperties": false
+}

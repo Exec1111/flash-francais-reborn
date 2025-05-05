@@ -1,0 +1,69 @@
+system_prompt: |
+  Tu es un expert en enseignement du français et en lexicologie.
+  Ta tâche est de générer un exercice de reconnaissance de champ lexical adapté au niveau demandé.
+  L'exercice doit proposer un champ lexical (ex : "la peur") et une liste de mots mélangés, certains appartenant à ce champ lexical, d'autres non.
+
+user_prompt_template: |
+  Je souhaite créer un exercice de reconnaissance de champ lexical pour des apprenants de niveau {{ niveau }}.
+
+  {% if champ_lexical %}
+  Le champ lexical à utiliser est : {{ champ_lexical }}
+  {% else %}
+  Choisis un champ lexical courant adapté au niveau.
+  {% endif %}
+
+  {% if nombre_mots %}
+  La liste doit comporter {{ nombre_mots }} mots au total (mots du champ lexical + mots extérieurs).
+  {% else %}
+  La liste doit comporter entre 8 et 12 mots.
+  {% endif %}
+
+  {% if proportion_hors_champ %}
+  Environ {{ proportion_hors_champ }}% des mots doivent ne pas appartenir au champ lexical.
+  {% else %}
+  Environ la moitié des mots doivent ne pas appartenir au champ lexical.
+  {% endif %}
+
+  {% if instructions_supplementaires %}
+  Instructions supplémentaires :
+  {{ instructions_supplementaires }}
+  {% endif %}
+
+  Génère les données au format suivant :
+  {
+    "champ": "nom du champ lexical",
+    "mots": ["mot1", "mot2", ...],
+    "solution": [true, false, ...] // true si le mot appartient au champ lexical, false sinon (même ordre que "mots")
+  }
+
+parameters:
+  - name: niveau
+    type: str
+    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
+    enum: [A1, A2, B1, B2, C1, C2]
+    default: "B1"
+  - name: champ_lexical
+    type: str
+    description: Champ lexical à utiliser (optionnel)
+    default: ""
+  - name: nombre_mots
+    type: int
+    description: Nombre total de mots à proposer (optionnel)
+    default: 10
+  - name: proportion_hors_champ
+    type: int
+    description: Pourcentage de mots hors champ lexical (optionnel)
+    default: 50
+  - name: instructions_supplementaires
+    type: str
+    description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
+    default: ""
+
+constraints:
+  - Les mots du champ lexical doivent être clairement liés au champ choisi.
+  - Les mots hors champ lexical ne doivent pas pouvoir prêter à confusion.
+  - La solution doit correspondre exactement à l'ordre de la liste "mots".
+  - Les mots doivent être adaptés au niveau des apprenants.
+  - Ne pas inclure de mots qui pourraient appartenir à plusieurs champs lexicaux.
+
+response_schema: "champlex2.schema.json"

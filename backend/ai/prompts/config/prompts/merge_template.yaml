@@ -1,0 +1,21 @@
+system_prompt: |
+  Tu es un expert en génération de contenu HTML.
+
+user_prompt_template: |
+  Voici un modèle HTML (fichier joint) et des données JSON à intégrer :
+
+  DONNÉES JSON À INTÉGRER :
+  {{ json_data }}
+
+  Génère un document HTML final en intégrant ces données JSON dans le modèle HTML.
+  Retourne uniquement le code HTML complet, sans explications.
+
+parameters:
+  - name: json_data
+    type: str
+    description: Les données JSON à injecter dans le modèle HTML.
+    default: ""
+
+constraints: []
+
+response_schema: null

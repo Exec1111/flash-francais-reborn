@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Exercice : Reconnaissance de champ lexical</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f6f8fa; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #ccc; padding: 32px; }
+        h2 { text-align: center; color: #2a5d8f; }
+        .champ { font-weight: bold; font-size: 1.2em; margin-bottom: 20px; text-align: center; }
+        .mot-liste { margin: 16px 0; }
+        .mot-item { display: flex; align-items: center; gap: 20px; margin-bottom: 10px; }
+        .mot-label { flex: 1; }
+        .reponse { display: flex; gap: 10px; }
+        button { margin-top: 24px; width: 100%; padding: 12px; font-size: 1.1em; background: #2a5d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+        .resultat { margin-top: 20px; padding: 16px; border-radius: 8px; font-weight: bold; text-align: center; }
+        .bravo { background: #e0ffe0; color: #227722; }
+        .erreur { background: #ffe0e0; color: #b22222; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Champ lexical : <span id="champ"></span></h2>
+    <form id="exerciceForm">
+        <div class="mot-liste" id="motListe"></div>
+        <button type="submit">Valider</button>
+    </form>
+    <div id="resultat" class="resultat" style="display:none;"></div>
+</div>
+<script>
+// --- DÉBUT DES DONNÉES DE L'EXERCICE ---
+// Remplacer ci-dessous par l'injection dynamique des données
+const donnees = {
+    "champ": "la peur",
+    "mots": ["frisson", "amour", "trembler", "effroi", "tendresse", "angoisse", "courage", "crainte"],
+    "solution": [true, false, true, true, false, true, false, true]
+};
+// --- FIN DES DONNÉES DE L'EXERCICE ---
+
+document.getElementById('champ').textContent = donnees.champ;
+
+const motListeDiv = document.getElementById('motListe');
+donnees.mots.forEach((mot, idx) => {
+    const div = document.createElement('div');
+    div.className = 'mot-item';
+    div.innerHTML = `
+        <span class="mot-label">${mot}</span>
+        <div class="reponse">
+            <label><input type="radio" name="mot_${idx}" value="oui" required> Dans le champ</label>
+            <label><input type="radio" name="mot_${idx}" value="non"> Hors champ</label>
+        </div>
+    `;
+    motListeDiv.appendChild(div);
+});
+
+document.getElementById('exerciceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    let score = 0;
+    let total = donnees.mots.length;
+    let erreurs = [];
+    donnees.mots.forEach((mot, idx) => {
+        const radios = document.getElementsByName('mot_' + idx);
+        let value = null;
+        radios.forEach(r => { if (r.checked) value = r.value; });
+        const attendu = donnees.solution[idx] ? 'oui' : 'non';
+        if (value === attendu) {
+            score++;
+        } else {
+            erreurs.push(mot);
+        }
+    });
+    const resDiv = document.getElementById('resultat');
+    if (score === total) {
+        resDiv.textContent = 'Bravo ! Toutes vos réponses sont correctes.';
+        resDiv.className = 'resultat bravo';
+    } else {
+        resDiv.textContent = `Vous avez ${score} bonne(s) réponse(s) sur ${total}. Erreurs sur : ${erreurs.join(', ')}`;
+        resDiv.className = 'resultat erreur';
+    }
+    resDiv.style.display = '';
+});
+</script>
+</body>
+</html>
