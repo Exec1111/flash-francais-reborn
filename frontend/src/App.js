@@ -32,6 +32,7 @@ import ResourceView from './pages/ResourceView';
 import ObjectiveList from './pages/objectives/ObjectiveList';
 import NewObjective from './pages/objectives/NewObjective';
 import ObjectiveEdit from './pages/objectives/ObjectiveEdit';
+import ObjectiveDetailPage from './pages/objectives/ObjectiveDetailPage';
 import SequenceDetailPage from './pages/sequences/SequenceDetailPage';
 import ManageSequenceObjectivesPage from './pages/sequences/ManageSequenceObjectivesPage';
 import NewSequence from './pages/sequences/NewSequence';
@@ -300,6 +301,7 @@ function App() {
         <Route index element={<ObjectiveList />} />
         <Route path="new" element={<NewObjective />} />
         <Route path="edit/:id" element={<ObjectiveEdit />} />
+        <Route path=":id" element={<ObjectiveDetailPage />} />
       </Route>
 
       <Route

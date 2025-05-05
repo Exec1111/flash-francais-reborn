@@ -21,7 +21,11 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
-  Pagination
+  Pagination,
+  FormControlLabel,
+  Switch,
+  Grid,
+  LinearProgress
 } from '@mui/material';
 import { 
   Edit as EditIcon,
@@ -31,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import objectiveService from '../../services/objectiveService';
+import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 
 const ObjectiveList = () => {
   const [objectives, setObjectives] = useState([]);
@@ -47,6 +52,12 @@ const ObjectiveList = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
+  
+  // État pour le mode d'affichage (nous ajoutons le support de différents modes de vue)
+  const [viewMode, setViewMode] = useState(() => {
+    // Récupérer la préférence utilisateur au démarrage
+    return getViewPreference('objectives');
+  });
   
   const navigate = useNavigate();
 
@@ -118,6 +129,14 @@ const ObjectiveList = () => {
     setPage(value);
   };
 
+  // Gérer le changement de mode d'affichage
+  const handleViewModeChange = (event) => {
+    const newMode = event.target.checked ? 'table' : 'grid';
+    setViewMode(newMode);
+    // Sauvegarder la préférence utilisateur
+    saveViewPreference('objectives', newMode);
+  };
+
   // Afficher un message de chargement
   if (loading && objectives.length === 0) {
     return (
@@ -128,13 +147,17 @@ const ObjectiveList = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" component="h2">
-              Objectifs pédagogiques
+    // Appliquer le fond par défaut et padding
+    <Box sx={{ bgcolor: 'background.default', p: { xs: 1, sm: 2, md: 3 }, minHeight: 'calc(100vh - 64px)' }}> 
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Grid container alignItems="center" spacing={2}>
+          <Grid item xs>
+            <Typography variant="h6" component="h2">
+              Mes Objectifs pédagogiques
             </Typography>
+          </Grid>
+          <Grid item xs="auto">
             <Button
               variant="contained"
               color="primary"
@@ -143,108 +166,153 @@ const ObjectiveList = () => {
             >
               Nouvel objectif
             </Button>
-          </Box>
+          </Grid>
+          <Grid item xs="auto">
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={viewMode === 'table'}
+                  onChange={handleViewModeChange}
+                  name="viewMode"
+                />
+              }
+              label={viewMode === 'table' ? "Vue Tabulaire" : "Vue en Fiches"}
+              sx={{ ml: 1 }}
+            />
+          </Grid>
+        </Grid>
+      </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+          {successMessage}
+        </Alert>
+      )}
 
-          {successMessage && (
-            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-              {successMessage}
-            </Alert>
-          )}
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-          {objectives.length === 0 ? (
-            <Typography variant="body1" sx={{ my: 2, textAlign: 'center' }}>
-              Aucun objectif pédagogique trouvé. Créez-en un nouveau pour commencer !
-            </Typography>
-          ) : (
-            <>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Titre</TableCell>
-                      <TableCell>Description</TableCell>
-                      <TableCell align="center">Séquences</TableCell>
-                      <TableCell align="center">Séances</TableCell>
-                      <TableCell align="center">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {objectives.map((objective) => (
-                      <TableRow key={objective.id}>
-                        <TableCell>{objective.title}</TableCell>
-                        <TableCell>
-                          {objective.description ? (
-                            objective.description.length > 100 
-                              ? `${objective.description.substring(0, 100)}...` 
-                              : objective.description
-                          ) : (
-                            <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                              Pas de description
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          {objective.sequences?.length || 0}
-                        </TableCell>
-                        <TableCell align="center">
-                          {objective.sessions?.length || 0}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <Tooltip title="Voir les détails">
-                              <IconButton 
-                                color="info"
-                                onClick={() => {/* TODO: Implémenter la vue détaillée */}}
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Modifier">
-                              <IconButton 
-                                color="primary"
-                                onClick={() => handleEditObjective(objective.id)}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton 
-                                color="error"
-                                onClick={() => handleOpenDeleteDialog(objective)}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              {totalPages > 1 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <Pagination 
-                    count={totalPages} 
-                    page={page} 
-                    onChange={handlePageChange} 
-                    color="primary" 
-                  />
-                </Box>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dialogue de confirmation de suppression */}
+      {viewMode === 'table' ? (
+        // Vue table dans Paper avec fond papier
+        <Paper sx={{ width: '100%', overflow: 'hidden', mb: 2, bgcolor: 'background.paper' }}> 
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Titre</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell align="center">Séquences</TableCell>
+                  <TableCell align="center">Séances</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {objectives.map((objective) => (
+                  <TableRow key={objective.id}>
+                    <TableCell style={{cursor: 'pointer', color: '#5a47d1'}} onClick={() => navigate(`/objectives/${objective.id}`)}>
+                      {objective.title}
+                    </TableCell>
+                    <TableCell>
+                      {objective.description ? (
+                        objective.description.length > 100 
+                          ? `${objective.description.substring(0, 100)}...` 
+                          : objective.description
+                      ) : (
+                        <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                          Pas de description
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      {objective.sequences?.length || 0}
+                    </TableCell>
+                    <TableCell align="center">
+                      {objective.sessions?.length || 0}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Tooltip title="Voir le détail">
+                          <IconButton color="primary" onClick={() => navigate(`/objectives/${objective.id}`)}>
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Éditer">
+                          <IconButton color="primary" onClick={() => handleEditObjective(objective.id)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton color="error" onClick={() => handleOpenDeleteDialog(objective)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      ) : (
+        // Vue en fiches directement sur fond background.default
+        <Grid container spacing={3} sx={{ mb: 2 }}> 
+          {objectives.map((objective) => (
+            <Grid item xs={12} sm={6} md={4} key={objective.id}>
+              {/* Card individuelle pour chaque fiche */}
+              <Card sx={{ height: '100%', bgcolor: 'background.paper' }}> 
+                <CardContent>
+                  <Typography 
+                    variant="h6" 
+                    component="h2" 
+                    gutterBottom
+                  >
+                    {objective.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {objective.description ? 
+                      (objective.description.length > 100 ? 
+                        `${objective.description.substring(0, 100)}...` : 
+                        objective.description) : 
+                      'Aucune description'
+                    }
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
+                    <Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton size="small" onClick={() => navigate(`/objectives/${objective.id}`)}>
+                          <VisibilityIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleEditObjective(objective.id)}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleOpenDeleteDialog(objective)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 3 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange} 
+            color="primary" 
+          />
+        </Box>
+      )}
+      {/* Dialogue de confirmation */}
       <Dialog
         open={deleteDialogOpen}
         onClose={handleCloseDeleteDialog}

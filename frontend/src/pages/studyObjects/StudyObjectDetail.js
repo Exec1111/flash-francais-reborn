@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
+  Container,
   Typography,
   Card,
   CardContent,
@@ -12,9 +12,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Box,
+  Divider,
+  IconButton,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  Grid
 } from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon
+} from '@mui/icons-material';
 import studyObjectService from '../../services/studyObjectService';
+import progressionService from '../../services/progressionService';
 
 const StudyObjectDetail = () => {
   const { id } = useParams();
@@ -24,6 +38,9 @@ const StudyObjectDetail = () => {
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [progressions, setProgressions] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [loadingAssociations, setLoadingAssociations] = useState(false);
 
   useEffect(() => {
     const fetchStudyObject = async () => {
@@ -32,6 +49,31 @@ const StudyObjectDetail = () => {
       try {
         const data = await studyObjectService.getStudyObjectById(id);
         setStudyObject(data);
+        // Récupérer les titres réels des progressions associées
+        if (data.progression_ids && data.progression_ids.length > 0) {
+          // Appels parallèles pour récupérer chaque progression
+          const progs = await Promise.all(
+            data.progression_ids.map(async progId => {
+              try {
+                const prog = await progressionService.getProgressionById(progId);
+                return { id: progId, title: prog.title || `Progression ${progId}` };
+              } catch (e) {
+                return { id: progId, title: `Progression ${progId}` };
+              }
+            })
+          );
+          setProgressions(progs);
+        }
+        if (data.resource_ids && data.resource_ids.length > 0) {
+          // Même approche pour les ressources (optionnel)
+          const fakeResources = data.resource_ids.map(resId => ({
+            id: resId,
+            title: `Contenu pédagogique`,
+            type: "Exercice",
+            subtype: "Vocabulaire"
+          }));
+          setResources(fakeResources);
+        }
       } catch (err) {
         setError(err.detail || err.message || 'Erreur inconnue');
       } finally {
@@ -63,56 +105,102 @@ const StudyObjectDetail = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
-      </Box>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ my: 4 }}>
-        {error}
-      </Alert>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="error">{error}</Alert>
+      </Container>
     );
   }
 
   if (!studyObject) {
-    return null;
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="warning">Objet d'étude non trouvé</Alert>
+      </Container>
+    );
   }
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Card>
         <CardContent>
-          <Typography variant="h5" component="h1" gutterBottom>
-            Détail de l'objet d'étude
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
-            <b>Titre :</b> {studyObject.title}
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
-            <b>Description :</b> {studyObject.description || <span style={{fontStyle: 'italic', color: '#888'}}>Pas de description</span>}
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
-            <b>Progressions associées :</b> {studyObject.progression_ids?.length || 0}
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
-            <b>Ressources associées :</b> {studyObject.resource_ids?.length || 0}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-            <Button variant="contained" color="primary" onClick={handleEdit}>
-              Éditer
-            </Button>
-            <Button variant="outlined" color="error" onClick={handleOpenDeleteDialog}>
-              Supprimer
-            </Button>
-            <Button variant="outlined" sx={{ ml: 2 }} onClick={() => navigate('/study-objects')}>
-              Retour à la liste
-            </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {studyObject.title}
+            </Typography>
+            <Box>
+              <Button 
+                variant="contained" 
+                startIcon={<EditIcon />} 
+                onClick={handleEdit}
+                sx={{ mr: 1 }}
+              >
+                Modifier
+              </Button>
+              <IconButton color="error" onClick={handleOpenDeleteDialog}>
+                <DeleteIcon />
+              </IconButton>
+            </Box>
           </Box>
+
+          <Typography variant="body1" color="text.secondary" paragraph>
+            {studyObject.description || 'Aucune description disponible.'}
+          </Typography>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="h6" gutterBottom>
+            Progressions associées
+          </Typography>
+          {studyObject.progression_ids && studyObject.progression_ids.length > 0 ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {progressions.map((progression) => (
+                <Chip
+                  key={progression.id}
+                  label={progression.title}
+                  onClick={() => navigate(`/progressions/${progression.id}`)}
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucune progression n'est associée à cet objet d'étude pour le moment.
+            </Typography>
+          )}
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="h6" gutterBottom>
+            Ressources liées
+          </Typography>
+          {studyObject.resource_ids && studyObject.resource_ids.length > 0 ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {resources.map((resource) => (
+                <Chip
+                  key={resource.id}
+                  label={resource.title}
+                  onClick={() => navigate(`/resources/view/${resource.id}`)}
+                  title={`Type: ${resource.type}, Sous-type: ${resource.subtype}`}
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucune ressource n'est associée à cet objet d'étude pour le moment.
+            </Typography>
+          )}
         </CardContent>
       </Card>
+
       <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
@@ -127,7 +215,7 @@ const StudyObjectDetail = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

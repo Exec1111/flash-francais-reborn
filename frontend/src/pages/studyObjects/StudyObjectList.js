@@ -21,7 +21,11 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
-  Pagination
+  Pagination,
+  FormControlLabel,
+  Switch,
+  Grid,
+  LinearProgress
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -31,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
+import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 
 const StudyObjectList = () => {
   const [studyObjects, setStudyObjects] = useState([]);
@@ -47,6 +52,12 @@ const StudyObjectList = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
+
+  // État pour le mode d'affichage
+  const [viewMode, setViewMode] = useState(() => {
+    // Récupérer la préférence utilisateur au démarrage
+    return getViewPreference('studyObjects');
+  });
 
   const navigate = useNavigate();
 
@@ -114,22 +125,26 @@ const StudyObjectList = () => {
     setPage(value);
   };
 
-  if (loading && studyObjects.length === 0) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Gérer le changement de mode d'affichage
+  const handleViewModeChange = (event) => {
+    const newMode = event.target.checked ? 'table' : 'grid';
+    setViewMode(newMode);
+    // Sauvegarder la préférence utilisateur
+    saveViewPreference('studyObjects', newMode);
+  };
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" component="h2">
+    // Appliquer le fond par défaut et padding
+    <Box sx={{ bgcolor: 'background.default', p: { xs: 1, sm: 2, md: 3 }, minHeight: 'calc(100vh - 64px)' }}>
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Grid container alignItems="center" spacing={2}>
+          <Grid item xs>
+            <Typography variant="h6" component="h2">
               Objets d'étude
             </Typography>
+          </Grid>
+          <Grid item xs="auto">
             <Button
               variant="contained"
               color="primary"
@@ -138,106 +153,186 @@ const StudyObjectList = () => {
             >
               Nouvel objet d'étude
             </Button>
-          </Box>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-
-          {successMessage && (
-            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-              {successMessage}
-            </Alert>
-          )}
-
-          {studyObjects.length === 0 ? (
-            <Typography variant="body1" sx={{ my: 2, textAlign: 'center' }}>
-              Aucun objet d'étude trouvé. Créez-en un nouveau pour commencer !
-            </Typography>
-          ) : (
-            <>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Titre</TableCell>
-                      <TableCell>Description</TableCell>
-                      <TableCell align="center">Progressions</TableCell>
-                      <TableCell align="center">Ressources</TableCell>
-                      <TableCell align="center">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {studyObjects.map((studyObject) => (
-                      <TableRow key={studyObject.id}>
-                        <TableCell>{studyObject.title}</TableCell>
-                        <TableCell>
-                          {studyObject.description ? (
-                            studyObject.description.length > 100
-                              ? `${studyObject.description.substring(0, 100)}...`
-                              : studyObject.description
-                          ) : (
-                            <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                              Pas de description
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          {studyObject.progression_ids?.length || 0}
-                        </TableCell>
-                        <TableCell align="center">
-                          {studyObject.resource_ids?.length || 0}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <Tooltip title="Voir les détails">
-                              <IconButton
-                                color="primary"
-                                onClick={() => navigate(`/study-objects/${studyObject.id}`)}
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Éditer">
-                              <IconButton
-                                color="secondary"
-                                onClick={() => handleEditStudyObject(studyObject.id)}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton
-                                color="error"
-                                onClick={() => handleOpenDeleteDialog(studyObject)}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={handlePageChange}
-                  color="primary"
+          </Grid>
+          <Grid item xs="auto">
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={viewMode === 'table'}
+                  onChange={handleViewModeChange}
+                  name="viewMode"
                 />
-              </Box>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              }
+              label={viewMode === 'table' ? "Vue Tabulaire" : "Vue en Fiches"}
+              sx={{ ml: 1 }}
+            />
+          </Grid>
+        </Grid>
+      </Box>
 
-      {/* Dialog de confirmation de suppression */}
-      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
+      {/* Messages d'erreur */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+          {successMessage}
+        </Alert>
+      )}
+
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+
+      {/* Contenu conditionnel Table/Grid */}
+      {viewMode === 'table' ? (
+        // Vue table dans Paper avec fond papier
+        <Paper sx={{ width: '100%', overflow: 'hidden', mb: 2, bgcolor: 'background.paper' }}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Titre</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell align="center">Progressions</TableCell>
+                  <TableCell align="center">Ressources</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {studyObjects.map((studyObject) => (
+                  <TableRow key={studyObject.id}>
+                    <TableCell style={{ cursor: 'pointer', color: '#5a47d1' }} onClick={() => navigate(`/study-objects/${studyObject.id}`)}>
+                      {studyObject.title}
+                    </TableCell>
+                    <TableCell>
+                      {studyObject.description ? (
+                        studyObject.description.length > 100
+                          ? `${studyObject.description.substring(0, 100)}...`
+                          : studyObject.description
+                      ) : (
+                        <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                          Pas de description
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      {studyObject.progression_ids?.length || 0}
+                    </TableCell>
+                    <TableCell align="center">
+                      {studyObject.resource_ids?.length || 0}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Tooltip title="Voir les détails">
+                          <IconButton
+                            color="primary"
+                            onClick={() => navigate(`/study-objects/${studyObject.id}`)}
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Éditer">
+                          <IconButton
+                            color="secondary"
+                            onClick={() => handleEditStudyObject(studyObject.id)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton
+                            color="error"
+                            onClick={() => handleOpenDeleteDialog(studyObject)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      ) : (
+        // Vue en fiches directement sur fond background.default
+        <Grid container spacing={3} sx={{ mb: 2 }}>
+          {studyObjects.map((studyObject) => (
+            <Grid item xs={12} sm={6} md={4} key={studyObject.id}>
+              {/* Card individuelle pour chaque fiche */}
+              <Card sx={{ height: '100%', bgcolor: 'background.paper' }}>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    component="h2"
+                    gutterBottom
+                  >
+                    {studyObject.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <strong>Type:</strong> {studyObject.type || 'Non spécifié'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2 }}>
+                    {studyObject.description ? (
+                      studyObject.description.length > 100
+                        ? `${studyObject.description.substring(0, 100)}...`
+                        : studyObject.description
+                    ) : (
+                      'Aucune description'
+                    )}
+                  </Typography>
+
+                  {/* Espace pour les actions en bas de la carte */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', pt: 1, borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                    {/* Zone gauche pour les tags/infos supplémentaires si besoin */}
+                    <Box sx={{ flexGrow: 1 }}>
+                      {/* <Typography variant="caption">Infos</Typography> */}
+                    </Box>
+                    {/* Zone droite pour les boutons d'action */}
+                    <Box>
+                      <Tooltip title="Voir le détail">
+                        <IconButton size="small" onClick={() => navigate(`/study-objects/${studyObject.id}`)}>
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Éditer">
+                        <IconButton size="small" onClick={() => handleEditStudyObject(studyObject.id)}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Supprimer">
+                        <IconButton size="small" color="error" onClick={() => handleOpenDeleteDialog(studyObject)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Pagination déplacée ici, en dehors du conditionnel */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 3 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
+      )}
+
+      {/* Dialogue de confirmation */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+      >
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
           <DialogContentText>

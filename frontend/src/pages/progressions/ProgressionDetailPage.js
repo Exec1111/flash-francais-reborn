@@ -12,11 +12,13 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  Divider 
+  Divider, 
+  Chip 
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import api from '../../services/api'; // Assurez-vous que le chemin est correct
 import studyObjectService from '../../services/studyObjectService';
+import sequenceService from '../../services/sequenceService';
 import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 
 function ProgressionDetailPage() {
@@ -26,6 +28,7 @@ function ProgressionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studyObjects, setStudyObjects] = useState([]);
+  const [sequences, setSequences] = useState([]);
 
   useEffect(() => {
     const fetchProgression = async () => {
@@ -34,6 +37,24 @@ function ProgressionDetailPage() {
       try {
         const response = await api.get(`/progressions/${progressionId}`);
         setProgression(response.data);
+        // Récupérer les séquences associées à la progression
+        if (response.data.sequences && response.data.sequences.length > 0) {
+          setSequences(response.data.sequences.map(seq => ({ id: seq.id, title: seq.title })));
+        } else if (response.data.sequence_ids && response.data.sequence_ids.length > 0) {
+          const seqs = await Promise.all(
+            response.data.sequence_ids.map(async seqId => {
+              try {
+                const seq = await sequenceService.getSequenceById(seqId);
+                return { id: seqId, title: seq.title || `Séquence ${seqId}` };
+              } catch (e) {
+                return { id: seqId, title: `Séquence ${seqId}` };
+              }
+            })
+          );
+          setSequences(seqs);
+        } else {
+          setSequences([]);
+        }
         // Récupérer les objets d'étude associés à la progression
         if (response.data.study_object_ids && response.data.study_object_ids.length > 0) {
           const objects = await Promise.all(
@@ -108,24 +129,17 @@ function ProgressionDetailPage() {
           <Typography variant="h6" gutterBottom>
             Séquences associées
           </Typography>
-          {progression.sequences && progression.sequences.length > 0 ? (
-            <List disablePadding>
-              {progression.sequences.map((sequence) => (
-                <ListItem 
-                  key={sequence.id} 
-                  // Optional: Make list items clickable to navigate to sequence detail
-                  // button 
-                  // onClick={() => navigate(`/sequences/${sequence.id}`)}
-                  divider
-                >
-                  <ListItemText 
-                    primary={sequence.title} 
-                    // secondary={sequence.description || 'Pas de description'} // Optional secondary text
-                  />
-                  {/* Add more sequence info or actions here if needed */}
-                </ListItem>
+          {sequences.length > 0 ? (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              {sequences.map(sequence => (
+                <Chip
+                  key={sequence.id}
+                  label={sequence.title}
+                  onClick={() => navigate(`/sequences/${sequence.id}`)}
+                  sx={{ cursor: 'pointer' }}
+                />
               ))}
-            </List>
+            </Box>
           ) : (
             <Typography variant="body2" color="text.secondary">
               Aucune séquence n'est associée à cette progression pour le moment.

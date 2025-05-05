@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import resourceService from '../services/resourceService'; // Ajuster le chemin si nécessaire
+import resourceService from '../services/resourceService';
+import resourceTypeService from '../services/resourceTypeService';
 import { 
     Box, Typography, Paper, CircularProgress, Alert, Button, Link, Divider, List, ListItem 
 } from '@mui/material';
@@ -26,6 +27,11 @@ function ResourceView() {
     const [studyObjects, setStudyObjects] = useState([]);
     const [loadingStudyObjects, setLoadingStudyObjects] = useState(false);
     const [errorStudyObjects, setErrorStudyObjects] = useState(null);
+    
+    // Nouveaux états pour le type et sous-type
+    const [resourceType, setResourceType] = useState(null);
+    const [resourceSubtype, setResourceSubtype] = useState(null);
+    const [loadingTypes, setLoadingTypes] = useState(false);
 
     useEffect(() => {
         const fetchResource = async () => {
@@ -50,6 +56,34 @@ function ResourceView() {
             setLoading(false);
         }
     }, [id]);
+
+    // Effet pour récupérer les informations de type et sous-type
+    useEffect(() => {
+        const fetchTypeInfo = async () => {
+            if (!resource) return;
+            
+            setLoadingTypes(true);
+            try {
+                // Si nous avons un ID de type de ressource
+                if (resource.type_id) {
+                    const typeData = await resourceTypeService.getTypeWithSubtypes(resource.type_id);
+                    setResourceType(typeData);
+                }
+                
+                // Si nous avons un ID de sous-type de ressource
+                if (resource.sub_type_id) {
+                    const subtypeData = await resourceTypeService.getSubtype(resource.sub_type_id);
+                    setResourceSubtype(subtypeData);
+                }
+            } catch (err) {
+                console.error("Erreur lors de la récupération des informations de type:", err);
+            } finally {
+                setLoadingTypes(false);
+            }
+        };
+        
+        fetchTypeInfo();
+    }, [resource]);
 
     useEffect(() => {
         const fetchStudyObjects = async () => {
@@ -128,11 +162,21 @@ function ResourceView() {
                 <Divider sx={{ my: 2 }} />
                 
                 <Typography variant="h6">Informations Générales</Typography>
-                <Typography><strong>Type:</strong> {resource.resource_type?.name || 'N/A'}</Typography>
-                <Typography><strong>Sous-Type:</strong> {resource.resource_sub_type?.name || 'N/A'}</Typography>
+                <Typography>
+                    <strong>Type:</strong> {loadingTypes ? "Chargement..." : (
+                        resourceType?.value || 
+                        resource.type?.value || 
+                        'Non spécifié'
+                    )}
+                </Typography>
+                <Typography>
+                    <strong>Sous-Type:</strong> {loadingTypes ? "Chargement..." : (
+                        resourceSubtype?.value || 
+                        resource.sub_type?.value || 
+                        'Non spécifié'
+                    )}
+                </Typography>
                 <Typography><strong>Source:</strong> {resource.source_type === 'file' ? 'Fichier' : (resource.source_type === 'IA' ? 'IA' : resource.source_type)}</Typography>
-                <Typography><strong>Créé le:</strong> {formatDate(resource.created_at)}</Typography>
-                <Typography><strong>Dernière modification:</strong> {formatDate(resource.updated_at)}</Typography>
 
                 <Divider sx={{ my: 2 }} />
 

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
+  Container,
   Typography,
   Button,
   Grid,
   Card,
-  CardHeader,
   CardContent,
   Divider,
   CircularProgress,
@@ -18,6 +17,7 @@ import {
   ListItemText,
   Chip,
   Stack,
+  Box
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import api from '../../services/api';
 import { useTreeData } from '../../contexts/TreeDataContext';
+import objectiveService from '../../services/objectiveService';
 
 /**
  * Page pour afficher les détails d'une séance
@@ -37,6 +38,7 @@ const SessionDetailPage = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [objectives, setObjectives] = useState([]);
 
   // Charger les détails de la séance
   useEffect(() => {
@@ -48,6 +50,9 @@ const SessionDetailPage = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setSession(response.data);
+        // Récupération des objectifs associés
+        const objectivesData = await objectiveService.getObjectivesBySession(id);
+        setObjectives(objectivesData);
       } catch (err) {
         setError("Erreur lors du chargement des détails de la séance: " + 
           (err.response?.data?.detail || err.message || "Erreur inconnue"));
@@ -80,66 +85,68 @@ const SessionDetailPage = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
-      </Box>
+      </Container>
     );
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="error">{error}</Alert>
+      </Container>
+    );
   }
 
   if (!session) {
-    return <Alert severity="warning">Séance non trouvée</Alert>;
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="warning">Séance non trouvée</Alert>
+      </Container>
+    );
   }
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* Bouton Retour en dehors de la Card */}
-      <IconButton onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        <ArrowBackIcon />
-      </IconButton>
-
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Card>
-        <CardHeader
-          title="Détails de la séance" // Titre générique pour la carte
-          action={
-            <Box>
-              <Tooltip title="Modifier">
-                <IconButton
-                  color="primary"
-                  onClick={() => navigate(`/sessions/edit/${id}`)}
-                  sx={{ mr: 1 }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Supprimer">
-                <IconButton color="error" onClick={handleDelete}>
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          }
-        />
         <CardContent>
-          {/* Titre spécifique de la séance */}
-          <Typography variant="h5" component="h1" gutterBottom>
-            {session.title} { /* Utilisation de session.title ou session.name selon le modèle */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {session.title}
+            </Typography>
+            <Box>
+              <Button 
+                variant="contained" 
+                startIcon={<EditIcon />} 
+                onClick={() => navigate(`/sessions/edit/${id}`)}
+                sx={{ mr: 1 }}
+              >
+                Modifier
+              </Button>
+              <IconButton color="error" onClick={handleDelete}>
+                <DeleteIcon />
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Date de la séance */}
+          {session.date || session.session_date ? (
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Date : {session.date || session.session_date}
+            </Typography>
+          ) : null}
+
+          <Typography variant="body1" color="text.secondary" paragraph>
+            {session.notes || session.description || 'Aucune description disponible'}
           </Typography>
 
-          <Divider sx={{ my: 2 }} />
-
-          {/* Description */}
-          <Typography variant="h6" gutterBottom>
-            Description
-          </Typography>
-          <Typography paragraph sx={{ mb: 3 }}>
-            {session.notes || 'Aucune description disponible'} { /* Utilisation de session.notes ou session.description */}
-          </Typography>
+          <Divider sx={{ my: 3 }} />
 
           {/* Informations (Durée, Séquence parente) */}
+          <Typography variant="h6" gutterBottom>
+            Informations
+          </Typography>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -154,34 +161,59 @@ const SessionDetailPage = () => {
                 Séquence parente
               </Typography>
               <Typography variant="body1">
-                {/* TODO: Afficher le nom de la séquence si disponible */}
-                {/* Par exemple: session.sequence?.title || session.sequence_name || 'Non spécifiée' */}
                 ID: {session.sequence_id || 'Non spécifiée'}
               </Typography>
             </Grid>
           </Grid>
 
-          {/* Section Ressources */}
-          {session.resources && session.resources.length > 0 && (
-            <>
-              <Typography variant="h6" gutterBottom sx={{ mt: 3, mb: 1 }}>
-                Ressources liées
-              </Typography>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={1}>
-                {session.resources.map((resource) => (
-                  <Chip
-                    key={resource.id}
-                    label={resource.title || resource.name || `Ressource ${resource.id}`}
-                    size="small"
-                  />
-                ))}
-              </Stack>
-            </>
+          <Divider sx={{ my: 3 }} />
+
+          {/* Section Objectifs pédagogiques */}
+          <Typography variant="h6" gutterBottom>
+            Objectifs pédagogiques
+          </Typography>
+          {objectives && objectives.length > 0 ? (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              {objectives.map(obj => (
+                <Chip
+                  key={obj.id}
+                  label={obj.title}
+                  onClick={() => navigate(`/objectives/${obj.id}`)}
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucun objectif pédagogique n'est associé à cette séance pour le moment.
+            </Typography>
           )}
-          {/* Pas de bouton Modifier ici, car il est dans le header */}
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Section Ressources */}
+          <Typography variant="h6" gutterBottom>
+            Ressources liées
+          </Typography>
+          {session.resources && session.resources.length > 0 ? (
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={1}>
+              {session.resources.map((resource) => (
+                <Chip
+                  key={resource.id}
+                  label={resource.title || resource.name || `Ressource ${resource.id}`}
+                  size="small"
+                  onClick={() => navigate(`/resources/${resource.id}`)}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucune ressource n'est associée à cette séance pour le moment.
+            </Typography>
+          )}
         </CardContent>
       </Card>
-    </Box>
+    </Container>
   );
 };
 

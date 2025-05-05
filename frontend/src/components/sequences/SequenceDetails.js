@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Box, 
+  Container,
   Typography, 
-  Paper, 
   Button, 
   IconButton,
   Card,
   CardContent,
-  CardHeader,
-  CardActions,
   Divider,
   Grid,
   Chip,
   CircularProgress,
-  Alert
+  Alert,
+  Box,
+  Paper
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
@@ -23,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
+import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 
 /**
  * Composant affichant les détails d'une séquence et permettant
@@ -71,40 +71,36 @@ const SequenceDetails = () => {
   
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
-      </Box>
+      </Container>
     );
   }
   
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
         <Alert severity="error">{error}</Alert>
-      </Box>
+      </Container>
     );
   }
   
   if (!sequence) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
         <Alert severity="warning">Séquence non trouvée</Alert>
-      </Box>
+      </Container>
     );
   }
   
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Card>
-        <CardHeader
-          title={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="h5" component="div">
-                {sequence.title}
-              </Typography>
-            </Box>
-          }
-          action={
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {sequence.title}
+            </Typography>
             <Box>
               <Button
                 variant="contained"
@@ -122,112 +118,101 @@ const SequenceDetails = () => {
                 <DeleteIcon />
               </IconButton>
             </Box>
-          }
-        />
+          </Box>
+          
+          <Typography variant="body1" color="text.secondary" paragraph>
+            {sequence.description || "Aucune description disponible."}
+          </Typography>
         
-        <Divider />
-        
-        <CardContent>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold">
-                Description:
+          <Divider sx={{ my: 3 }} />
+          
+          {/* Section Objectifs pédagogiques */}
+          {sequence.objectives && sequence.objectives.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom onClick={() => navigate(`/objectives/${sequence.objectives[0].id}`)}>
+                Objectifs pédagogiques
               </Typography>
-              <Typography paragraph>
-                {sequence.description || "Aucune description disponible."}
-              </Typography>
-            </Grid>
-            
-            {sequence.objectives && sequence.objectives.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  Objectifs pédagogiques:
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {sequence.objectives.map(objective => (
-                    <Chip 
-                      key={objective.id} 
-                      label={objective.title} 
-                      icon={<ObjectiveIcon />} 
-                      variant="outlined" 
-                      color="secondary"
-                      onClick={() => navigate(`/objectives/${objective.id}`)}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            {/* --- Objets d'étude associés à la séquence --- */}
-            {sequence.study_objects && sequence.study_objects.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  Objets d'étude associés :
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {sequence.study_objects.map(obj => (
-                    <Chip
-                      key={obj.id}
-                      label={obj.title}
-                      variant="outlined"
-                      color="primary"
-                      sx={{ cursor: 'pointer' }}
-                      title={obj.description || ''}
-                    />
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="bold">
-                Séances:
-              </Typography>
-              {sequence.sessions && sequence.sessions.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
-                  {sequence.sessions.map(session => (
-                    <Paper 
-                      key={session.id} 
-                      elevation={1} 
-                      sx={{ p: 2, maxWidth: '250px', cursor: 'pointer' }}
-                      onClick={() => navigate(`/sessions/${session.id}`)}
-                    >
-                      <Typography variant="subtitle2">
-                        {session.title}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                {sequence.objectives.map(obj => (
+                  <Chip
+                    key={obj.id}
+                    label={obj.title}
+                    onClick={() => navigate(`/objectives/${obj.id}`)}
+                    sx={{ cursor: 'pointer' }}
+                    icon={<ObjectiveIcon />}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+          
+          <Divider sx={{ my: 3 }} />
+          
+          {/* Section Objets d'étude */}
+          <Typography variant="h6" gutterBottom>
+            Objets d'étude associés
+          </Typography>
+          <StudyObjectChips 
+            studyObjects={sequence.study_objects || []} 
+            onClick={(obj) => navigate(`/study-objects/${obj.id}`)}
+          />
+          
+          <Divider sx={{ my: 3 }} />
+          
+          <Typography variant="h6" gutterBottom>
+            Séances
+          </Typography>
+          {sequence.sessions && sequence.sessions.length > 0 ? (
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {sequence.sessions.map(session => (
+                <Grid item xs={12} sm={6} md={4} key={session.id}>
+                  <Paper 
+                    elevation={1} 
+                    sx={{ p: 2, height: '100%', cursor: 'pointer' }}
+                    onClick={() => navigate(`/sessions/${session.id}`)}
+                  >
+                    <Typography variant="subtitle1" gutterBottom>
+                      {session.title}
+                    </Typography>
+                    {session.date && (
+                      <Typography variant="body2" color="text.secondary">
+                        Date: {session.date}
                       </Typography>
-                    </Paper>
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Aucune séance dans cette séquence.
-                </Typography>
-              )}
+                    )}
+                    {session.duration && (
+                      <Typography variant="body2" color="text.secondary">
+                        Durée: {session.duration} minutes
+                      </Typography>
+                    )}
+                  </Paper>
+                </Grid>
+              ))}
             </Grid>
-          </Grid>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucune séance dans cette séquence.
+            </Typography>
+          )}
+          
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+            <Button 
+              startIcon={<AddIcon />} 
+              variant="contained" 
+              color="primary"
+              onClick={() => navigate(`/sequences/${id}/sessions/new`)}
+            >
+              Ajouter une séance
+            </Button>
+            <Button 
+              onClick={() => navigate(-1)} 
+              variant="outlined"
+            >
+              Retour
+            </Button>
+          </Box>
         </CardContent>
-        
-        <Divider />
-        
-        <CardActions>
-          <Button 
-            startIcon={<AddIcon />} 
-            variant="contained" 
-            color="primary"
-            onClick={() => navigate(`/sequences/${id}/sessions/new`)}
-          >
-            Ajouter une séance
-          </Button>
-          <Button 
-            onClick={() => navigate(-1)} 
-            variant="outlined"
-            sx={{ ml: 'auto' }}
-          >
-            Retour
-          </Button>
-        </CardActions>
       </Card>
-    </Box>
+    </Container>
   );
 };
 
