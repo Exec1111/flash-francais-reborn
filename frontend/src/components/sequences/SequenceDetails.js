@@ -104,6 +104,18 @@ const SequenceDetails = () => {
             <Box>
               <Button
                 variant="contained"
+                color="primary"
+                onClick={() => navigate(`/sequences/${id}/propose-seances`, { state: { title: sequence.title } })}
+                sx={{ mr: 2 }}
+                disabled={!sequence.study_objects || sequence.study_objects.length === 0}
+                title={!sequence.study_objects || sequence.study_objects.length === 0 ? 
+                  "Ajoutez au moins un objet d'étude à la séquence pour accéder à la génération de séances" : 
+                  "Générer des propositions de séances basées sur les objets d'étude"}
+              >
+                Proposer des séances
+              </Button>
+              <Button
+                variant="contained"
                 startIcon={<EditIcon />}
                 onClick={() => navigate(`/sequences/edit/${id}`)}
                 sx={{ mr: 2 }}

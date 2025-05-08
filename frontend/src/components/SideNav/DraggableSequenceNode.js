@@ -117,6 +117,7 @@ const DraggableSequenceNode = ({
                 }
                 isReordering={isReordering}
                 onExpand={onExpand}
+                onDeleteSession={onDeleteSession}
                 loadingNodeId={loadingNodeId}
                 activeNodeType={activeNodeType}
                 activeNodeId={activeNodeId}

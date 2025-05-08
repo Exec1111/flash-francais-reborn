@@ -111,7 +111,7 @@ def read_sessions_by_sequence_route(
 
 @session_router.get("/{session_id}", response_model=SessionRead)
 def read_session_route(session_id: int, db: Session = Depends(get_db)):
-    db_session = crud.get_session(db, session_id=session_id)
+    db_session = crud.get_session_by_id(db, session_id=session_id)
     if db_session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return db_session

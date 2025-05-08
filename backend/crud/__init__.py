@@ -27,7 +27,7 @@ from crud.sequence import (
 )
 # Exposer les fonctions du module session
 from crud.session import (
-    get_session,
+    get_session_by_id,
     get_sessions,
     get_sessions_by_sequence,
     create_session,
@@ -103,7 +103,7 @@ __all__ = [
     "update_sequence",
     "delete_sequence",
     # Session exports
-    "get_session",
+    "get_session_by_id",
     "get_sessions",
     "get_sessions_by_sequence",
     "create_session",

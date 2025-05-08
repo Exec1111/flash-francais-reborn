@@ -459,31 +459,6 @@ const SequenceForm = ({
             
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               {actionButtons}
-              {isEdit && (
-                <Tooltip
-                  title={
-                    isDirty
-                      ? "Veuillez d'abord sauvegarder vos modifications avant de proposer des séances."
-                      : selectedStudyObjects.length === 0
-                        ? "Ajoutez au moins un objet d'étude à la séquence pour accéder à la génération de séances"
-                        : ""
-                  }
-                  arrow
-                  disableHoverListener={!(isDirty || selectedStudyObjects.length === 0)}
-                >
-                  <span>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      disabled={isDirty || selectedStudyObjects.length === 0}
-                      onClick={() => navigate(`/sequences/${sequenceId}/propose-seances`, { state: { title: formData.title } })}
-                      style={{ pointerEvents: isDirty || selectedStudyObjects.length === 0 ? 'none' : 'auto' }}
-                    >
-                      Proposer des séances
-                    </Button>
-                  </span>
-                </Tooltip>
-              )}
             </Box>
           </form>
         </CardContent>

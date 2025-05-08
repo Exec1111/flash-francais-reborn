@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionExerciseSuggestionResponse",
+  "description": "Schéma pour la réponse de l'IA suggérant des types d'exercices pour une session.",
+  "type": "object",
+  "properties": {
+    "suggestions": {
+      "type": "array",
+      "description": "Liste des types d'exercices suggérés.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type_key": {
+            "type": "string",
+            "description": "La clé du type d'exercice suggéré (ex: 'grammaire', 'vocabulaire')."
+          },
+          "subtype_key": {
+            "type": "string",
+            "description": "La clé du sous-type d'exercice suggéré (ex: 'qcm', 'texte_a_trous')."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Brève explication (1-2 phrases) de la pertinence de cette suggestion pour la session."
+          },
+          "parameters": { 
+            "type": "array",
+            "description": "Liste des paramètres requis pour l'exercice suggéré, tels que définis dans sa configuration.",
+            "items": {
+              "type": "object",
+              "properties": { 
+                "name": {"type": "string"},
+                "type": {"type": "string"},
+                "label": {"type": "string"},
+                "description": {"type": "string"},
+                "default": {
+                  "description": "Valeur par défaut du paramètre.",
+                  "anyOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "integer" },
+                    { "type": "boolean" },
+                    { "type": "array", "items": {"type": "string"} }
+                  ]
+                },
+                "enum": {"type": "array", "items": {"type": "string"}},
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+                "required": {"type": "boolean"},
+                "value": {
+                  "type": ["string", "number", "boolean", "array", "object"],
+                  "description": "La valeur suggérée par l'IA pour ce paramètre, dans le contexte de la session.",
+                  "nullable": true
+                }
+              },
+              "required": ["name", "type"],
+              "additionalProperties": true 
+            }
+          }
+        },
+        "required": [
+          "type_key",
+          "subtype_key",
+          "justification",
+          "parameters"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 4
+    }
+  },
+  "required": [
+    "suggestions"
+  ],
+  "additionalProperties": false
+}

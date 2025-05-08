@@ -4,6 +4,8 @@ system_prompt: |
   Pour chaque mot, fournis une définition simple, claire et adaptée au niveau indiqué.
   Si une liste de mots est fournie, utilise-la exclusivement. Sinon, génère une liste pertinente à partir du thème proposé.
 
+description_courte: "Génère des exercices pour identifier et utiliser du vocabulaire spécifique à un thème."
+
 user_prompt_template: |
   Je souhaite créer un exercice de vocabulaire pour des apprenants de niveau {{ niveau }}.
   {% if liste_mots %}

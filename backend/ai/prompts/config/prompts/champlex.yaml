@@ -3,6 +3,8 @@ system_prompt: |
   Ta tâche est de générer un exercice sur les champs lexicaux adapté au niveau demandé.
   Pour chaque champ lexical que tu définis, fournis une liste de mots qui appartiennent strictement à ce champ.
 
+description_courte: "Identifie et analyse le champ lexical d'un mot ou d'un thème donné."
+
 user_prompt_template: |
   Je souhaite créer un exercice sur les champs lexicaux pour des apprenants de niveau {{ niveau }}.
   

@@ -16,6 +16,7 @@ from starlette.responses import Response
 from pydantic.json_schema import model_json_schema
 from pydantic import BaseModel
 from datetime import datetime
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,76 @@ PROMPT_REGISTRY = {
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
+    ("meta", "exercise_suggester"): "session_exercise_suggester",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
+
+class ResourceGenerationError(Exception):
+    pass
+
+async def suggest_exercise_types_for_session(
+    session_title: str,
+    session_description: str,
+    session_objectives: List[str],
+    sequence_study_objects: List[str],
+    existing_resources_summary: List[str]
+) -> Dict[str, Any]:
+    """
+    Suggère des types d'exercices pertinents pour une session donnée en utilisant l'IA.
+    Récupère dynamiquement les descriptions et paramètres des prompts d'exercices disponibles.
+    """
+    logger.info(f"Début de la suggestion de types d'exercices pour la session : {session_title}")
+
+    available_exercise_types = []
+    # Parcourir PROMPT_REGISTRY pour trouver les prompts d'exercices
+    for (type_key, subtype_key), prompt_name in PROMPT_REGISTRY.items():
+        if type_key != "meta": # Exclure les prompts méta comme le suggéreur lui-même
+            try:
+                generator = PromptGenerator(prompt_name)
+                # Récupérer la structure des paramètres directement depuis la config du prompt
+                params_config = generator.config.get("parameters", [])
+                
+                available_exercise_types.append({
+                    "type_key": type_key,
+                    "subtype_key": subtype_key,
+                    "name_fr": generator.config.get("name_fr", prompt_name), # Pour affichage si besoin, non utilisé par le template actuel
+                    "description_courte": generator.config.get("description_courte", ""),
+                    "parameters": params_config # Passe la liste des paramètres telle quelle
+                })
+            except Exception as e:
+                logger.warning(f"Impossible de charger/parser le prompt '{prompt_name}' (type: {type_key}, subtype: {subtype_key}) pour la liste des exercices disponibles : {e}")
+    
+    if not available_exercise_types:
+        logger.warning("Aucun type d'exercice disponible n'a pu être chargé depuis PROMPT_REGISTRY pour la suggestion.")
+        # Selon la logique métier, on pourrait retourner une liste de suggestions vide ou une erreur.
+        # Pour l'instant, on continue, le prompt de suggestion pourrait gérer une liste vide (même si ce n'est pas idéal).
+    
+    input_vars_for_suggester = {
+        "session_title": session_title,
+        "session_description": session_description,
+        "session_objectives": session_objectives,
+        "sequence_study_objects": sequence_study_objects,
+        "existing_resources_summary": existing_resources_summary,
+        "available_exercise_types": available_exercise_types
+    }
+
+    try:
+        logger.info(f"Appel de generate_ai_resource_content pour 'meta/exercise_suggester' avec les variables : {input_vars_for_suggester}")
+        # Note: Si generate_ai_resource_content n'est pas VRAIMENT asynchrone, cet await pourrait bloquer.
+        suggestions = await generate_ai_resource_content(
+            type_key="meta",
+            subtype_key="exercise_suggester",
+            input_variables=input_vars_for_suggester
+        )
+        logger.info(f"Suggestions d'exercices générées avec succès pour la session '{session_title}'.")
+        return suggestions
+    except ResourceGenerationError as e:
+        logger.error(f"Erreur (ResourceGenerationError) lors de la génération des suggestions d'exercices pour la session '{session_title}': {e}", exc_info=True)
+        raise # Re-lever pour que l'appelant puisse gérer
+    except Exception as e:
+        logger.error(f"Erreur inattendue lors de la tentative de suggestion d'exercices pour la session '{session_title}': {e}", exc_info=True)
+        raise ResourceGenerationError(f"Erreur inattendue lors de la suggestion d'exercices : {str(e)}")
+
 
 class ResourceGenerationError(Exception):
     pass
@@ -140,8 +209,19 @@ async def generate_ai_resource_content(
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         
         # Construire et nettoyer le schéma dynamique si présent
-        schema = generator.schema
-        if schema:
+        current_schema_from_generator = generator.schema
+        
+        # Condition pour désactiver le schéma pour un prompt spécifique
+        if prompt_name == "session_exercise_suggester":
+            logger.info(f"Temporairement désactivation de response_schema pour le prompt: {prompt_name}")
+            effective_schema_for_api = None
+        else:
+            effective_schema_for_api = current_schema_from_generator
+
+        if effective_schema_for_api:
+            # Copier le schéma pour éviter de modifier l'original en cache par le PromptGenerator
+            schema_to_send = copy.deepcopy(effective_schema_for_api)
+            
             # Retirer $schema et additionalProperties
             def clean(node):
                 if isinstance(node, dict):
@@ -150,7 +230,7 @@ async def generate_ai_resource_content(
                     for v in node.values(): clean(v)
                 elif isinstance(node, list):
                     for item in node: clean(item)
-            clean(schema)
+            clean(schema_to_send)
             # Aplatir listes de types au premier élément
             def flatten(node):
                 if isinstance(node, dict):
@@ -160,14 +240,14 @@ async def generate_ai_resource_content(
                     for v in node.values(): flatten(v)
                 elif isinstance(node, list):
                     for item in node: flatten(item)
-            flatten(schema)
+            flatten(schema_to_send)
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=schema
+                response_schema=schema_to_send
             )
         else:
             config = types.GenerateContentConfig(
-                response_mime_type="application/json"
+                response_mime_type="application/json" # Toujours demander du JSON
             )
         
         # Appel API en JSON
@@ -186,12 +266,56 @@ async def generate_ai_resource_content(
         
         # Parsing direct du JSON retourné
         parsed_content = json.loads(response_content)
-        
-        # Valider localement selon le schéma du prompt, sans bloquer en cas d'erreur
-        try:
-            generator.validate(parsed_content)
-        except Exception as ve:
-            logger.warning(f"Validation du schéma échouée: {ve}")
+
+        # Si c'était session_exercise_suggester et que le schéma n'a pas été envoyé à l'API,
+        # il est possible que l'IA retourne une liste directement au lieu d'un objet {"suggestions": [...]}
+        # et utilise des noms de clés légèrement différents.
+        if prompt_name == "session_exercise_suggester" and effective_schema_for_api is None:
+            if isinstance(parsed_content, list):
+                logger.info(f"Sortie brute de l'IA pour {prompt_name} (sans schéma API) est une liste. Transformation en cours...")
+                transformed_suggestions = []
+                for item_from_ai in parsed_content:
+                    type_key_from_ai = item_from_ai.get("type_key")
+                    subtype_key_from_ai = item_from_ai.get("subtype_key")
+                    justification_from_ai = item_from_ai.get("justification")
+                    parameters_from_ai = item_from_ai.get("parameters", [])
+
+                    transformed_item = {
+                        "type_key": type_key_from_ai,
+                        "subtype_key": subtype_key_from_ai,
+                        "justification": justification_from_ai,
+                        "parameters": parameters_from_ai
+                    }
+                    transformed_suggestions.append(transformed_item)
+                parsed_content = {"suggestions": transformed_suggestions}
+                logger.info(f"Contenu transformé pour {prompt_name}: {json.dumps(parsed_content, indent=2, ensure_ascii=False)}")
+            elif isinstance(parsed_content, dict) and "suggestions" not in parsed_content:
+                # Gérer le cas où l'IA renvoie un objet mais sans la clé 'suggestions' attendue
+                # Ceci est moins probable que la liste directe, mais c'est une sécurité.
+                logger.warning(f"Sortie brute de l'IA pour {prompt_name} est un dict sans clé 'suggestions'. Tentative d'encapsulation.")
+                # Heuristique : si c'est un dictionnaire et qu'il a type/subtype, c'est probablement une suggestion unique non encapsulée
+                if "type" in parsed_content and "subtype" in parsed_content:
+                     transformed_item = {
+                        "type_key": parsed_content.get("type"),
+                        "subtype_key": parsed_content.get("subtype"),
+                        "justification": parsed_content.get("justification") or parsed_content.get("explanation"),
+                        "parameters": parsed_content.get("parameters", [])
+                    }
+                     parsed_content = {"suggestions": [transformed_item]}
+                else:
+                    logger.error(f"Structure inattendue du dict de l'IA pour {prompt_name}: {parsed_content}")
+            # Si parsed_content est déjà un dict avec "suggestions", aucune transformation n'est nécessaire ici.
+
+        # Valider localement selon le schéma du prompt (si un schéma est défini dans le PromptGenerator)
+        # Ceci est utile même si le schéma n'a pas été envoyé à l'API, pour voir si la sortie brute est conforme.
+        if current_schema_from_generator:
+            try:
+                generator.validate(parsed_content) # Valide contre le schéma original du prompt
+                logger.info(f"La réponse brute de l'IA PASSE la validation locale du schéma pour {prompt_name}.")
+            except Exception as ve:
+                logger.warning(f"La réponse brute de l'IA ÉCHOUE à la validation locale du schéma pour {prompt_name}: {ve}")
+        else:
+            logger.info(f"Aucun schéma local à valider pour {prompt_name}.")
         return parsed_content
     except Exception as e:
         logger.error(f"Erreur lors de la génération de contenu IA: {e}", exc_info=True)

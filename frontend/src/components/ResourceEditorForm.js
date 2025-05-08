@@ -25,11 +25,16 @@ import { FormControlLabel, Checkbox } from '@mui/material';
  * Gère également les objets et tableaux imbriqués.
  */
 const ResourceEditorForm = ({ initialData, onSubmit, onCancel, onChange, hideButtons = false }) => {
-  const [formData, setFormData] = useState(initialData);
+  // S'assurer que initialData est bien un objet
+  const safeInitialData = initialData && typeof initialData === 'object' ? initialData : {};
+  const [formData, setFormData] = useState(safeInitialData);
   
   // Mise à jour du formData quand initialData change (navigation entre documents)
   useEffect(() => {
-    setFormData(initialData);
+    console.log("ResourceEditorForm - initialData mis à jour:", initialData);
+    // S'assurer que initialData est bien un objet
+    const safeData = initialData && typeof initialData === 'object' ? initialData : {};
+    setFormData(safeData);
   }, [initialData]);
 
   // Garantir que la structure initiale contient les tableaux requis
@@ -1255,6 +1260,13 @@ const ResourceEditorForm = ({ initialData, onSubmit, onCancel, onChange, hideBut
         Modifier les propriétés de la ressource
       </Typography>
       <Divider sx={{ mb: 2 }} />
+      
+      {/* Afficher un message si aucune propriété n'est disponible */}
+      {Object.keys(formData).length === 0 && (
+        <Typography color="text.secondary" sx={{ my: 2 }}>
+          Aucune propriété à éditer. Les données générées sont vides ou mal formatées.
+        </Typography>
+      )}
       
       {Object.keys(formData).map((key) => {
         const value = formData[key];

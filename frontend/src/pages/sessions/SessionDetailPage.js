@@ -17,16 +17,18 @@ import {
   ListItemText,
   Chip,
   Stack,
-  Box
+  Box,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Psychology as PsychologyIcon
 } from '@mui/icons-material';
 import api from '../../services/api';
 import { useTreeData } from '../../contexts/TreeDataContext';
 import objectiveService from '../../services/objectiveService';
+import ResourceGenerationWizard from '../../components/ResourceGenerationWizard';
 
 /**
  * Page pour afficher les détails d'une séance
@@ -39,29 +41,42 @@ const SessionDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [objectives, setObjectives] = useState([]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  // Fonction pour récupérer les détails de la session
+  const fetchSessionDetails = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await api.get(`/sessions/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSession(response.data);
+      
+      // Récupération des objectifs associés
+      if (response.data && response.data.objectives && response.data.objectives.length > 0) {
+        const objectiveDetails = await objectiveService.getObjectivesByIds(response.data.objectives);
+        setObjectives(objectiveDetails);
+      } else {
+        // Récupération des objectifs par l'ancienne méthode si nécessaire
+        const objectivesData = await objectiveService.getObjectivesBySession(id);
+        setObjectives(objectivesData);
+      }
+      
+      setError('');
+    } catch (err) {
+      console.error("Erreur lors de la récupération des détails de la session:", err);
+      setError("Impossible de charger les détails de la session.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Charger les détails de la séance
   useEffect(() => {
-    const fetchSessionDetails = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        const response = await api.get(`/sessions/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setSession(response.data);
-        // Récupération des objectifs associés
-        const objectivesData = await objectiveService.getObjectivesBySession(id);
-        setObjectives(objectivesData);
-      } catch (err) {
-        setError("Erreur lors du chargement des détails de la séance: " + 
-          (err.response?.data?.detail || err.message || "Erreur inconnue"));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSessionDetails();
+    if (id) {
+      fetchSessionDetails();
+    }
   }, [id]);
 
   // Gérer la suppression de la séance
@@ -80,6 +95,29 @@ const SessionDetailPage = () => {
           (err.response?.data?.detail || err.message || "Erreur inconnue"));
         setLoading(false);
       }
+    }
+  };
+
+  const handleOpenWizard = () => {
+    // On a besoin de l'ID de la session et de l'ID de la séquence pour contextualiser les suggestions.
+    // Le type/subtype sera déterminé au niveau de la ressource elle-même lors de la sélection du template.
+    console.log("État de 'session' au moment de l'appel à handleOpenWizard:", JSON.stringify(session, null, 2));
+    if (session && session.id && session.sequence_id) { 
+      setWizardOpen(true);
+    } else {
+      alert("L'ID de la session ou de la séquence est manquant. Impossible de lancer l'assistant.");
+      console.error("Tentative d'ouverture du wizard sans ID de session ou de séquence valide:", session);
+    }
+  };
+
+  const handleWizardClose = (refreshNeeded = true) => {
+    setWizardOpen(false);
+    // Rafraîchir les données de la session si des ressources ont été ajoutées
+    if (refreshNeeded) {
+      // Rafraîchir les données de l'arborescence
+      refreshTreeData();
+      // Rafraîchir les détails de la session
+      fetchSessionDetails();
     }
   };
 
@@ -107,6 +145,19 @@ const SessionDetailPage = () => {
     );
   }
 
+  // Si le wizard est ouvert, afficher le wizard en pleine page
+  if (wizardOpen) {
+    return (
+      <ResourceGenerationWizard
+        sessionId={session.id}
+        sessionTitle={session.title}
+        sequenceId={session.sequence_id} 
+        onClose={handleWizardClose}
+      />
+    );
+  }
+
+  // Affichage normal de la page de détail de la session
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Card>
@@ -116,6 +167,15 @@ const SessionDetailPage = () => {
               {session.title}
             </Typography>
             <Box>
+              <Button 
+                variant="contained" 
+                color="secondary" 
+                startIcon={<PsychologyIcon />} 
+                onClick={handleOpenWizard} 
+                sx={{ mr: 1 }}
+              >
+                Générer Ressources IA
+              </Button>
               <Button 
                 variant="contained" 
                 startIcon={<EditIcon />} 
@@ -154,14 +214,6 @@ const SessionDetailPage = () => {
               </Typography>
               <Typography variant="body1">
                 {session.duration ? `${session.duration} minutes` : 'Non spécifiée'}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Séquence parente
-              </Typography>
-              <Typography variant="body1">
-                ID: {session.sequence_id || 'Non spécifiée'}
               </Typography>
             </Grid>
           </Grid>

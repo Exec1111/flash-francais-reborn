@@ -1,0 +1,88 @@
+# backend/ai/prompts/config/prompts/session_exercise_suggester.yaml
+description_courte: "Suggère des types d'exercices FLE pertinents pour une session donnée, en fonction de son contexte et des exercices disponibles."
+
+system_prompt: |
+  Tu es un conseiller pédagogique expert en Français Langue Étrangère (FLE), spécialisé dans la conception de séances d'apprentissage engageantes et efficaces.
+  Ta tâche est d'analyser les informations d'une session d'apprentissage et de suggérer une liste de types d'exercices pertinents à créer, en tenant compte des exercices déjà disponibles pour la génération.
+  La sortie DOIT être un objet JSON unique, valide et complet, respectant scrupuleusement le schéma JSON fourni.
+
+user_prompt_template: |
+  Analyse les informations suivantes concernant une session d'apprentissage FLE :
+  - Titre de la session : {{ session_title | default("Non spécifié") }}
+  - Description de la session : {{ session_description | default("Non spécifiée") }}
+  {% if session_objectives %}
+  - Objectifs pédagogiques de la session :
+    {% for obj in session_objectives %}
+    - {{ obj }}
+    {% endfor %}
+  {% endif %}
+  {% if sequence_study_objects %}
+  - Objets d'étude de la séquence parente :
+    {% for obj_etude in sequence_study_objects %}
+    - {{ obj_etude }}
+    {% endfor %}
+  {% endif %}
+  {% if existing_resources_summary %}
+  - Résumé des ressources déjà présentes dans cette session (pour éviter la redondance) :
+    {% for res_sum in existing_resources_summary %}
+    - {{ res_sum }}
+    {% endfor %}
+  {% else %}
+  - Aucune ressource n'est actuellement présente dans cette session.
+  {% endif %}
+
+  Voici la liste des types d'exercices que tu peux proposer pour cette session. Chaque type d'exercice a une description courte et une liste détaillée de ses paramètres :
+  --- EXERCICES DISPONIBLES ---
+  {% for ex_type in available_exercise_types %}
+  Exercice Type/Sous-type: {{ ex_type.type_key }}/{{ ex_type.subtype_key }}
+    Description: {{ ex_type.description_courte }}
+    Paramètres (structure JSON attendue pour chaque paramètre dans la réponse) :
+    {% for param in ex_type.parameters %}
+    - name: {{ param.name }}
+      type: {{ param.type }}
+      {% if param.label is defined and param.label %}label: "{{ param.label }}"{% endif %}
+      {% if param.description is defined and param.description %}description: "{{ param.description }}"{% endif %}
+      {% if param.enum is defined and param.enum %}enum: {{ param.enum | tojson }}{% endif %}
+      {% if param.default is defined and param.default is not none %}default: {{ param.default | tojson }}{% endif %}
+      {% if param.min is defined and param.min is not none %}min: {{ param.min }}{% endif %}
+      {% if param.max is defined and param.max is not none %}max: {{ param.max }}{% endif %}
+      {% if param.required is defined and param.required is not none %}required: {{ param.required | tojson }}{% endif %}
+    {% endfor %}
+  {% endfor %}
+  --- FIN EXERCICES DISPONIBLES ---
+
+  En te basant sur TOUTES ces informations :
+  1. Suggère une liste de 2 à 4 types/sous-types d'exercices (parmi ceux listés ci-dessus) qui seraient les plus pertinents et complémentaires pour cette session.
+  2. Pour chaque suggestion, inclus un champ nommé "justification" contenant une brève explication (1-2 phrases maximum) de pourquoi elle est pertinente dans le contexte de la session.
+  3. Pour chaque exercice que tu suggères :
+     a. L'objet JSON de la suggestion DOIT inclure un champ "type_key" et un champ "subtype_key". Ces deux valeurs DOIVENT être copiées EXACTEMENT depuis l'un des exercices listés dans la section 'EXERCICES DISPONIBLES'. Une suggestion sans "subtype_key" valide (c'est-à-dire correspondant à un "subtype_key" d'un exercice disponible) n'est pas acceptable.
+     b. L'objet JSON de la suggestion DOIT inclure un champ "parameters". Ce champ DOIT être une liste d'objets.
+        Chaque objet dans cette liste DOIT correspondre EXACTEMENT à la structure (noms de clés et types de valeurs)
+        d'un objet paramètre tel que listé pour cet exercice spécifique (identifié par son "type_key" et "subtype_key")
+        dans la section 'EXERCICES DISPONIBLES' ci-dessus. Cela inclut les clés "name", "type", et optionnellement
+        "label", "description", "default", "enum", "min", "max", "required".
+        ADDITIONNELLEMENT, pour chaque paramètre de cette liste, tu DOIS ajouter une clé nommée "value".
+        La valeur de cette clé "value" DOIT être une suggestion pertinente pour ce paramètre spécifique,
+        déduite intelligemment du Titre de la session, de ses Objectifs pédagogiques, et des Objets d'étude de la séquence parente.
+        Si une valeur par défaut ("default") est spécifiée pour un paramètre et qu'aucune valeur plus pertinente ne peut être déduite,
+        utilise cette valeur par défaut pour la clé "value". Si aucune valeur ne peut être raisonnablement suggérée et qu'il n'y a pas de valeur par défaut,
+        tu peux assigner `null` à la clé "value" ou l'omettre pour les paramètres non requis.
+        Pour les paramètres de type "list" ou "object", essaie de suggérer une structure de base si pertinent.
+
+  Assure-toi que tes suggestions ne sont pas redondantes avec les ressources déjà existantes dans la session.
+
+parameters:
+  - {name: session_title}
+  - {name: session_description}
+  - {name: session_objectives}  # Liste de chaînes
+  - {name: sequence_study_objects} # Liste de chaînes
+  - {name: existing_resources_summary} # Liste de chaînes
+  - {name: available_exercise_types} # Liste d'objets, chaque objet ayant {type_key, subtype_key, description_courte, parameters (liste d'objets param)}
+
+constraints:
+  - "Les suggestions doivent être variées si possible."
+  - "La pertinence de la suggestion doit être clairement justifiée par rapport aux informations de la session."
+  - "Retourner uniquement les types d'exercices listés dans 'EXERCICES DISPONIBLES'."
+  - "Le champ 'parameters' est OBLIGATOIRE pour chaque suggestion dans la réponse JSON et doit contenir la liste exacte des objets paramètres de l'exercice concerné. Ne pas l'inclure est une erreur et viole le schéma de réponse."
+
+response_schema: "session_exercise_suggestion.schema.json"

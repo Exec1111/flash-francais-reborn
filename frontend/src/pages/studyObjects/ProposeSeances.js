@@ -234,7 +234,7 @@ const ProposeSeances = () => {
               
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth margin="normal">
+                  <FormControl fullWidth sx={{ mt: 2 }}>
                     <InputLabel id="niveau-select-label">Niveau des apprenants</InputLabel>
                     <Select
                       labelId="niveau-select-label"
@@ -253,7 +253,7 @@ const ProposeSeances = () => {
                 </Grid>
                 
                 <Grid item xs={12} sm={6}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                     <TextField
                       type="number"
                       label="Nombre de séances"
@@ -328,15 +328,17 @@ const ProposeSeances = () => {
                 Génération des séances
               </Typography>
               
-              <Paper elevation={3} sx={{ p: 3, my: 2, bgcolor: '#f5f5f5' }}>
+              <Paper elevation={3} sx={{ p: 3, my: 2, bgcolor: '#e3f2fd', border: '1px solid #90caf9' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                  <CircularProgress size={60} sx={{ mb: 2 }} />
-                  <Typography variant="h6" gutterBottom>
+                  <CircularProgress size={60} sx={{ mb: 2, color: '#1976d2' }} />
+                  <Typography variant="h6" gutterBottom color="primary">
                     Génération en cours...
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body1" sx={{ textAlign: 'center', mb: 2 }}>
                     L'intelligence artificielle génère des séances adaptées à votre séquence.
-                    Cette opération peut prendre quelques instants.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                    Cette opération peut prendre jusqu'à 30 secondes selon la complexité de votre séquence.
                   </Typography>
                 </Box>
               </Paper>

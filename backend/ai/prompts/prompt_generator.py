@@ -14,6 +14,7 @@ class PromptGenerator:
         cfg_path = os.path.join(config_dir, f"{prompt_name}.yaml")
         with open(cfg_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
+        self.config = cfg
         self.system_prompt = cfg.get("system_prompt", "")
         self.template = Environment(loader=FileSystemLoader(config_dir)).from_string(
             cfg.get("user_prompt_template", "")

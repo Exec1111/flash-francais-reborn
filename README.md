@@ -129,6 +129,8 @@ Le frontend gère l'authentification via :
 
 - Construction et visualisation de progressions pédagogiques
 - Gestion des ressources (upload, édition, visualisation)
+- Génération automatisée de ressources pédagogiques avec IA
+- Fusion automatique des ressources générées avec des templates HTML
 - Chatbox intégrée avec assistance IA
 - Tableau de bord analytics
 

@@ -192,15 +192,6 @@ const EditStudyObject = () => {
               >
                 Annuler
               </Button>
-              <Button
-                variant="outlined"
-                color="primary"
-                sx={{ ml: 2 }}
-                onClick={() => navigate(`/study-objects/${id}/propose-works`, { state: { title } })}
-                disabled={loading}
-              >
-                Proposer des œuvres.
-              </Button>
             </Box>
           </form>
         </CardContent>

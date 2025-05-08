@@ -7,7 +7,7 @@ from crud.resource import get_resource
 from sqlalchemy import func
 from typing import List
 
-def get_session(db: Session, session_id: int):
+def get_session_by_id(db: Session, session_id: int):
     """Récupère une séance par son ID, en chargeant explicitement les relations."""
     # Utilisation de options(selectinload(...)) pour charger les relations nécessaires
     return db.query(Session).options(
@@ -94,7 +94,7 @@ def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
 
 def update_session(db: Session, session_id: int, session_update: SessionUpdate):
     """Met à jour une séance existante, y compris ses objectifs et ressources associés."""
-    db_session = get_session(db, session_id=session_id)
+    db_session = get_session_by_id(db, session_id=session_id)
     if db_session is None:
         return None
 
@@ -143,7 +143,7 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
 
 def delete_session(db: Session, session_id: int):
     """Supprime une séance par son ID."""
-    db_session = get_session(db, session_id=session_id)
+    db_session = get_session_by_id(db, session_id=session_id)
     if db_session is None:
         return None # Ou False
     db.delete(db_session)

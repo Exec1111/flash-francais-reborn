@@ -163,6 +163,33 @@ const objectiveService = {
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors de la dissociation de l'objectif de la séance" };
     }
+  },
+  
+  /**
+   * Récupère plusieurs objectifs par leurs IDs
+   * @param {Array<number>} objectiveIds - Tableau d'IDs des objectifs à récupérer
+   * @returns {Promise} - Promesse avec la réponse
+   */
+  getObjectivesByIds: async (objectiveIds) => {
+    try {
+      if (!objectiveIds || objectiveIds.length === 0) {
+        return [];
+      }
+      const response = await api.post(`${OBJECTIVES_ENDPOINT}/by_ids`, { objective_ids: objectiveIds });
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de la récupération des objectifs par IDs:", error);
+      // En cas d'erreur, nous récupérons les objectifs un par un comme solution de secours
+      try {
+        const objectives = await Promise.all(
+          objectiveIds.map(id => objectiveService.getObjectiveById(id).catch(() => null))
+        );
+        return objectives.filter(obj => obj !== null);
+      } catch (fallbackError) {
+        console.error("Erreur lors de la récupération des objectifs par IDs (fallback):", fallbackError);
+        throw error.response?.data || { detail: "Erreur lors de la récupération des objectifs par leurs IDs" };
+      }
+    }
   }
 };
 

@@ -1,20 +1,21 @@
 from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
+from pydantic import BaseModel
 
 from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
-from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content, generate_ai_sessions
+from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content, generate_ai_sessions, suggest_exercise_types_for_session
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
 from backend.schemas.session import SessionCreate
+from backend.schemas.ai_suggestion import AISuggestionResponse
 from backend.crud.sequence import get_sequence
-from backend.crud.session import create_session_with_user
-from pydantic import BaseModel
+from backend.crud.session import create_session_with_user, get_session_by_id
 import logging
 import os
 import uuid
@@ -315,14 +316,13 @@ async def generate_sessions(
             })
         
         # Récupérer les objets d'étude de la séquence
-        study_objects = []
-        sequence_study_objects = sequence.study_objects if sequence else []
-        for so in sequence_study_objects:
-            study_objects.append({
-                "id": so.id,
-                "title": so.title
-            })
-
+        sequence_study_objects_titles = []
+        if sequence and sequence.study_objects:
+            sequence_study_objects_titles = [so.title for so in sequence.study_objects if so.title]
+            
+        # Pas de ressources directement accessibles depuis la séquence
+        existing_resources_summary = []
+            
         # Génération des séances
         generation_result = await generate_ai_sessions(
             sequence_id=request.sequence_id,
@@ -332,7 +332,7 @@ async def generate_sessions(
             inclure_ressources=request.inclure_ressources,
             ressources_disponibles=ressources_disponibles,
             objectifs=objectifs,
-            study_objects=study_objects,
+            study_objects=sequence_study_objects_titles,
             instructions_supplementaires=request.instructions_supplementaires
         )
         
@@ -358,3 +358,74 @@ async def generate_sessions(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Une erreur inattendue s'est produite: {str(e)}"
         )
+
+@router.post(
+    "/sessions/{session_id}/suggest-exercises",
+    response_model=AISuggestionResponse,
+    summary="Suggère des types d'exercices pour une session donnée",
+    description="Analyse une session et suggère des types d'exercices pertinents à générer par IA."
+)
+async def suggest_exercises_for_session_endpoint(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user) # Authentification
+):
+    logger.info(f"Demande de suggestion d'exercices pour la session ID: {session_id} par l'utilisateur {current_user.email}")
+
+    # 1. Récupérer les détails de la session
+    session = get_session_by_id(db, session_id=session_id)
+    if not session:
+        logger.error(f"Session ID {session_id} non trouvée.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session non trouvée")
+
+    # 2. Récupérer les objectifs de la session
+    session_objectives_titles = [obj.title for obj in session.objectives if obj.title]
+
+    # 3. Récupérer les objets d'étude de la séquence parente
+    sequence_study_objects_titles = []
+    if session.sequence_id:
+        sequence = get_sequence(db, sequence_id=session.sequence_id)
+        if sequence and sequence.study_objects:
+            sequence_study_objects_titles = [so.title for so in sequence.study_objects if so.title]
+            
+    # 4. Récupérer un résumé des ressources existantes pour la session
+    existing_resources_summary = []
+    if session.resources:
+        for res in session.resources:
+            summary = f"{res.sub_type.name if res.sub_type else res.type.name}: '{res.title}'"
+            if res.source_type == "ai":
+                summary += " (IA)"
+            existing_resources_summary.append(summary)
+            
+    # 5. Appeler le service de suggestion
+    try:
+        suggestions_data = await ai_resource_service.suggest_exercise_types_for_session(
+            session_title=session.title or "Session sans titre",
+            session_description=session.description or "",
+            session_objectives=session_objectives_titles,
+            sequence_study_objects=sequence_study_objects_titles,
+            existing_resources_summary=existing_resources_summary
+        )
+        
+        # Transformation de la réponse de l'IA pour correspondre au schéma attendu
+        if "suggested_exercises" in suggestions_data and "suggestions" not in suggestions_data:
+            # L'IA a renvoyé la clé 'suggested_exercises' au lieu de 'suggestions'
+            logger.info("Transformation de 'suggested_exercises' en 'suggestions' pour correspondre au schéma")
+            suggestions_data = {"suggestions": suggestions_data["suggested_exercises"]}
+        
+        # Vérification que la structure est correcte avant de créer l'objet Pydantic
+        if "suggestions" not in suggestions_data:
+            logger.error(f"La réponse de l'IA ne contient ni 'suggestions' ni 'suggested_exercises': {suggestions_data}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail="Format de réponse IA incorrect pour les suggestions d'exercices"
+            )
+            
+        return AISuggestionResponse(**suggestions_data)
+
+    except ai_resource_service.ResourceGenerationError as e:
+        logger.error(f"Erreur de génération IA lors de la suggestion d'exercices pour session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except Exception as e:
+        logger.error(f"Erreur inattendue lors de la suggestion d'exercices pour session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Une erreur interne est survenue.")

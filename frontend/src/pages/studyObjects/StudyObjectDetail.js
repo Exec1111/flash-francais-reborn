@@ -137,6 +137,14 @@ const StudyObjectDetail = () => {
             </Typography>
             <Box>
               <Button 
+                variant="contained"
+                color="primary"
+                onClick={() => navigate(`/study-objects/${id}/propose-works`, { state: { title: studyObject.title } })}
+                sx={{ mr: 1 }}
+              >
+                Proposer des œuvres
+              </Button>
+              <Button 
                 variant="contained" 
                 startIcon={<EditIcon />} 
                 onClick={handleEdit}

@@ -13,6 +13,7 @@ const DraggableSessionNode = ({
   moveNode, 
   isReordering,
   onExpand,
+  onDeleteSession,
   loadingNodeId,
   activeNodeType = null,
   activeNodeId = null,
@@ -83,6 +84,7 @@ const DraggableSessionNode = ({
       <TreeNode
         node={node}
         onExpand={onExpand}
+        onDeleteSession={onDeleteSession}
         loadingNodeId={loadingNodeId}
         level={2}
         hideSessionChildren={true}

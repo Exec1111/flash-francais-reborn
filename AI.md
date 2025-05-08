@@ -1,6 +1,6 @@
 # Module de génération de ressources IA
 
-Ce document décrit le fonctionnement technique du module générique de génération de ressources par IA dans ce projet.
+Ce document décrit le fonctionnement technique du module générique de génération de ressources par IA dans ce projet et le processus d'automatisation de la fusion des ressources.
 
 ---
 
@@ -69,6 +69,56 @@ Le module se compose principalement de deux fonctions asynchrones dans `backen
 - `google-genai` SDK
 - `jsonschema` pour validation
 - `jinja2`, `pyyaml` pour templates
+
+---
+
+## 7. Flux de génération de ressources dans l'interface
+
+Le processus de génération et de fusion des ressources a été automatisé dans l'interface utilisateur via un assistant (wizard) comportant plusieurs étapes :
+
+### Étape 1: Sélection des suggestions
+
+- L'utilisateur choisit parmi les suggestions de ressources proposées en fonction du contexte de la séance.
+- Chaque suggestion sélectionnée sera transformée en une ressource générée par l'IA.
+
+### Étape 2: Génération des ressources
+
+- Le système génère automatiquement le contenu des ressources sélectionnées via l'API Google GenAI.
+- Une barre de progression indique l'avancement de la génération pour chaque ressource.
+- En cas d'erreur, l'utilisateur peut relancer la génération d'une ressource spécifique.
+
+### Étape 3: Édition des ressources
+
+- L'utilisateur peut éditer manuellement les propriétés et le contenu de chaque ressource générée.
+- Un formulaire dynamique est créé en fonction du schéma de données de chaque type de ressource.
+- Les données sont validées pour garantir leur conformité avec le format attendu.
+
+### Étape 4: Fusion des ressources
+
+- **Processus automatisé** : Les ressources éditées sont automatiquement fusionnées avec leurs templates HTML.
+- L'API `/ai/merge-resource` est appelée pour chaque ressource avec les données éditées.
+- Chaque ressource fusionnée est marquée comme "conservée" par défaut, mais l'utilisateur peut déselectionner celles qu'il ne souhaite pas sauvegarder.
+- L'utilisateur peut visualiser le document HTML généré dans un nouvel onglet.
+- Un bouton permet de sauvegarder directement les ressources conservées sans passer par une étape supplémentaire.
+
+### Sauvegarde des ressources
+
+- Lors de la sauvegarde, seules les ressources marquées comme "conservées" sont envoyées vers l'API `/resources/`.
+- Chaque ressource est créée individuellement avec toutes ses propriétés, y compris l'association avec la séance.
+- Après la sauvegarde, la page de détails de la séance est automatiquement rafraîchie pour afficher les nouvelles ressources.
+
+## 8. Implémentation Frontend
+
+L'implémentation côté client est organisée en plusieurs composants React :
+
+- `ResourceGenerationWizard.jsx` : Composant principal qui orchestre le flux de génération de ressources.
+- `components/wizard/SuggestionStep.jsx` : Étape de sélection des suggestions.
+- `components/wizard/GenerationStep.jsx` : Étape de génération des ressources.
+- `components/wizard/EditStep.jsx` : Étape d'édition des ressources générées.
+- `components/wizard/MergeStep.jsx` : Étape de fusion et de sauvegarde des ressources.
+- `components/ResourceEditorForm.js` : Formulaire dynamique pour l'édition des propriétés des ressources.
+
+L'automatisation de la fusion et de la sauvegarde simplifie considérablement le processus pour l'utilisateur final, réduisant le temps nécessaire pour générer des ressources pédagogiques de qualité.
 
 ---
 

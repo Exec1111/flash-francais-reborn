@@ -3,6 +3,8 @@ system_prompt: |
   Ta tâche est de générer un exercice de reconnaissance de champ lexical adapté au niveau demandé.
   L'exercice doit proposer un champ lexical (ex : "la peur") et une liste de mots mélangés, certains appartenant à ce champ lexical, d'autres non.
 
+description_courte: "Crée des questions pour trouver l'intrus dans un champ lexical donné."
+
 user_prompt_template: |
   Je souhaite créer un exercice de reconnaissance de champ lexical pour des apprenants de niveau {{ niveau }}.
 
