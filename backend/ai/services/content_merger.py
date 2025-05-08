@@ -1,0 +1,114 @@
+"""
+Service pour la fusion de contenu JSON avec des templates HTML via l'IA.
+"""
+from typing import Dict, Any, Tuple
+import logging
+import os
+import uuid
+import json
+import time
+from dotenv import load_dotenv
+from google import genai
+from google.genai.errors import ServerError
+
+from backend.ai.prompts.prompt_generator import PromptGenerator
+from backend.ai.services.registry import ResourceGenerationError
+from config import get_settings
+
+logger = logging.getLogger(__name__)
+
+async def merge_ai_resource_content(
+    type_key: str,
+    subtype_key: str,
+    data_json: str,
+    model_path: str,
+    user_id: int
+) -> Tuple[str, str]:
+    """
+    Fusionne un contenu JSON édité avec un modèle HTML (uploadé ou par défaut),
+    appelle Gemini pour générer le HTML final, sauvegarde le fichier temporaire et retourne son chemin et son URL.
+    
+    Args:
+        type_key: Clé du type de ressource
+        subtype_key: Clé du sous-type de ressource
+        data_json: JSON contenant les données à fusionner avec le template
+        model_path: Chemin vers le fichier modèle HTML
+        user_id: ID de l'utilisateur qui demande la fusion
+        
+    Returns:
+        Un tuple (chemin_fichier, url) vers le fichier HTML généré
+    """
+    logger.info(f"[Fusion] Lancement fusion pour user {user_id}, modèle {model_path}")
+    try:
+        load_dotenv()
+        api_key = os.getenv("GOOGLE_API_KEY")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
+        
+        # Configuration du client
+        client = genai.Client(api_key=api_key)
+        
+        # Upload du fichier modèle HTML
+        uploaded_html = client.files.upload(file=model_path)
+
+        # Charger les données JSON
+        user_data = json.loads(data_json)
+
+        # Construire le prompt avec JSON inline
+        generator = PromptGenerator("merge_template")
+        json_str = json.dumps(user_data, ensure_ascii=False, indent=2)
+        system_prompt, user_prompt = generator.build(json_data=json_str)
+        prompt = f"{system_prompt}\n\n{user_prompt}"
+
+        # Afficher le contenu du modèle HTML joint
+        try:
+            with open(model_path, "r", encoding="utf-8") as f:
+                html_model_content = f.read()
+            logger.info(f"[Fusion][LLM] Contenu du modèle HTML joint :\n{html_model_content}")
+        except Exception as e:
+            logger.warning(f"[Fusion][LLM] Impossible de lire le modèle HTML {model_path} : {e}")
+
+        logger.info(f"[Fusion][LLM] Appel API Gemini : model={model_name}, user_id={user_id}, model_path={model_path}, prompt=\n{prompt}")
+        
+        payload = [uploaded_html, prompt]
+        response = None
+        
+        # Tentative avec retry en cas d'erreur serveur
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[payload]
+                )
+                break
+            except ServerError as err:
+                logger.warning(f"[Fusion][LLM] Erreur interne (tentative {attempt+1}): {err}")
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    raise
+                    
+        html_generated = response.text
+        
+        # Création du dossier temporaire pour l'utilisateur
+        settings = get_settings()
+        static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
+                                      "static", "tmp", str(user_id))
+        os.makedirs(static_gen_dir, exist_ok=True)
+        
+        # Génération d'un nom de fichier unique
+        html_filename = f"qcm_{uuid.uuid4().hex}.html"
+        html_path = os.path.join(static_gen_dir, html_filename)
+        
+        # Écriture du fichier HTML généré
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html_generated)
+            
+        # Construction de l'URL publique
+        relative_public_path = f"tmp/{user_id}/{html_filename}"
+        html_url = f"http://localhost:10000/static/{relative_public_path}"
+        
+        logger.info(f"[Fusion] HTML généré sauvegardé : {html_path}")
+        return html_path, html_url
+    except Exception as e:
+        logger.error(f"Erreur lors de la fusion IA : {e}", exc_info=True)
+        raise ResourceGenerationError(f"Erreur fusion IA : {str(e)}")
