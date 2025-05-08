@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import studyObjectService from '../../services/studyObjectService';
 import progressionService from '../../services/progressionService';
+import resourceService from '../../services/resourceService';
 
 const StudyObjectDetail = () => {
   const { id } = useParams();
@@ -65,14 +66,29 @@ const StudyObjectDetail = () => {
           setProgressions(progs);
         }
         if (data.resource_ids && data.resource_ids.length > 0) {
-          // Même approche pour les ressources (optionnel)
-          const fakeResources = data.resource_ids.map(resId => ({
-            id: resId,
-            title: `Contenu pédagogique`,
-            type: "Exercice",
-            subtype: "Vocabulaire"
-          }));
-          setResources(fakeResources);
+          // Récupérer les titres réels des ressources associées
+          const fetchedResources = await Promise.all(
+            data.resource_ids.map(async resId => {
+              try {
+                const resource = await resourceService.getResourceById(resId);
+                return { 
+                  id: resId, 
+                  title: resource.title || `Ressource ${resId}`,
+                  type: resource.type?.value || "Type inconnu",
+                  subtype: resource.sub_type?.value || "Sous-type inconnu"
+                };
+              } catch (e) {
+                console.error(`Erreur lors de la récupération de la ressource ${resId}:`, e);
+                return { 
+                  id: resId, 
+                  title: `Ressource ${resId}`, 
+                  type: "Erreur de chargement", 
+                  subtype: ""
+                };
+              }
+            })
+          );
+          setResources(fetchedResources);
         }
       } catch (err) {
         setError(err.detail || err.message || 'Erreur inconnue');
@@ -187,9 +203,14 @@ const StudyObjectDetail = () => {
           <Divider sx={{ my: 3 }} />
 
           <Typography variant="h6" gutterBottom>
-            Ressources liées
+            Oeuvres liées
           </Typography>
-          {studyObject.resource_ids && studyObject.resource_ids.length > 0 ? (
+          {(!studyObject.resource_ids || studyObject.resource_ids.length === 0) && (
+            <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
+              Aucune ressource n'est actuellement liée à cet objet d'étude. Il est recommandé d'associer des ressources pour une expérience pédagogique complète.
+            </Alert>
+          )}
+          {studyObject.resource_ids && studyObject.resource_ids.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {resources.map((resource) => (
                 <Chip
@@ -201,10 +222,6 @@ const StudyObjectDetail = () => {
                 />
               ))}
             </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              Aucune ressource n'est associée à cet objet d'étude pour le moment.
-            </Typography>
           )}
         </CardContent>
       </Card>

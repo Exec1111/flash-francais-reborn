@@ -62,6 +62,7 @@ async def create_resource_route(
     source_type: Optional[str] = Form(None), # 'file' ou 'ai', par défaut 'ai'
     session_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs
     objective_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objectifs
+    study_object_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objets d'étude
     file: Optional[UploadFile] = File(None), # Le fichier uploadé
     html_path: Optional[str] = Form(None) # Chemin HTML généré pour IA
 ):
@@ -98,6 +99,16 @@ async def create_resource_route(
         logger.error(f"Erreur de parsing JSON pour objective_ids: {e}")
         raise HTTPException(status_code=400, detail=f"Format invalide pour objective_ids_json: {e}")
 
+    # Parser les IDs d'objets d'étude depuis la string JSON
+    try:
+        study_object_ids = json.loads(study_object_ids_json) if study_object_ids_json else []
+        if not isinstance(study_object_ids, list):
+            raise ValueError("study_object_ids_json doit être une liste JSON.")
+        study_object_ids = [int(soid) for soid in study_object_ids if soid is not None]
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"Erreur de parsing JSON pour study_object_ids: {e}")
+        raise HTTPException(status_code=400, detail=f"Format invalide pour study_object_ids_json: {e}")
+
     # --- Validation du fichier uploadé ---
     if source_type == 'file':
         if file is None:
@@ -129,6 +140,7 @@ async def create_resource_route(
         source_type=source_type,
         session_ids=session_ids, 
         objective_ids=objective_ids, # Passer la liste parsée
+        study_object_ids=study_object_ids, # Passer la liste parsée des IDs d'objets d'étude
         user_id=current_user.id
     )
 

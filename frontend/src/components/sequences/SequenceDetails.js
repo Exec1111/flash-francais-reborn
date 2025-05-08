@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
+import studyObjectService from '../../services/studyObjectService';
 import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 
 /**
@@ -35,24 +36,49 @@ const SequenceDetails = () => {
   const [sequence, setSequence] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+  const [studyObjectDetailsLoading, setStudyObjectDetailsLoading] = useState(false);
+  const [studyObjectHasResources, setStudyObjectHasResources] = useState(false);
+
   // Charger les détails de la séquence
   useEffect(() => {
-    const fetchSequence = async () => {
+    const fetchSequenceAndRelatedData = async () => {
       try {
         setLoading(true);
-        const data = await sequenceService.getSequenceById(id);
-        setSequence(data);
+        setStudyObjectDetailsLoading(true);
         setError('');
+        const sequenceData = await sequenceService.getSequenceById(id);
+        setSequence(sequenceData);
+
+        if (sequenceData && sequenceData.study_objects && sequenceData.study_objects.length > 0) {
+          const mainStudyObjectId = sequenceData.study_objects[0].id;
+          if (mainStudyObjectId) {
+            try {
+              const studyObjectData = await studyObjectService.getStudyObjectById(mainStudyObjectId);
+              if (studyObjectData && studyObjectData.resource_ids && studyObjectData.resource_ids.length > 0) {
+                setStudyObjectHasResources(true);
+              } else {
+                setStudyObjectHasResources(false);
+              }
+            } catch (soError) {
+              console.error(`Erreur lors du chargement des détails de l'objet d'étude ${mainStudyObjectId}:`, soError);
+              setError(prevError => prevError + (prevError ? "\n" : "") + `Erreur détails objet d'étude: ${soError.detail || soError.message}`);
+              setStudyObjectHasResources(false);
+            }
+          }
+        } else {
+          setStudyObjectHasResources(false);
+        }
+
       } catch (err) {
         setError("Erreur lors du chargement de la séquence: " + 
           (err.detail || err.message || "Erreur inconnue"));
       } finally {
         setLoading(false);
+        setStudyObjectDetailsLoading(false);
       }
     };
     
-    fetchSequence();
+    fetchSequenceAndRelatedData();
   }, [id]);
   
   // Gérer la suppression de la séquence
@@ -60,7 +86,6 @@ const SequenceDetails = () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette séquence ? Cette action est irréversible.")) {
       try {
         await sequenceService.deleteSequence(id);
-        // Rediriger vers la page des progressions
         navigate('/');
       } catch (err) {
         setError("Erreur lors de la suppression: " + 
@@ -107,10 +132,13 @@ const SequenceDetails = () => {
                 color="primary"
                 onClick={() => navigate(`/sequences/${id}/propose-seances`, { state: { title: sequence.title } })}
                 sx={{ mr: 2 }}
-                disabled={!sequence.study_objects || sequence.study_objects.length === 0}
-                title={!sequence.study_objects || sequence.study_objects.length === 0 ? 
-                  "Ajoutez au moins un objet d'étude à la séquence pour accéder à la génération de séances" : 
-                  "Générer des propositions de séances basées sur les objets d'étude"}
+                disabled={studyObjectDetailsLoading || !studyObjectHasResources}
+                title={
+                  studyObjectDetailsLoading ? "Vérification des ressources de l'objet d'étude..." :
+                  !sequence.study_objects || sequence.study_objects.length === 0 ? "Aucun objet d'étude n'est lié à cette séquence." :
+                  !studyObjectHasResources ? "L'objet d'étude principal lié à cette séquence n'a pas de ressources. Ajoutez des ressources à l'objet d'étude pour générer des séances." :
+                  "Générer des propositions de séances basées sur les objets d'étude"
+                }
               >
                 Proposer des séances
               </Button>

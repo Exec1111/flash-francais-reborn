@@ -49,6 +49,7 @@ const ProposeWorks = () => {
   const [toSave, setToSave] = useState([]);
   const [generatedTitles, setGeneratedTitles] = useState([]);
   const [currentFormData, setCurrentFormData] = useState(null);
+  const [selectedForMerge, setSelectedForMerge] = useState([]); // Nouvel état
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
@@ -136,7 +137,8 @@ const ProposeWorks = () => {
       setCurrentEditIndex(0);
       setEditing(true);
       setResults(contents.map(c => c.html_url));
-      
+      setSelectedForMerge(Array(contents.length).fill(true)); // Initialiser selectedForMerge
+
       // Afficher les titres finaux dans la console pour vérification
       console.log('TITRES FINAUX:', titles);
     } catch (err) {
@@ -151,22 +153,26 @@ const ProposeWorks = () => {
   const handleMergeAll = async () => {
     // Sauvegarder les dernières modifications avant la fusion
     let updatedResults = [...editedResults];
-    
+
     if (currentFormData && currentEditIndex >= 0 && currentEditIndex < editedResults.length) {
       updatedResults[currentEditIndex] = currentFormData;
       // Mise à jour synchrone pour la fusion
       setEditedResults(updatedResults);
     }
-    
+
     setGenerating(true);
     setError(''); // Réinitialiser l'erreur
     const links = [];
-    // Conserver les titres des œuvres après la fusion
-    const mergedTitles = [...generatedTitles];
+    const finalMergedTitles = []; // Pour stocker les titres des œuvres réellement fusionnées
     let mergeError = null;
-    
+
     // Utiliser updatedResults au lieu de editedResults pour garantir l'utilisation des données les plus récentes
     for (let i = 0; i < updatedResults.length; i++) {
+      if (!selectedForMerge[i]) { // Ne fusionner que si sélectionné
+        setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'ignoré' } : item));
+        continue; // Passer à l'œuvre suivante
+      }
+
       setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'fusion en cours' } : item));
       const mergeForm = new FormData();
       mergeForm.append('type_key','oeuvre');
@@ -179,6 +185,7 @@ const ProposeWorks = () => {
         console.log(`Fusion document ${i+1}:`, updatedResults[i]); // Log pour debug
         const mergeResponse = await axios.post(`${API_BASE_URL}/api/v1/ai/merge-resource`, mergeForm, { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` }});
         links.push(mergeResponse.data.html_url);
+        finalMergedTitles.push(generatedTitles[i]); // Ajouter le titre de l'œuvre fusionnée
         setProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'généré', url: mergeResponse.data.html_url } : item));
       } catch (err) {
         console.error(`Erreur fusion document ${i+1}:`, err);
@@ -193,8 +200,8 @@ const ProposeWorks = () => {
     } else {
       setResults(links);
       setToSave(links.map(() => false));
-      // Conserver les titres après la fusion
-      setGeneratedTitles(mergedTitles);
+      // Conserver les titres des œuvres réellement fusionnées
+      setGeneratedTitles(finalMergedTitles);
       setEditing(false); // Ne passer à l'étape suivante que si tout réussit
     }
     setGenerating(false);
@@ -220,6 +227,7 @@ const ProposeWorks = () => {
         formData.append('source_type', 'ai');
         formData.append('session_ids_json', JSON.stringify([]));
         formData.append('objective_ids_json', JSON.stringify([]));
+        console.log('Vérification ID objet étude avant envoi:', id, typeof id); // Ajout du console.log
         formData.append('study_object_ids_json', JSON.stringify([id]));
         await axios.post(`${API_BASE_URL}/api/v1/resources/`, formData, { headers:{ Authorization:`Bearer ${token}` } });
       }
@@ -241,38 +249,77 @@ const ProposeWorks = () => {
   };
 
   if (editing && rawResults) {
+    const handleCheckboxChange = (index) => {
+      const newSelected = [...selectedForMerge];
+      newSelected[index] = !newSelected[index];
+      setSelectedForMerge(newSelected);
+    };
+
     return (
       <Box sx={{ p:2 }}>
-        <Typography variant="h6">Édition des données brutes avant fusion</Typography>
-        <Box sx={{ display:'flex', alignItems:'center', justifyContent:'space-between', mb:2 }}>
-          <Button onClick={() => setCurrentEditIndex(i => Math.max(i - 1, 0))} disabled={currentEditIndex === 0}>
-            <ArrowBackIcon />
-          </Button>
-          <Typography>Document {currentEditIndex + 1} sur {editedResults.length}</Typography>
-          <Button onClick={() => setCurrentEditIndex(i => Math.min(i + 1, editedResults.length - 1))} disabled={currentEditIndex === editedResults.length - 1}>
-            <ArrowForwardIcon />
-          </Button>
-        </Box>
-        <ResourceEditorForm
-          hideButtons={true}
-          initialData={editedResults[currentEditIndex]}
-          onSubmit={(newData) => {
-            const arr = [...editedResults];
-            arr[currentEditIndex] = newData;
-            setEditedResults(arr);
-          }}
-          onChange={(formData) => {
-            // Stocker les modifications en cours sans soumettre
-            setCurrentFormData(formData);
-          }}
-          onCancel={() => {
-            setEditing(false);
-            setCurrentEditIndex(0);
-          }}
-        />
-        <Box sx={{ mt: 2 }}>
-          <Button variant="contained" onClick={handleMergeAll} disabled={generating}>Fusionner et générer</Button>
-          <Button sx={{ ml: 2 }} onClick={() => { setEditing(false); setCurrentEditIndex(0); }}>Annuler</Button>
+        <Box sx={{ position: 'relative', p: 2, border: '1px solid #ddd', borderRadius: '4px' }}>
+          {generating && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2, // Pour être au-dessus du contenu
+                borderRadius: '4px' // Assorti au conteneur parent
+              }}
+            >
+              <CircularProgress />
+              <Typography sx={{ mt: 1 }}>Fusion en cours...</Typography>
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Button onClick={() => setCurrentEditIndex(i => Math.max(i - 1, 0))} disabled={currentEditIndex === 0}>
+              <ArrowBackIcon />
+            </Button>
+            <Typography>Document {currentEditIndex + 1} sur {editedResults.length}</Typography>
+            <Button onClick={() => setCurrentEditIndex(i => Math.min(i + 1, editedResults.length - 1))} disabled={currentEditIndex === editedResults.length - 1}>
+              <ArrowForwardIcon />
+            </Button>
+          </Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={selectedForMerge[currentEditIndex] || false}
+                onChange={() => handleCheckboxChange(currentEditIndex)}
+                name={`merge-checkbox-${currentEditIndex}`}
+              />
+            }
+            label="Inclure cette œuvre dans la fusion finale"
+            sx={{ mb: 2 }}
+          />
+          <ResourceEditorForm
+            hideButtons={true}
+            initialData={editedResults[currentEditIndex]}
+            onSubmit={(newData) => {
+              const arr = [...editedResults];
+              arr[currentEditIndex] = newData;
+              setEditedResults(arr);
+            }}
+            onChange={(formData) => {
+              // Stocker les modifications en cours sans soumettre
+              setCurrentFormData(formData);
+            }}
+            onCancel={() => {
+              setEditing(false);
+              setCurrentEditIndex(0);
+            }}
+          />
+          <Box sx={{ mt: 2 }}>
+            <Button variant="contained" onClick={handleMergeAll} disabled={generating}>Fusionner et générer</Button>
+            <Button sx={{ ml: 2 }} onClick={() => { setEditing(false); setCurrentEditIndex(0); }}>Annuler</Button>
+          </Box>
         </Box>
       </Box>
     );

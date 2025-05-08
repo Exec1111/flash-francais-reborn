@@ -133,8 +133,8 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
     resource_data = resource.model_dump()
     session_ids = resource_data.pop('session_ids', [])
     objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
+    study_object_ids = resource_data.pop('study_object_ids', []) # Extraire les study_object_ids
     resource_data.pop('user_id', None) # Retirer user_id du dict car il est passé explicitement
-    resource_data.pop('study_object_ids', None) # Retirer study_object_ids du dict pour éviter l'erreur SQLAlchemy
     #
     # Récupérer et retirer source_type, définir par défaut 'ai' si absent
     source_type_value = resource_data.get('source_type') or 'ai'
@@ -175,10 +175,19 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
                 logger.warning(f"Objective with id {obj_id} not found during resource creation, skipping.")
         db_resource.objectives = objectives
 
+    # Lier les objets d'étude initiaux
+    if study_object_ids:
+        study_objects = db.query(StudyObject).filter(StudyObject.id.in_(study_object_ids)).all()
+        if len(study_objects) != len(set(study_object_ids)):
+            found_ids = {so.id for so in study_objects}
+            missing_ids = set(study_object_ids) - found_ids
+            logger.warning(f"Certains StudyObjects avec les IDs {missing_ids} n'ont pas été trouvés lors de la création de la ressource, ils seront ignorés.")
+        db_resource.study_objects = study_objects
+
     db.add(db_resource)
     db.commit()
     db.refresh(db_resource)
-    db.refresh(db_resource, attribute_names=['sessions', 'objectives']) # Recharger les relations
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects']) # Recharger les relations
     return db_resource
 
 def update_resource(db: Session, resource_id: int, resource_update: ResourceUpdate, file_upload: Optional[ResourceFileUpload] = None):

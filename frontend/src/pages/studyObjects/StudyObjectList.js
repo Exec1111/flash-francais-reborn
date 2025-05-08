@@ -31,10 +31,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  WarningAmber as WarningAmberIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
+import resourceService from '../../services/resourceService';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 
 const StudyObjectList = () => {
@@ -61,13 +63,40 @@ const StudyObjectList = () => {
 
   const navigate = useNavigate();
 
-  // Charger la liste des objets d'étude
+  // Charger la liste des objets d'étude et enrichir avec les titres des ressources
   const fetchStudyObjects = async () => {
     setLoading(true);
     try {
       const skip = (page - 1) * itemsPerPage;
       const data = await studyObjectService.getStudyObjects(skip, itemsPerPage);
-      setStudyObjects(data);
+      // Pour chaque objet, récupérer les titres des ressources associées
+      const dataWithResources = await Promise.all(
+        data.map(async (obj) => {
+          let resourceTitles = [];
+          try {
+            const detail = await studyObjectService.getStudyObjectById(obj.id);
+            if (detail.resource_ids && detail.resource_ids.length > 0) {
+              // Récupérer les titres réels des ressources associées
+              resourceTitles = await Promise.all(
+                detail.resource_ids.map(async resId => {
+                  try {
+                    const resource = await resourceService.getResourceById(resId);
+                    return resource.title || `Ressource ${resId}`;
+                  } catch (e) {
+                    console.error(`Erreur lors de la récupération de la ressource ${resId} pour la liste:`, e);
+                    return `Ressource ${resId}`; // Titre par défaut en cas d'erreur
+                  }
+                })
+              );
+            }
+          } catch (e) {
+            console.error(`Erreur lors de la récupération des détails pour l'objet d'étude ${obj.id}:`, e);
+            // Laisser resourceTitles vide ou avec une indication d'erreur si nécessaire
+          }
+          return { ...obj, resourceTitles };
+        })
+      );
+      setStudyObjects(dataWithResources);
       setTotalPages(Math.ceil(data.length / itemsPerPage) || 1);
     } catch (err) {
       setError(`Erreur lors du chargement des objets d'étude : ${err.detail || err.message || 'Erreur inconnue'}`);
@@ -75,6 +104,7 @@ const StudyObjectList = () => {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchStudyObjects();
@@ -192,35 +222,34 @@ const StudyObjectList = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell>ID</TableCell>
                   <TableCell>Titre</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="center">Progressions</TableCell>
-                  <TableCell align="center">Ressources</TableCell>
+                  <TableCell>Ressources liées</TableCell>
                   <TableCell align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {studyObjects.map((studyObject) => (
                   <TableRow key={studyObject.id}>
+                    <TableCell>{studyObject.id}</TableCell>
                     <TableCell style={{ cursor: 'pointer', color: '#5a47d1' }} onClick={() => navigate(`/study-objects/${studyObject.id}`)}>
                       {studyObject.title}
                     </TableCell>
                     <TableCell>
-                      {studyObject.description ? (
-                        studyObject.description.length > 100
-                          ? `${studyObject.description.substring(0, 100)}...`
-                          : studyObject.description
-                      ) : (
-                        <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                          Pas de description
-                        </Typography>
+                      {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length === 0 && (
+                        <Tooltip title="Aucune ressource liée">
+                          <WarningAmberIcon color="warning" />
+                        </Tooltip>
                       )}
-                    </TableCell>
-                    <TableCell align="center">
-                      {studyObject.progression_ids?.length || 0}
-                    </TableCell>
-                    <TableCell align="center">
-                      {studyObject.resource_ids?.length || 0}
+                      {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length > 0 && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          {studyObject.resourceTitles.map((title, idx) => (
+                            <Typography key={idx} variant="body2" color="text.secondary">
+                              {title}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -271,18 +300,22 @@ const StudyObjectList = () => {
                   >
                     {studyObject.title}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    <strong>Type:</strong> {studyObject.type || 'Non spécifié'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2 }}>
-                    {studyObject.description ? (
-                      studyObject.description.length > 100
-                        ? `${studyObject.description.substring(0, 100)}...`
-                        : studyObject.description
-                    ) : (
-                      'Aucune description'
-                    )}
-                  </Typography>
+
+                  {/* Ressources liées */}
+                  {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length === 0 && (
+                    <Tooltip title="Aucune ressource liée">
+                      <WarningAmberIcon color="warning" sx={{ mb: 1 }} />
+                    </Tooltip>
+                  )}
+                  {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
+                      {studyObject.resourceTitles.map((title, idx) => (
+                        <Typography key={idx} variant="body2" color="text.secondary">
+                          {title}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
 
                   {/* Espace pour les actions en bas de la carte */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', pt: 1, borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>

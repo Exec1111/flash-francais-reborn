@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useNavigate,
 } from 'react-router-dom';
 import { 
   Box, 
@@ -16,7 +17,8 @@ import {
 } from '@mui/material'; 
 import { 
   Menu as MenuIcon, 
-  ChatBubbleOutline as ChatIcon, 
+  ChatBubbleOutline as ChatIcon,
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material'; 
 import { useTheme } from '@mui/material/styles'; 
 import SideNav, { drawerWidth } from './components/SideNav';
@@ -59,6 +61,7 @@ import ProposeSeances from './pages/studyObjects/ProposeSeances';
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
   const { user, token } = useAuth(); // Ajouter token ici si nécessaire pour le fetch initial
+  const navigate = useNavigate(); // Hook de navigation React Router
   // État pour la barre latérale principale (TreeView)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   // État pour la chatbox latérale
@@ -145,17 +148,30 @@ function ProtectedLayout() {
           padding: '0 8px', // Réduit le padding
         }}
       >
-        <Toolbar disableGutters sx={{ minHeight: '40px' }}>
-          {/* Bouton pour ouvrir la sidebar (hamburger) */}
+        <Toolbar disableGutters sx={{ minHeight: '40px', display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Bouton pour ouvrir la sidebar (hamburger) */}
+            <IconButton
+              size="small" // Réduit la taille du bouton
+              color="inherit"
+              aria-label="open drawer"
+              onClick={handleSidebarOpen}
+              edge="start"
+              sx={{ mr: 1, ...(isSidebarOpen && { display: 'none' }) }}
+            >
+              <MenuIcon sx={{ fontSize: '20px' }} /> {/* Réduit la taille de l'icône */}
+            </IconButton>
+          </Box>
+          
+          {/* Bouton pour revenir au tableau de bord */}
           <IconButton
-            size="small" // Réduit la taille du bouton
+            size="small"
             color="inherit"
-            aria-label="open drawer"
-            onClick={handleSidebarOpen}
-            edge="start"
-            sx={{ mr: 1, ...(isSidebarOpen && { display: 'none' }) }}
+            aria-label="tableau de bord"
+            onClick={() => navigate('/dashboard')}
+            sx={{ mr: 1 }}
           >
-            <MenuIcon sx={{ fontSize: '20px' }} /> {/* Réduit la taille de l'icône */}
+            <DashboardIcon sx={{ fontSize: '20px' }} />
           </IconButton>
         </Toolbar>
       </MuiAppBar>

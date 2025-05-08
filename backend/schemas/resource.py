@@ -35,6 +35,7 @@ class ResourceBase(BaseModel):
     source_type: str  # 'file' ou 'ai'
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
+    study_object_ids: Optional[List[int]] = None
 
     @field_validator('source_type')
     def check_source_type(cls, v):

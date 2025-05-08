@@ -151,6 +151,11 @@ function ProgressionDetailPage() {
           <Typography variant="h6" gutterBottom>
             Objets d'étude associés
           </Typography>
+          {studyObjects.length === 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Attention : Cette progression ne contient aucun objet d'étude. Il est recommandé d'associer au moins un objet d'étude pour une progression pédagogique complète.
+            </Alert>
+          )}
           <StudyObjectChips studyObjects={studyObjects} onClick={obj => navigate(`/study-objects/${obj.id}`)} />
 
           <Divider sx={{ my: 3 }} />
