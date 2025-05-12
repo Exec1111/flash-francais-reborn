@@ -8,7 +8,6 @@ from models.resource import Resource, ResourceType, ResourceSubType # Ajout Reso
 from models.objective import Objective
 from models.study_object import StudyObject
 from models.association_tables import sequence_objective_association, session_objective_association, progression_study_object, study_object_resource
-from models.llm_interaction_log import LLMInteractionLog # Ajout de cette ligne
 
 # Vous pouvez définir __all__ pour contrôler ce qui est importé avec 'from models import *'
 __all__ = [
@@ -27,5 +26,4 @@ __all__ = [
     "StudyObject",
     "progression_study_object",
     "study_object_resource",
-    "LLMInteractionLog", # Ajout de cette ligne
 ]

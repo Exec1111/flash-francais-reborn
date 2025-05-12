@@ -16,10 +16,17 @@ from backend.ai.services.schema_utils import clean_schema, flatten_schema
 
 logger = logging.getLogger(__name__)
 
+from backend.models.llm_interaction_log import LLMInteractionLog
+from backend.database import SessionLocal
+
+import time
+
 async def generate_ai_resource_content(
     type_key: str,
     subtype_key: str,
-    input_variables: Dict[str, Any]
+    input_variables: Dict[str, Any],
+    user_id: int = None,
+    duration_ms: int = None
 ) -> Dict[str, Any]:
     """
     Génère le contenu d'une ressource IA en utilisant le prompt approprié.
@@ -76,17 +83,48 @@ async def generate_ai_resource_content(
         logger.info(f"Modèle : {model_name}")
         logger.info(f"contents : {contents}")
         logger.info(f"config : {config}")
-        
-        # Appel API en JSON
+
+        # Mesure de la durée si non fournie
+        start_time = time.perf_counter() if duration_ms is None else None
         response = client.models.generate_content(
             model=model_name,
             contents=contents,
             config=config
         )
-        
+        elapsed_ms = None
+        if start_time is not None:
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        duration_to_log = duration_ms if duration_ms is not None else elapsed_ms
+
         # Extraire le JSON
         response_content = response.text.strip()
-        
+
+        # LOGGING EN BASE du prompt et de la réponse Gemini
+        try:
+            db = SessionLocal()
+            log_entry = LLMInteractionLog(
+                api_provider="google_genai",
+                model_name=model_name,
+                prompt_type=prompt_name,
+                input_prompt=prompt_text,
+                input_variables=input_variables,
+                generation_config=config.to_dict() if hasattr(config, 'to_dict') else None,
+                output_content=response_content,
+                parsed_output=None,  # Peut être rempli après json.loads si souhaité
+                error_message=None,  # À remplir en cas d'exception
+                request_token_count=None,  # Peut être extrait de response si dispo
+                response_token_count=None,
+                duration_ms=duration_to_log,
+                user_id=user_id
+            )
+            db.add(log_entry)
+            db.commit()
+        except Exception as log_exc:
+            logger.error(f"Erreur lors du logging LLMInteractionLog : {log_exc}")
+        finally:
+            if 'db' in locals():
+                db.close()
+
         # Parsing direct du JSON retourné
         parsed_content = json.loads(response_content)
 

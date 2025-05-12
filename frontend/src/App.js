@@ -24,6 +24,7 @@ import { useTheme } from '@mui/material/styles';
 import SideNav, { drawerWidth } from './components/SideNav';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login'; 
+import AdminLLMLogs from './pages/AdminLLMLogs';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
@@ -128,6 +129,7 @@ function ProtectedLayout() {
     }
   }, [user, token, refreshTreeData]);
 
+  console.log('USER:', user);
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -173,6 +175,18 @@ function ProtectedLayout() {
           >
             <DashboardIcon sx={{ fontSize: '20px' }} />
           </IconButton>
+          {/* Bouton logs LLM visible uniquement pour ADMIN */}
+          {user && user.role && user.role.toLowerCase() === 'admin' && (
+            <IconButton
+              size="small"
+              color="inherit"
+              aria-label="logs LLM"
+              onClick={() => navigate('admin/llm-logs')}
+              sx={{ mr: 1 }}
+            >
+              <span role="img" aria-label="llm-logs" style={{fontSize:'18px'}}>🤖</span>
+            </IconButton>
+          )}
         </Toolbar>
       </MuiAppBar>
 
@@ -271,6 +285,8 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
+        {/* Route protégée pour les logs LLM admin */}
+        <Route path="admin/llm-logs" element={<AdminLLMLogs />} />
         {/* <Route path="profile" element={<Profile />} /> */}
         {/* <Route path="settings" element={<Settings />} /> */}
         {/* Route pour le constructeur de progression */}

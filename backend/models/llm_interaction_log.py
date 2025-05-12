@@ -1,17 +1,14 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, ForeignKey
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, ForeignKey, text
 from database import Base
 
 class LLMInteractionLog(Base):
     __tablename__ = "llm_interaction_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=text('now()'))
     api_provider = Column(String(50), nullable=False, index=True)
     model_name = Column(String(100), nullable=True)
-    prompt_type = Column(String(100), nullable=True, index=True) # e.g., 'generate_resource', 'merge_content'
+    prompt_type = Column(String(100), nullable=True, index=True)
     input_prompt = Column(Text, nullable=True)
     input_variables = Column(JSON, nullable=True)
     generation_config = Column(JSON, nullable=True)
@@ -23,7 +20,5 @@ class LLMInteractionLog(Base):
     duration_ms = Column(Integer, nullable=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
 
-    user = relationship("User")
-
     def __repr__(self):
-        return f"<LLMInteractionLog(id={self.id}, timestamp={self.timestamp}, provider={self.api_provider})>"
+        return f"<LLMInteractionLog(id={self.id})>"

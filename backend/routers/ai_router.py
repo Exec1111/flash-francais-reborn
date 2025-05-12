@@ -7,7 +7,6 @@ from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
-from backend.ai.ai_resource_service import generate_ai_resource_content, get_available_ai_resource_types, ResourceGenerationError, merge_ai_resource_content, generate_ai_sessions, suggest_exercise_types_for_session
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
@@ -41,7 +40,7 @@ async def handle_chat_message(input_data: ChatInput):
     """
     logger.info(f"Received request on /ai/chat endpoint.")
     try:
-        response = await generation_service.get_chat_response(input_data)
+        response = await ai_resource_service.generation_service.get_chat_response(input_data)
         logger.info(f"Successfully processed /ai/chat request.")
         return response
     except ValueError as ve:
@@ -71,7 +70,7 @@ async def get_ai_resource_types():
     """
     logger.info("Récupération des types de ressources IA disponibles")
     try:
-        types = get_available_ai_resource_types()
+        types = ai_resource_service.get_available_ai_resource_types()
         return {"types": types}
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des types de ressources IA: {e}", exc_info=True)
@@ -97,12 +96,17 @@ async def generate_resource(
     logger.info(f"Génération de ressource IA de type {request.type_key}/{request.subtype_key} demandée par l'utilisateur {current_user.email}")
     
     try:
-        # Générer le contenu
-        content = await generate_ai_resource_content(
+        import time
+        start_time = time.perf_counter()
+        content = await ai_resource_service.generate_ai_resource_content(
             type_key=request.type_key,
             subtype_key=request.subtype_key,
-            input_variables=request.variables
+            input_variables=request.variables,
+            user_id=current_user.id,
+            duration_ms=None  # Sera mesuré dans la fonction si non fourni
         )
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        # Optionnel : vous pouvez logger duration_ms ici si besoin
         
         logger.info(f"Contenu généré avec succès pour {request.type_key}/{request.subtype_key}")
         return {"content": content}
@@ -242,7 +246,7 @@ async def merge_resource(
                 raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
 
         # Appel service de fusion (à implémenter)
-        html_path, html_url = await merge_ai_resource_content(
+        html_path, html_url = await ai_resource_service.merge_ai_resource_content(
             type_key=type_key,
             subtype_key=subtype_key,
             data_json=data_json,
@@ -324,7 +328,7 @@ async def generate_sessions(
         existing_resources_summary = []
             
         # Génération des séances
-        generation_result = await generate_ai_sessions(
+        generation_result = await ai_resource_service.generate_ai_sessions(
             sequence_id=request.sequence_id,
             sequence_title=sequence.title,
             niveau=request.niveau,
@@ -346,7 +350,7 @@ async def generate_sessions(
         
         return {"sessions": generation_result["sessions"]}
         
-    except ResourceGenerationError as e:
+    except ai_resource_service.ResourceGenerationError as e:
         logger.error(f"Erreur lors de la génération de séances: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

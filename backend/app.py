@@ -31,6 +31,11 @@ from routers.user import user_router
 from routers import ai_router  # Importation du routeur AI
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
 from routers.study_object import router as study_object_router
+from routers import admin
+
+# ... (autres includes)
+# (déplacement de l'inclusion du routeur admin plus bas)
+
 from schemas.sequence import SequenceRead
 from schemas.objective import ObjectiveRead
 
@@ -111,6 +116,10 @@ app = FastAPI(
         {
             "name": "study_objects",
             "description": "Opérations d'étude"
+        },
+        {
+            "name": "admin",
+            "description": "Opérations d'administration"
         }
     ],
     docs_url=settings.DOCS_URL,
@@ -263,6 +272,9 @@ app.include_router(
     prefix="/api/v1/study_objects",
     tags=["study_objects"]
 )
+
+# Inclusion des routes admin
+app.include_router(admin.router)
 
 # --- Monter le dossier d'uploads en utilisant la config --- 
 # Le dossier est déjà créé par la logique dans config.py
