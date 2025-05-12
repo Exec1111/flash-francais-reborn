@@ -27,6 +27,7 @@ from models import session # Ajoutez l'import pour Session
 from models import resource # Ajoutez l'import pour Resource
 from models import objective # Ajoutez l'import pour Objective
 from models import association_tables # Importez pour les tables d'association
+from models import llm_interaction_log # Ajoutez cette ligne pour le nouveau modèle
 # from models import autre_modele # Ajoutez d'autres imports si nécessaire
 
 # this is the Alembic Config object, which provides
