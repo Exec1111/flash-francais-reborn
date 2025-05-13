@@ -49,7 +49,6 @@ async def generate_ai_resource_content(
         
         # Fusionner instructions système et contenu utilisateur en un seul message user
         prompt_text = f"{system}\n\n{user}"
-        logger.info(f"Prompt généré (après rendu Jinja) : {prompt_text}")
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         
         # Construire et nettoyer le schéma dynamique si présent
@@ -79,10 +78,7 @@ async def generate_ai_resource_content(
                 response_mime_type="application/json" # Toujours demander du JSON
             )
         
-        # Appel API en JSON
-        logger.info(f"Modèle : {model_name}")
-        logger.info(f"contents : {contents}")
-        logger.info(f"config : {config}")
+
 
         # Mesure de la durée si non fournie
         start_time = time.perf_counter() if duration_ms is None else None
@@ -149,7 +145,7 @@ async def generate_ai_resource_content(
                     }
                     transformed_suggestions.append(transformed_item)
                 parsed_content = {"suggestions": transformed_suggestions}
-                logger.info(f"Contenu transformé pour {prompt_name}: {json.dumps(parsed_content, indent=2, ensure_ascii=False)}")
+                
             elif isinstance(parsed_content, dict) and "suggestions" not in parsed_content:
                 # Gérer le cas où l'IA renvoie un objet mais sans la clé 'suggestions' attendue
                 # Ceci est moins probable que la liste directe, mais c'est une sécurité.
@@ -172,7 +168,6 @@ async def generate_ai_resource_content(
         if current_schema_from_generator:
             try:
                 generator.validate(parsed_content) # Valide contre le schéma original du prompt
-                logger.info(f"La réponse brute de l'IA PASSE la validation locale du schéma pour {prompt_name}.")
             except Exception as ve:
                 logger.warning(f"La réponse brute de l'IA ÉCHOUE à la validation locale du schéma pour {prompt_name}: {ve}")
         else:

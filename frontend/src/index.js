@@ -10,7 +10,8 @@ import { AuthProvider } from './contexts/AuthContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  // StrictMode désactivé pour éviter les doubles appels API en développement
+  <>
     <BrowserRouter>
       <ThemeProvider theme={theme}>
         <CssBaseline />
@@ -19,5 +20,5 @@ root.render(
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </>
 );

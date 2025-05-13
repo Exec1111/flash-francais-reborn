@@ -80,15 +80,41 @@ async def merge_ai_resource_content(
                     contents=[payload]
                 )
                 break
-            except ServerError as err:
-                logger.warning(f"[Fusion][LLM] Erreur interne (tentative {attempt+1}): {err}")
-                if attempt < 2:
-                    time.sleep(2 ** attempt)
-                else:
-                    raise
-                    
-        html_generated = response.text
-        
+            except ServerError as e:
+                logger.warning(f"[Fusion][LLM] Tentative {attempt+1}/3 échouée : {e}")
+                _time.sleep(2)
+
+        duration_ms = int((_time.perf_counter() - start_time) * 1000)
+        if response is None:
+            raise ResourceGenerationError("Impossible d'obtenir une réponse du modèle après 3 tentatives.")
+
+        # Extraire le HTML généré
+        html_generated = response.text.strip()
+        # Logging LLMInteractionLog
+        try:
+            db = SessionLocal()
+            log_entry = LLMInteractionLog(
+                api_provider="google_genai",
+                model_name=model_name,
+                prompt_type="merge_template",
+                input_prompt=prompt,
+                input_variables={"data_json": data_json, "model_path": model_path},
+                generation_config=None,
+                output_content=html_generated,
+                parsed_output=None,
+                error_message=None,
+                request_token_count=None,
+                response_token_count=None,
+                duration_ms=duration_ms,
+                user_id=user_id
+            )
+            db.add(log_entry)
+            db.commit()
+        except Exception as log_exc:
+            logger.error(f"Erreur lors du logging LLMInteractionLog (fusion IA) : {log_exc}")
+        finally:
+            if 'db' in locals():
+                db.close()
         # Création du dossier temporaire pour l'utilisateur
         settings = get_settings()
         static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 

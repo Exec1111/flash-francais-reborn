@@ -11,12 +11,18 @@ from backend.ai.services.resource_generator import generate_ai_resource_content
 
 logger = logging.getLogger(__name__)
 
+import time
+import json
+from backend.models.llm_interaction_log import LLMInteractionLog
+from backend.database import SessionLocal
+
 async def suggest_exercise_types_for_session(
     session_title: str,
     session_description: str,
     session_objectives: List[str],
     sequence_study_objects: List[str],
-    existing_resources_summary: List[str]
+    existing_resources_summary: List[str],
+    user_id: int = None
 ) -> Dict[str, Any]:
     """
     Suggère des types d'exercices pertinents pour une session donnée en utilisant l'IA.
@@ -32,8 +38,7 @@ async def suggest_exercise_types_for_session(
     Returns:
         Dictionnaire contenant les suggestions d'exercices
     """
-    logger.info(f"Début de la suggestion de types d'exercices pour la session : {session_title}")
-
+ 
     available_exercise_types = []
     # Parcourir PROMPT_REGISTRY pour trouver les prompts d'exercices
     for (type_key, subtype_key), prompt_name in PROMPT_REGISTRY.items():
@@ -66,13 +71,15 @@ async def suggest_exercise_types_for_session(
     }
 
     try:
-        logger.info(f"Appel de generate_ai_resource_content pour 'meta/exercise_suggester' avec les variables : {input_vars_for_suggester}")
         # Appel à la fonction de génération
+        start_time = time.perf_counter()
         suggestions = await generate_ai_resource_content(
             type_key="meta",
             subtype_key="exercise_suggester",
             input_variables=input_vars_for_suggester
         )
+        duration_ms = int((time.perf_counter() - start_time) * 1000)    
+
         logger.info(f"Suggestions d'exercices générées avec succès pour la session '{session_title}'.")
         return suggestions
     except ResourceGenerationError as e:

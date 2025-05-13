@@ -165,28 +165,32 @@ function ProtectedLayout() {
             </IconButton>
           </Box>
           
-          {/* Bouton pour revenir au tableau de bord */}
-          <IconButton
-            size="small"
-            color="inherit"
-            aria-label="tableau de bord"
-            onClick={() => navigate('/dashboard')}
-            sx={{ mr: 1 }}
-          >
-            <DashboardIcon sx={{ fontSize: '20px' }} />
-          </IconButton>
-          {/* Bouton logs LLM visible uniquement pour ADMIN */}
-          {user && user.role && user.role.toLowerCase() === 'admin' && (
+          {/* Groupe de boutons alignés à droite */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Bouton pour revenir au tableau de bord */}
             <IconButton
               size="small"
               color="inherit"
-              aria-label="logs LLM"
-              onClick={() => navigate('admin/llm-logs')}
+              aria-label="tableau de bord"
+              onClick={() => navigate('/dashboard')}
               sx={{ mr: 1 }}
             >
-              <span role="img" aria-label="llm-logs" style={{fontSize:'18px'}}>🤖</span>
+              <DashboardIcon sx={{ fontSize: '20px' }} />
             </IconButton>
-          )}
+            
+            {/* Bouton logs LLM visible uniquement pour ADMIN */}
+            {user && user.role && user.role.toLowerCase() === 'admin' && (
+              <IconButton
+                size="small"
+                color="inherit"
+                aria-label="logs LLM"
+                onClick={() => navigate('/dashboard/admin/llm-logs')}
+                sx={{ mr: 1 }}
+              >
+                <span role="img" aria-label="llm-logs" style={{fontSize:'18px'}}>🤖</span>
+              </IconButton>
+            )}
+          </Box>
         </Toolbar>
       </MuiAppBar>
 

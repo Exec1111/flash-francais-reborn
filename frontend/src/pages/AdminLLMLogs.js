@@ -13,15 +13,34 @@ const AdminLLMLogs = () => {
   const [openCell, setOpenCell] = useState({row: null, col: null, value: ''});
 
   useEffect(() => {
-    // Redirection si non admin
-    if (!user || (user.role && user.role.toLowerCase() !== 'admin')) {
-      navigate('/dashboard');
-      return;
-    }
-    axios.get('/admin/llm-logs')
-      .then(res => setLogs(res.data))
-      .catch(() => setLogs([]))
-      .finally(() => setLoading(false));
+    // Vérification explicite de l'administrateur avant de charger les données
+    const checkAdminAndLoadData = async () => {
+      try {
+        setLoading(true);
+        // Vérification que l'utilisateur est connecté et a le rôle admin
+        if (!user) {
+          // Si pas d'utilisateur authentifié, on redirige vers le dashboard
+          navigate('/dashboard');
+          return;
+        }
+      
+        if (user.role && user.role.toLowerCase() === 'admin') {
+          // Utilisateur admin: chargement des logs
+          const response = await axios.get('/admin/llm-logs');
+          setLogs(response.data || []);
+        } else {
+          // Utilisateur non admin: redirection vers dashboard
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des logs LLM:', error);
+        setLogs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAdminAndLoadData();
   }, [user, navigate]);
 
   if (loading) {
@@ -49,13 +68,13 @@ const AdminLLMLogs = () => {
             {(logs || []).map((log, rowIdx) => (
               <TableRow key={log.id}>
                 <TableCell>
-                  <span style={{maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</span>
+                  <span style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</span>
                 </TableCell>
                 <TableCell>
-                  <span style={{maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.model_name}</span>
+                  <span style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.model_name}</span>
                 </TableCell>
                 <TableCell>
-                  <span style={{maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.prompt_type}</span>
+                  <span style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.prompt_type}</span>
                 </TableCell>
                 <TableCell>
                   <span style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.input_prompt}</span>

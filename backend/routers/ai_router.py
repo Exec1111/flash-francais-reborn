@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile,
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 from pydantic import BaseModel
+import logging
+import os
+import uuid
 
 from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
@@ -374,7 +377,7 @@ async def suggest_exercises_for_session_endpoint(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user) # Authentification
 ):
-    logger.info(f"Demande de suggestion d'exercices pour la session ID: {session_id} par l'utilisateur {current_user.email}")
+    logger.info(f"[TRACE] API POST /ai/sessions/{session_id}/suggest-exercises appelé par user_id={getattr(current_user, 'id', '?')} email={getattr(current_user, 'email', '?')}")
 
     # 1. Récupérer les détails de la session
     session = get_session_by_id(db, session_id=session_id)

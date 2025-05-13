@@ -9,6 +9,7 @@ import {
   useMediaQuery
 } from '@mui/material';
 import api from '../services/api';
+import { aiService } from '../services/aiService';
 
 // Composants d'étapes
 import SuggestionStep from './wizard/SuggestionStep';
@@ -32,6 +33,7 @@ const ResourceGenerationWizard = ({ sessionId, onClose, onResourcesGenerated }) 
   const [selectedSuggestionsIndices, setSelectedSuggestionsIndices] = React.useState({}); 
   const [isLoadingSuggestions, setIsLoadingSuggestions] = React.useState(false);
   const [suggestionsError, setSuggestionsError] = React.useState(null);
+  const [isSuggestionRequestPending, setIsSuggestionRequestPending] = React.useState(false); // Protection contre doubles appels
 
   // États pour l'Étape 1: Génération
   const [suggestionsToGenerate, setSuggestionsToGenerate] = React.useState([]);
@@ -62,25 +64,28 @@ const ResourceGenerationWizard = ({ sessionId, onClose, onResourcesGenerated }) 
   React.useEffect(() => {
     if (activeStep === 0 && sessionId) {
       const fetchSuggestions = async () => {
+        // Protection contre les doubles appels - si une requête est déjà en cours, on ne fait rien
+        if (isSuggestionRequestPending) {
+          console.log("[FRONT] Une requête de suggestions est déjà en cours, requête ignorée");
+          return;
+        }
+        
         setIsLoadingSuggestions(true);
+        setIsSuggestionRequestPending(true); // Activer le verrouillage
         setSuggestionsError(null);
+        
         try {
-          const token = localStorage.getItem('token');
-          if (!token) {
-            setSuggestionsError("Authentification requise. Veuillez vous reconnecter.");
-            setIsLoadingSuggestions(false);
-            return;
-          }
-          const response = await api.post(`/ai/sessions/${sessionId}/suggest-exercises`, null, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setSuggestions(response.data.suggestions || []);
-          setSelectedSuggestionsIndices({}); 
+          // Utiliser le service avec cache au lieu de l'appel API direct
+          const response = await aiService.getSuggestions(sessionId);
+          setSuggestions(response.suggestions || []);
+          setSelectedSuggestionsIndices({});
         } catch (err) {
           console.error("Erreur lors de la récupération des suggestions:", err);
           setSuggestionsError(formatErrorMessage(err, "Erreur lors de la récupération des suggestions"));
+        } finally {
+          setIsLoadingSuggestions(false);
+          setIsSuggestionRequestPending(false); // Toujours désactiver le verrouillage, même en cas d'erreur
         }
-        setIsLoadingSuggestions(false);
       };
       fetchSuggestions();
     }

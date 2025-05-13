@@ -67,9 +67,58 @@ const generateResource = async (data) => {
   }
 };
 
+/**
+ * Cache pour les suggestions d'exercices par session.
+ * Évite les appels redondants causés par StrictMode ou autres double-rendus.
+ */
+const _suggestionsCache = {};
+
+/**
+ * Récupère les suggestions d'exercices pour une session avec mise en cache.
+ * 
+ * @param {string|number} sessionId - L'ID de la session.
+ * @returns {Promise<object>} - Objet contenant les suggestions.
+ */
+const getSuggestions = async (sessionId) => {
+  // Clé de cache unique pour cette session
+  const cacheKey = `suggestions_${sessionId}`;
+  const cacheTime = 30 * 1000; // 30 secondes en millisecondes
+  
+  // Vérifier si des données en cache valides existent
+  if (_suggestionsCache[cacheKey] && Date.now() - _suggestionsCache[cacheKey].timestamp < cacheTime) {
+    console.log(`[CACHE] Utilisation du cache pour les suggestions d'exercices de la session ${sessionId}`);
+    return _suggestionsCache[cacheKey].data;
+  }
+  
+  try {
+    // Récupération du token pour authentification
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentification requise. Veuillez vous reconnecter.");
+    }
+    
+    console.log(`[API] Appel API suggestions d'exercices pour session ${sessionId}`);
+    const response = await api.post(`/ai/sessions/${sessionId}/suggest-exercises`, null, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    // Mise en cache des données
+    _suggestionsCache[cacheKey] = {
+      data: response.data,
+      timestamp: Date.now()
+    };
+    
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des suggestions:", error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
 export const aiService = {
   sendChatMessage,
   getResourceTypes,
   getResourceTypeSchema,
-  generateResource
+  generateResource,
+  getSuggestions
 };
