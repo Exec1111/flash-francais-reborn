@@ -39,10 +39,14 @@ async def suggest_exercise_types_for_session(
         Dictionnaire contenant les suggestions d'exercices
     """
  
+    # Liste blanche des types de prompts considérés comme de vrais exercices
+    EXERCISE_TYPES = ["exercice"]
+    
     available_exercise_types = []
     # Parcourir PROMPT_REGISTRY pour trouver les prompts d'exercices
     for (type_key, subtype_key), prompt_name in PROMPT_REGISTRY.items():
-        if type_key != "meta": # Exclure les prompts méta comme le suggéreur lui-même
+        # N'inclure que les prompts dont le type est dans la liste blanche des exercices
+        if type_key in EXERCISE_TYPES:
             try:
                 generator = PromptGenerator(prompt_name)
                 # Récupérer la structure des paramètres directement depuis la config du prompt

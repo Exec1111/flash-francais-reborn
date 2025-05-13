@@ -399,7 +399,8 @@ async def suggest_exercises_for_session_endpoint(
     existing_resources_summary = []
     if session.resources:
         for res in session.resources:
-            summary = f"{res.sub_type.name if res.sub_type else res.type.name}: '{res.title}'"
+            # Utiliser value ou key au lieu de name qui n'existe pas dans ResourceSubType/ResourceType
+            summary = f"{res.sub_type.value if res.sub_type else res.type.value}: '{res.title}'"
             if res.source_type == "ai":
                 summary += " (IA)"
             existing_resources_summary.append(summary)

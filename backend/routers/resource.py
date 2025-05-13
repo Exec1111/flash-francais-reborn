@@ -274,7 +274,7 @@ async def read_resources_by_session(
     logger.info(f">>> ENTERING read_resources_by_session for session {session_id} <<<") # <--- ADD LOG 3
     """Récupère les ressources d'une session spécifique pour l'utilisateur courant."""
     # ---> AJOUT: Vérifier d'abord si la session existe et appartient à l'utilisateur
-    db_session = crud.session.get_session(db=db, session_id=session_id) # Ne prend pas user_id
+    db_session = crud.session.get_session_by_id(db=db, session_id=session_id) # Utilisation du nom correct de la fonction
     
     # Vérification existence ET appartenance
     if db_session is None or \

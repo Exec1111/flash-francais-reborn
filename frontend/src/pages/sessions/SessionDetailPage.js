@@ -55,7 +55,12 @@ const SessionDetailPage = () => {
       
       // Récupération des objectifs associés
       if (response.data && response.data.objectives && response.data.objectives.length > 0) {
-        const objectiveDetails = await objectiveService.getObjectivesByIds(response.data.objectives);
+        // Extraire les IDs des objectifs (vérifier si tableau d'objets ou tableau d'IDs)
+        const objectiveIds = response.data.objectives.map(obj => 
+          typeof obj === 'object' && obj !== null ? obj.id : obj
+        );
+        console.log("Objectifs IDs à récupérer:", objectiveIds);
+        const objectiveDetails = await objectiveService.getObjectivesByIds(objectiveIds);
         setObjectives(objectiveDetails);
       } else {
         // Récupération des objectifs par l'ancienne méthode si nécessaire
@@ -254,7 +259,7 @@ const SessionDetailPage = () => {
                   key={resource.id}
                   label={resource.title || resource.name || `Ressource ${resource.id}`}
                   size="small"
-                  onClick={() => navigate(`/resources/${resource.id}`)}
+                  onClick={() => navigate(`/resources/view/${resource.id}`)}
                 />
               ))}
             </Stack>

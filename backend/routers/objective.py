@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 
 from database import get_db
 from crud import objective as crud_objective
@@ -8,6 +9,10 @@ from schemas import objective as schemas_objective
 # Importer les schémas "simples" si/quand ils seront créés
 from schemas.common import SequenceIdentifier
 from schemas.session import SessionReadSimple
+
+# Schéma pour la requête POST /by_ids
+class ObjectiveIdsRequest(BaseModel):
+    objective_ids: List[int]
 
 objective_router = APIRouter()
 
@@ -136,3 +141,28 @@ def get_sessions_for_objective(objective_id: int, db: Session = Depends(get_db))
         return sessions
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+@objective_router.post("/by_ids", response_model=List[schemas_objective.ObjectiveRead])
+async def get_objectives_by_ids(request: ObjectiveIdsRequest = None, objective_ids: List[int] = Body(None), db: Session = Depends(get_db)):
+    """Récupère plusieurs objectifs par leurs IDs."""
+    try:
+        # Déterminer la source des IDs d'objectifs (soit du modèle Pydantic, soit directement du corps JSON)
+        ids_to_fetch = []
+        
+        if request and hasattr(request, 'objective_ids') and request.objective_ids:
+            ids_to_fetch = request.objective_ids
+        elif objective_ids:
+            ids_to_fetch = objective_ids
+            
+        if not ids_to_fetch:
+            return []
+            
+        objectives = []
+        for obj_id in ids_to_fetch:
+            obj = crud_objective.get_objective(db, objective_id=obj_id)
+            if obj:
+                objectives.append(obj)
+                
+        return objectives
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de la récupération des objectifs: {str(e)}")

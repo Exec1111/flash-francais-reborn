@@ -272,15 +272,19 @@ const SessionForm = ({
         // Si c'est un dialogue, ne pas rediriger mais fermer
         // La fermeture est gérée par `onSuccess` ou `onClose` dans le composant parent
       } else {
-        // Rediriger vers la page précédente ou une page spécifique si nécessaire
-        // navigate(-1); // Exemple: retour à la page précédente
-        // Ou rediriger vers la vue de la séquence parente ?
-        if (formData.sequence_id) {
-          // Idéalement, on redirigerait vers la vue de la séquence contenant cette session
-          // Pour l'instant, retour simple ou redirection vers une liste de sessions
-          navigate(`/sequences/${formData.sequence_id}`); // Exemple
+        // Rediriger vers la page de détail de la séance que l'on vient de modifier/créer
+        if (isEdit) {
+          // Si c'est une modification, rediriger vers la page de détail de la séance modifiée
+          navigate(`/sessions/${sessionId}`);
+        } else if (response && response.data && response.data.id) {
+          // Si c'est une création, rediriger vers la page de détail de la nouvelle séance
+          navigate(`/sessions/${response.data.id}`);
+        } else if (formData.sequence_id) {
+          // Fallback: rediriger vers la vue de la séquence parente si nécessaire
+          navigate(`/sequences/${formData.sequence_id}`);
         } else {
-          navigate('/sessions'); // Fallback
+          // Dernier recours: rediriger vers la liste des séances
+          navigate('/sessions'); 
         }
       }
 

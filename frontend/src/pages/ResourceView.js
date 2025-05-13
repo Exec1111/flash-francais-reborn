@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import resourceService from '../services/resourceService';
 import resourceTypeService from '../services/resourceTypeService';
 import { 
-    Box, Typography, Paper, CircularProgress, Alert, Button, Link, Divider, List, ListItem 
+    Box, Typography, CircularProgress, Alert, Button, Link, Divider, List, ListItem,
+    Container, Card, CardContent, IconButton, Chip
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import StudyObjectChips from '../components/studyObjects/StudyObjectChips';
 
 // Fonction pour formater les dates (peut être centralisée)
@@ -113,7 +114,7 @@ function ResourceView() {
             <Box sx={{ mt: 4 }}>
                  <Button 
                     variant="outlined" 
-                    startIcon={<ArrowBackIcon />} 
+                    
                     onClick={() => navigate('/resources')} // Ou navigate(-1)
                     sx={{ mb: 2 }}
                 >
@@ -129,7 +130,7 @@ function ResourceView() {
              <Box sx={{ mt: 4 }}>
                  <Button 
                     variant="outlined" 
-                    startIcon={<ArrowBackIcon />} 
+                    
                     onClick={() => navigate('/resources')}
                     sx={{ mb: 2 }}
                  >
@@ -146,19 +147,27 @@ function ResourceView() {
                     : null;
 
     return (
-        <Box sx={{ maxWidth: 800, margin: 'auto', mt: 4 }}>
-             <Button 
-                variant="outlined" 
-                startIcon={<ArrowBackIcon />} 
-                onClick={() => navigate('/resources')} // Navigue vers la liste principale
-                sx={{ mb: 2 }}
-            >
-                Retour à la liste
-            </Button>
-            <Paper sx={{ padding: 3 }}>
-                <Typography variant="h4" gutterBottom>
-                    {resource.title || "Détail de la Ressource"}
-                </Typography>
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Card>
+                <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h4" gutterBottom>
+                            {resource.title || "Détail de la Ressource"}
+                        </Typography>
+                        <Box>
+                            <Button
+                                variant="contained"
+                                startIcon={<EditIcon />}
+                                sx={{ mr: 1 }}
+                                onClick={() => navigate(`/resources/edit/${id}`)}
+                            >
+                                Modifier
+                            </Button>
+                            <IconButton color="error">
+                                <DeleteIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
                 <Divider sx={{ my: 2 }} />
                 
                 <Typography variant="h6">Informations Générales</Typography>
@@ -216,8 +225,9 @@ function ResourceView() {
                 ) : (
                     <StudyObjectChips studyObjects={studyObjects} onClick={obj => navigate(`/study-objects/${obj.id}`)} />
                 )}
-            </Paper>
-        </Box>
+                </CardContent>
+            </Card>
+        </Container>
     );
 }
 
