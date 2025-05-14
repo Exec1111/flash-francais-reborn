@@ -333,7 +333,6 @@ def read_resource(
     # Sérialisation explicite des objets Pydantic
     response_dict['study_objects'] = [obj.model_dump() for obj in study_objects]
     response_dict['study_object_ids'] = study_object_ids
-    logger.info(f"[DEBUG API] ResourceResponse retourné : {response_dict}")
     return response_dict
 
 @resource_router.put("/{resource_id}", response_model=ResourceResponse)

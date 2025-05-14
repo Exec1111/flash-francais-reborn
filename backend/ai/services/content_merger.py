@@ -14,6 +14,8 @@ from google.genai.errors import ServerError
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.ai.services.registry import ResourceGenerationError
 from config import get_settings
+from backend.database import SessionLocal
+from backend.models.llm_interaction_log import LLMInteractionLog
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +65,16 @@ async def merge_ai_resource_content(
         try:
             with open(model_path, "r", encoding="utf-8") as f:
                 html_model_content = f.read()
-            logger.info(f"[Fusion][LLM] Contenu du modèle HTML joint :\n{html_model_content}")
+  
         except Exception as e:
             logger.warning(f"[Fusion][LLM] Impossible de lire le modèle HTML {model_path} : {e}")
 
-        logger.info(f"[Fusion][LLM] Appel API Gemini : model={model_name}, user_id={user_id}, model_path={model_path}, prompt=\n{prompt}")
         
         payload = [uploaded_html, prompt]
         response = None
+        
+        # Mesurer le temps d'exécution
+        start_time = time.perf_counter()
         
         # Tentative avec retry en cas d'erreur serveur
         for attempt in range(3):
@@ -82,9 +86,9 @@ async def merge_ai_resource_content(
                 break
             except ServerError as e:
                 logger.warning(f"[Fusion][LLM] Tentative {attempt+1}/3 échouée : {e}")
-                _time.sleep(2)
+                time.sleep(2)
 
-        duration_ms = int((_time.perf_counter() - start_time) * 1000)
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
         if response is None:
             raise ResourceGenerationError("Impossible d'obtenir une réponse du modèle après 3 tentatives.")
 

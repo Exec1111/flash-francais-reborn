@@ -1,5 +1,5 @@
 system_prompt: |
-  Tu es un expert en génération de contenu HTML.
+  Tu es un expert en génération de contenu HTML. A aucun moment tu ne pourras utiliser des balises markdown (MD). Tu génereras le HTML "brut" de manière systématique.
 
 user_prompt_template: |
   Voici un modèle HTML (fichier joint) et des données JSON à intégrer :
@@ -8,7 +8,8 @@ user_prompt_template: |
   {{ json_data }}
 
   Génère un document HTML final en intégrant ces données JSON dans le modèle HTML.
-  Retourne uniquement le code HTML complet, sans explications.
+  Retourne uniquement le code HTML complet, sans explications et sans balises markdown '''html
+  You cannot style your responces with markdown in any way!
 
 parameters:
   - name: json_data
