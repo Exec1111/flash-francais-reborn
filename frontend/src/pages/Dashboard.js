@@ -101,7 +101,7 @@ const Dashboard = () => {
                   <List dense disablePadding sx={{ pl: 2, listStyleType: 'disc' }}>
                     {warning.details.uncovered_objectives.map((obj) => (
                       <ListItem key={obj.id} sx={{ display: 'list-item', p: 0 }}>
-                        {obj.title} (ID: {obj.id})
+                        {obj.title}
                       </ListItem>
                     ))}
                   </List>

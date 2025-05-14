@@ -112,7 +112,6 @@ async def generate_ai_sessions(
             config=config
         )
         duration_ms = int((time.perf_counter() - start_time) * 1000)
-        logger.info(f"Réponse brute du modèle (tronquée) : {response.text[:500]}...")
         response_content = response.text.strip()
         # Logging LLMInteractionLog
         try:

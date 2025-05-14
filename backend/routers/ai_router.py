@@ -291,20 +291,26 @@ async def generate_sessions(
             logger.warning(f"Accès non autorisé à la séquence {request.sequence_id} par l'utilisateur {current_user.id}")
             raise HTTPException(status_code=403, detail="Vous n'avez pas accès à cette séquence")
         
-        # Récupérer les ressources de la séquence si nécessaire
+        # Récupérer les ressources associées aux objets d'étude de la séquence
         ressources_disponibles = []
-        if request.inclure_ressources:
-            # Récupérer les ressources disponibles pour cette séquence
-            resources = []
-            for resource in resources:
-                ressources_disponibles.append({
-                    "id": resource.id,
-                    "title": resource.title,
-                    "type": resource.type.name if resource.type else "inconnu"
-                })
+        if request.inclure_ressources and sequence and sequence.study_objects:
+            # Pour chaque objet d'étude, récupérer ses ressources associées
+            for study_obj in sequence.study_objects:
+                if hasattr(study_obj, 'resources') and study_obj.resources:
+                    for resource in study_obj.resources:
+                        # Formaté selon la structure attendue dans le template
+                        ressources_disponibles.append({
+                            "id": resource.id,
+                            "title": resource.title,
+                            "type": resource.type.value if hasattr(resource.type, 'value') else (resource.type.name if hasattr(resource.type, 'name') else "inconnu")
+                        })
+            
+            # Log des ressources trouvées
+            logger.info(f"Ressources récupérées pour la génération : {ressources_disponibles}")
         
-        # Debug : afficher les objectifs liés à la séquence
-        logger.info(f"sequence.objectives = {getattr(sequence, 'objectives', None)}")
+        # Debug : afficher les objectifs liés à la séquence de manière lisible
+        objectives_info = [f"ID: {obj.id}, Titre: {obj.title}" for obj in getattr(sequence, 'objectives', [])]
+        logger.info(f"sequence.objectives = {objectives_info}")
         objectifs = []
         sequence_objectives = sequence.objectives if sequence else []
         for objective in sequence_objectives:
@@ -313,15 +319,39 @@ async def generate_sessions(
                 "title": objective.title
             })
         
-        # Récupérer les objets d'étude de la séquence
+        # Récupérer les objets d'étude de la séquence et les logger pour débogage
         sequence_study_objects_titles = []
         if sequence and sequence.study_objects:
-            sequence_study_objects_titles = [so.title for so in sequence.study_objects if so.title]
+            # S'assurer que les titres sont correctement extraits
+            sequence_study_objects_titles = []
+            for so in sequence.study_objects:
+                if hasattr(so, 'title') and so.title:
+                    if callable(so.title):
+                        # Si c'est une méthode, l'appeler
+                        title = so.title()
+                    else:
+                        # Sinon, c'est une propriété
+                        title = so.title
+                    sequence_study_objects_titles.append(title)
+            
+            # Log pour déboguer
+            study_objects_info = [f"Titre: {title}" for title in sequence_study_objects_titles]
+            logger.info(f"sequence.study_objects = {study_objects_info}")
             
         # Pas de ressources directement accessibles depuis la séquence
         existing_resources_summary = []
             
         # Génération des séances
+        # Créer des objets d'étude avec la structure attendue par le template
+        formatted_study_objects = []
+        for i, title in enumerate(sequence_study_objects_titles):
+            formatted_study_objects.append({
+                "id": "",  # Pas d'ID disponible ici
+                "title": title
+            })
+            
+        logger.info(f"Objets d'étude formatés pour le prompt : {formatted_study_objects}")
+            
         generation_result = await ai_resource_service.generate_ai_sessions(
             sequence_id=request.sequence_id,
             sequence_title=sequence.title,
@@ -330,7 +360,7 @@ async def generate_sessions(
             inclure_ressources=request.inclure_ressources,
             ressources_disponibles=ressources_disponibles,
             objectifs=objectifs,
-            study_objects=sequence_study_objects_titles,
+            study_objects=formatted_study_objects,
             instructions_supplementaires=request.instructions_supplementaires
         )
         

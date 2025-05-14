@@ -52,6 +52,9 @@ const ProposeSeances = () => {
   const [editedSeances, setEditedSeances] = useState([]);
   const [currentEditIndex, setCurrentEditIndex] = useState(0);
   const [objectivesMap, setObjectivesMap] = useState({});
+  const [allObjectives, setAllObjectives] = useState([]);
+  const [allResources, setAllResources] = useState([]);
+  const [resourcesMap, setResourcesMap] = useState({});
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
   
@@ -84,6 +87,7 @@ const ProposeSeances = () => {
     }
   }, [id, location.state]);
 
+  // Récupération des objectifs de la séquence et création d'une map id -> titre
   useEffect(() => {
     const fetchObjectives = async () => {
       try {
@@ -104,6 +108,49 @@ const ProposeSeances = () => {
     };
     fetchObjectives();
   }, [id, API_BASE_URL]);
+  
+  // Récupération de tous les objectifs pour le sélecteur
+  useEffect(() => {
+    const fetchAllObjectives = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_BASE_URL}/api/v1/objectives`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data && response.data.items) {
+          setAllObjectives(response.data.items);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des objectifs", err);
+      }
+    };
+    fetchAllObjectives();
+  }, [API_BASE_URL]);
+  
+  // Récupération des ressources disponibles
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_BASE_URL}/api/v1/resources`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data && response.data.items) {
+          setAllResources(response.data.items);
+          
+          // Créer une map des ressources pour l'affichage
+          const map = {};
+          response.data.items.forEach(res => {
+            map[res.id] = res.title;
+          });
+          setResourcesMap(map);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des ressources", err);
+      }
+    };
+    fetchResources();
+  }, [API_BASE_URL]);
 
   const handleConfigSubmit = (e) => {
     e.preventDefault();
@@ -155,6 +202,26 @@ const ProposeSeances = () => {
   const handleEditorChange = (index, newData) => {
     const updatedSeances = [...editedSeances];
     updatedSeances[index] = newData;
+    setEditedSeances(updatedSeances);
+  };
+  
+  // Gestion des modifications d'objectifs
+  const handleObjectivesChange = (objectives) => {
+    const updatedSeances = [...editedSeances];
+    updatedSeances[currentEditIndex] = {
+      ...updatedSeances[currentEditIndex],
+      objective_ids: objectives
+    };
+    setEditedSeances(updatedSeances);
+  };
+  
+  // Gestion des modifications de ressources
+  const handleResourcesChange = (resources) => {
+    const updatedSeances = [...editedSeances];
+    updatedSeances[currentEditIndex] = {
+      ...updatedSeances[currentEditIndex],
+      resource_ids: resources
+    };
     setEditedSeances(updatedSeances);
   };
 
@@ -440,37 +507,76 @@ const ProposeSeances = () => {
                       
                       {/* Affichage des ID des objectifs associés */}
                       {editedSeances[currentEditIndex]?.objective_ids && 
-                       editedSeances[currentEditIndex].objective_ids.length > 0 && (
+                       (
                         <Grid item xs={12}>
                           <Paper variant="outlined" sx={{ p: 2 }}>
                             <Typography variant="subtitle2" gutterBottom>
                               Objectifs associés :
                             </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                              {editedSeances[currentEditIndex].objective_ids.map((objId, idx) => (
-                                <Chip key={idx} label={objectivesMap[objId] ? objectivesMap[objId] : `Objectif ${objId}`} size="small" />
-                              ))}
-                            </Box>
+                            <FormControl fullWidth sx={{ mt: 1 }}>
+                              <InputLabel id="objectives-select-label">Objectifs</InputLabel>
+                              <Select
+                                labelId="objectives-select-label"
+                                multiple
+                                value={editedSeances[currentEditIndex].objective_ids || []}
+                                onChange={(e) => handleObjectivesChange(e.target.value)}
+                                renderValue={(selected) => (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {selected.map((objId) => (
+                                      <Chip 
+                                        key={objId} 
+                                        label={objectivesMap[objId] || allObjectives.find(o => o.id === objId)?.title || `Objectif ${objId}`} 
+                                        size="small" 
+                                      />
+                                    ))}
+                                  </Box>
+                                )}
+                              >
+                                {allObjectives.map((objective) => (
+                                  <MenuItem key={objective.id} value={objective.id}>
+                                    {objective.title}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
                           </Paper>
                         </Grid>
                       )}
                       
-                      {/* Affichage des ID des ressources associées */}
-                      {editedSeances[currentEditIndex]?.resource_ids && 
-                       editedSeances[currentEditIndex].resource_ids.length > 0 && (
-                        <Grid item xs={12}>
-                          <Paper variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" gutterBottom>
-                              Ressources associées :
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                              {editedSeances[currentEditIndex].resource_ids.map((resId, idx) => (
-                                <Chip key={idx} label={`ID: ${resId}`} size="small" />
+                      {/* Sélection et affichage des ressources associées */}
+                      <Grid item xs={12}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Ressources associées :
+                          </Typography>
+                          <FormControl fullWidth sx={{ mt: 1 }}>
+                            <InputLabel id="resources-select-label">Ressources</InputLabel>
+                            <Select
+                              labelId="resources-select-label"
+                              multiple
+                              value={editedSeances[currentEditIndex]?.resource_ids || []}
+                              onChange={(e) => handleResourcesChange(e.target.value)}
+                              renderValue={(selected) => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {selected.map((resId) => (
+                                    <Chip 
+                                      key={resId} 
+                                      label={resourcesMap[resId] || allResources.find(r => r.id === resId)?.title || `Ressource ${resId}`} 
+                                      size="small" 
+                                    />
+                                  ))}
+                                </Box>
+                              )}
+                            >
+                              {allResources.map((resource) => (
+                                <MenuItem key={resource.id} value={resource.id}>
+                                  {resource.title} {resource.type?.value ? `(${resource.type.value})` : ''}
+                                </MenuItem>
                               ))}
-                            </Box>
-                          </Paper>
-                        </Grid>
-                      )}
+                            </Select>
+                          </FormControl>
+                        </Paper>
+                      </Grid>
                     </Grid>
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
