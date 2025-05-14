@@ -74,10 +74,7 @@ const ResourceForm = ({
     title: '',
     resource_type_id: '',
     resource_sub_type_id: '',
-    session_ids: session ? [session.id] : [], 
-    // ai_prompt: '',
-    // ai_model: '',
-    // ai_raw_output: ''
+    session_ids: session ? [session.id] : []
   });
   const [sourceType, setSourceType] = useState('ai'); 
   const [selectedFile, setSelectedFile] = useState(null);
@@ -95,17 +92,6 @@ const ResourceForm = ({
 
   // --- Animation de chargement pour la génération IA ---
   const [aiLoading, setAiLoading] = useState(false);
-
-  // Nouveau : contenu généré IA (JSON)
-  const [generatedContent, setGeneratedContent] = useState(null); 
-  const [jsonEditorValue, setJsonEditorValue] = useState(''); // Texte du textarea
-  const [jsonEditorError, setJsonEditorError] = useState('');
-
-  const [fusionLoading, setFusionLoading] = useState(false);
-  const [fusionError, setFusionError] = useState('');
-  const [fusionHtmlUrl, setFusionHtmlUrl] = useState('');
-  // Chemin local du HTML généré par l'IA (file system)
-  const [fusionHtmlPath, setFusionHtmlPath] = useState('');
 
   const [allStudyObjects, setAllStudyObjects] = useState([]);
   const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
@@ -322,9 +308,9 @@ const ResourceForm = ({
         // dataToSend.append('ai_raw_output', formData.ai_raw_output);
     }
 
-    // Si IA, transmettre le chemin du HTML généré
-    if (sourceType === 'ai' && fusionHtmlPath) {
-      dataToSend.append('html_path', fusionHtmlPath);
+    // Si IA, le chemin du HTML généré sera géré par DynamicAIForm
+    if (sourceType === 'ai') {
+      // Cette partie est maintenant gérée par DynamicAIForm
     }
 
     try {
@@ -380,81 +366,11 @@ const ResourceForm = ({
   };
 
   // Fonction dédiée pour la génération d'un QCM via l'API IA
-  const handleQCMGeneration = async (payload) => {
-    try {
-      const response = await api.post(
-        '/ai/generate-resource',
-        {
-          type_key: payload.typeKey,
-          subtype_key: payload.subtypeKey,
-          variables: payload.variables
-        }
-      );
-      // Afficher le résultat dans l'éditeur JSON
-      setGeneratedContent(response.data.content);
-      setJsonEditorValue(JSON.stringify(response.data.content, null, 2));
-      setJsonEditorError('');
-      // On n'appelle plus onSuccess ici : on attend la validation de l'utilisateur
-    } catch (err) {
-      alert('Erreur lors de la génération du QCM : ' + (err.response?.data?.detail || err.message));
-    }
-  };
+  // La fonction handleQCMGeneration a été supprimée car cette fonctionnalité est maintenant
+  // entièrement gérée par le composant DynamicAIForm
 
-  // Fonction de validation/enregistrement du JSON modifié
-  const handleValidateAndSave = () => {
-    try {
-      const parsed = JSON.parse(jsonEditorValue);
-      setJsonEditorError('');
-      // Ici, tu peux appeler la logique d'enregistrement définitif (API, etc.)
-      // Par exemple, tu peux passer le contenu à onSuccess ou lancer une requête d'enregistrement
-      if (onSuccess) onSuccess({ ...generatedContent, ...parsed });
-      else alert('Contenu validé : ' + JSON.stringify(parsed));
-      // Optionnel : reset l'éditeur après enregistrement
-      setGeneratedContent(null);
-      setJsonEditorValue('');
-    } catch (e) {
-      setJsonEditorError('Le contenu n\'est pas un JSON valide : ' + e.message);
-    }
-  };
-
-  // Fonction de fusion IA
-  const handleFusion = async () => {
-    setFusionLoading(true);
-    setFusionError('');
-    setFusionHtmlUrl('');
-    setFusionHtmlPath('');
-    try {
-      // Détermination du type_key et subtype_key en fonction du type et sous-type sélectionnés
-      const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
-      const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
-      let typeKey = 'exercice';
-      let subtypeKey = 'qcm';
-      let modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html';
-      if (selectedType && selectedSubType) {
-        // Utiliser les clés du backend (key)
-        typeKey = selectedType.key;
-        subtypeKey = selectedSubType.key;
-        // Sélectionner le bon modèle HTML selon le couple type/sous-type
-        if (typeKey === 'oeuvre' && subtypeKey === 'extrait') {
-          modelPath = '/backend/templates/oeuvre_models/default_oeuvre_extrait.html';
-        } else if (typeKey === 'exercice' && subtypeKey === 'qcm') {
-          modelPath = '/backend/templates/qcm_models/default_exercice_qcm.html';
-        }
-      }
-      // Log de debug pour vérifier les paramètres envoyés
-      console.log('[Fusion IA] typeKey:', typeKey, 'subtypeKey:', subtypeKey, 'modelPath:', modelPath);
-      const dataJson = JSON.stringify(formData.content || formData.variables || jsonEditorValue);
-      const userId = formData.user_id || 'user';
-      const res = await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
-      setFusionHtmlUrl(res.html_url);
-      // Capturer le chemin réel du fichier généré
-      setFusionHtmlPath(res.html_path);
-    } catch (e) {
-      setFusionError(e.message || 'Erreur lors de la fusion IA');
-    } finally {
-      setFusionLoading(false);
-    }
-  };
+  // La fonction handleFusion a été supprimée car cette fonctionnalité est maintenant 
+  // entièrement gérée par le composant DynamicAIForm
 
   // --- Rendu JSX --- 
 
@@ -465,11 +381,12 @@ const ResourceForm = ({
   // Afficher le formulaire IA si on est en mode IA et que les deux menus sont sélectionnés
   const showAIGenerationForm = sourceType === 'ai' && selectedType && selectedSubType;
 
-  // Gestionnaire de génération IA avec animation
+  // Gestionnaire de génération IA avec animation - 
+  // Supprimé car la génération est maintenant gérée par DynamicAIForm
   const handleAIGenerationWithLoading = async (payload) => {
     setAiLoading(true);
     try {
-      await handleQCMGeneration(payload);
+      // La génération est maintenant gérée dans DynamicAIForm
     } finally {
       setAiLoading(false);
     }
@@ -674,50 +591,6 @@ const ResourceForm = ({
               />
             </CardContent>
           </Card>
-        </Box>
-      )}
-      {/* Affichage de l'éditeur JSON si contenu généré */}
-      {generatedContent && (
-        <Box sx={{ my: 2 }}>
-          <Typography variant="h6" gutterBottom>Contenu généré (modifiable avant enregistrement) :</Typography>
-          <textarea
-            value={jsonEditorValue}
-            onChange={e => setJsonEditorValue(e.target.value)}
-            rows={Math.max(10, jsonEditorValue.split('\n').length + 2)}
-            style={{ width: '100%', fontFamily: 'monospace', fontSize: 14, border: jsonEditorError ? '2px solid red' : '1px solid #ccc', borderRadius: 4, padding: 8 }}
-          />
-          {jsonEditorError && <Typography color="error" sx={{ mt: 1 }}>{jsonEditorError}</Typography>}
-          <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleValidateAndSave}>
-            Valider et enregistrer
-          </Button>
-          {jsonEditorValue && (
-            <Box sx={{ mt: 2 }}>
-              {/* Affichage du lien vers le fichier HTML existant si présent et pas de nouvelle fusion */}
-              {isEdit && initialData?.html_url && !fusionHtmlUrl && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  Fichier HTML actuel :{' '}
-                  <a href={initialData.html_url} target="_blank" rel="noopener noreferrer">Voir le fichier HTML</a><br />
-                  <span style={{fontStyle: 'italic', color: '#888'}}>Ce fichier restera inchangé tant qu'aucune nouvelle génération n'est demandée.</span>
-                </Alert>
-              )}
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleFusion}
-                disabled={fusionLoading}
-              >
-                {fusionLoading ? 'Fusion en cours...' : 'Fusionner avec le modèle HTML'}
-              </Button>
-              {fusionError && <Alert severity="error" sx={{ mt: 1 }}>{fusionError}</Alert>}
-              {fusionHtmlUrl && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  Fichier HTML généré (temporaire) :{' '}
-                  <a href={fusionHtmlUrl} target="_blank" rel="noopener noreferrer">Voir l'aperçu HTML</a><br />
-                  <span style={{fontStyle: 'italic', color: '#888'}}>Ce fichier est temporaire tant que la ressource n'est pas enregistrée définitivement.</span>
-                </Alert>
-              )}
-            </Box>
-          )}
         </Box>
       )}
     </>
