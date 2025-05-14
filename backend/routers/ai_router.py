@@ -220,11 +220,11 @@ async def merge_resource(
             # Sélection du modèle HTML selon type/sous-type
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             if type_key.lower() == "oeuvre" and subtype_key.lower() == "extrait":
-                model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
+                model_dir = os.path.join(BASE_DIR, "ai", "template", "oeuvre_models")
             elif type_key.lower() == "exercice" and subtype_key.lower() == "qcm":
-                model_dir = os.path.join(BASE_DIR, "templates", "qcm_models")
+                model_dir = os.path.join(BASE_DIR, "ai", "template", "qcm_models")
             elif type_key.lower() == "oeuvre" and subtype_key.lower() == "oeuvrecomp":
-                model_dir = os.path.join(BASE_DIR, "templates", "oeuvre_models")
+                model_dir = os.path.join(BASE_DIR, "ai", "template", "oeuvre_models")
             elif type_key.lower() == "exercice" and subtype_key.lower() == "vocabulaire":
                 model_dir = os.path.join(BASE_DIR, "ai", "template", "vocabulaire_models")
             elif type_key.lower() == "exercice" and subtype_key.lower() == "champlex":
