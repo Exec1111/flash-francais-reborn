@@ -11,6 +11,7 @@ from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequ
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
 from backend.ai.prompts.prompt_generator import PromptGenerator
+from backend.ai.services.registry import ResourceGenerationError
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel

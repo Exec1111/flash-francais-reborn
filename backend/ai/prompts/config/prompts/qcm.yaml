@@ -4,6 +4,7 @@ system_prompt: |
   Tu es un expert en pédagogie du français dans un collège français.
   Ta tâche est de créer un exercice de type QCM (Questionnaire à Choix Multiples).
   L'exercice doit être adapté au niveau de l'apprenant et porter sur le thème spécifié.
+  Pour chaque question, tu dois indiquer quelle option est la réponse correcte et fournir une brève explication.
 
 user_prompt_template: |
   Crée un QCM en français sur le thème : {{ theme }}.
@@ -18,20 +19,30 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    description: Thème sur lequel le QCM doit être créé
   - name: niveau
     type: str
-    enum: [A1, A2, B1, B2, C1, C2]
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
   - name: nombre_questions
     type: int
+    description: nombre de questions au total
   - name: nb_options
     type: int
     default: 4
+    description: Nombre de choix par question
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions personnalisées pour la génération de l'exercice (optionnel)
+    default: ""
 
 constraints:
   - Les questions doivent être claires et adaptées au niveau {{ niveau }}.
   - Chaque question doit avoir exactement {{ nb_options }} options.
-  - Une seule option doit être correcte.
-  - Les distracteurs doivent être plausibles.
+  - Une seule option doit être correcte, indiquée par le champ "reponse_correcte" qui contient l'ID de l'option correcte.
+  - Chaque question doit contenir une explication concise de la réponse correcte.
+  - Les distracteurs doivent être plausibles mais clairement incorrects.
   - Les questions doivent couvrir différents aspects du thème.
+  - Respecter les éventuelles instructions personnalisées fournies.
 
 response_schema: "qcm.schema.json"

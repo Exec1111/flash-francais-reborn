@@ -44,7 +44,7 @@ const createAxiosInstance = () => {
 
 const axiosInstance = createAxiosInstance();
 
-const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onClose, loading, typeId=1, subtypeId=1, initialTitle="", initialDescription="" }) => {
+const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onClose, loading, typeId=1, subtypeId=1, initialTitle="", initialDescription="", selectedStudyObjects=[] }) => {
   const navigate = useNavigate();
   const [formSchema, setFormSchema] = useState(null);
   const [formData, setFormData] = useState({});
@@ -106,6 +106,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
         schema.fields.forEach(field => {
           if (field.default !== null && field.default !== undefined) {
             initialData[field.name] = field.default;
+          }
+          
+          // Si c'est un QCM et que le champ est 'theme', utiliser le titre du premier objet d'étude si disponible
+          if (typeKey.toLowerCase() === 'exercice' && subtypeKey.toLowerCase() === 'qcm' && 
+              field.name === 'theme' && selectedStudyObjects && selectedStudyObjects.length > 0) {
+            console.log('[DEBUG] Utilisation du titre du premier objet d\'étude comme thème pour le QCM:', selectedStudyObjects[0].title);
+            initialData['theme'] = selectedStudyObjects[0].title;
           }
         });
         
@@ -200,12 +207,12 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
     if (!formSchema) return true;
     formSchema.fields.forEach(field => {
       if (field.required && (formData[field.name] === undefined || formData[field.name] === '')) {
-        newErrors[field.name] = `${field.label} est obligatoire`;
+        newErrors[field.name] = `${field.description || field.label} est obligatoire`;
         isValid = false;
       }
       if (field.type === 'number' && formData[field.name] !== undefined) {
         if (field.validations?.min !== undefined && formData[field.name] < field.validations.min) {
-          newErrors[field.name] = `${field.label} doit être au moins ${field.validations.min}`;
+          newErrors[field.name] = `${field.description || field.label} doit être au moins ${field.validations.min}`;
           isValid = false;
         }
         if (field.validations?.max !== undefined && formData[field.name] > field.validations.max) {
@@ -749,14 +756,14 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                         <TextField
                           id={field.name}
                           name={field.name}
-                          label={field.label}
+                          label={field.description || field.label}
                           type="number"
                           value={formData[field.name] || ''}
                           onChange={handleChange}
                           fullWidth
                           required={field.required}
                           error={!!errors[field.name]}
-                          helperText={errors[field.name] || field.description}
+                          helperText={errors[field.name] || ""}
                           InputProps={{
                             inputProps: {
                               min: field.validations?.min,
@@ -769,13 +776,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                         <TextField
                           id={field.name}
                           name={field.name}
-                          label={field.label}
+                          label={field.description || field.label}
                           value={Array.isArray(formData[field.name]) ? formData[field.name].join(', ') : ''}
                           onChange={(e) => handleListChange(field.name, e.target.value)}
                           fullWidth
                           required={field.required}
                           error={!!errors[field.name]}
-                          helperText={errors[field.name] || field.description || "Entrez les valeurs séparées par des virgules"}
+                          helperText={errors[field.name] || "Entrez les valeurs séparées par des virgules"}
                           multiline
                           rows={3}
                           margin="normal"
@@ -787,14 +794,14 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                           required={field.required}
                           margin="normal"
                         >
-                          <InputLabel id={`${field.name}-label`}>{field.label}</InputLabel>
+                          <InputLabel id={`${field.name}-label`}>{field.description || field.label}</InputLabel>
                           <Select
                             labelId={`${field.name}-label`}
                             id={field.name}
                             name={field.name}
                             value={formData[field.name] || ''}
                             onChange={handleChange}
-                            label={field.label}
+                            label={field.description || field.label}
                           >
                             <MenuItem value="">
                               <em>-- Sélectionner --</em>
@@ -815,13 +822,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                         <TextField
                           id={field.name}
                           name={field.name}
-                          label={field.label}
+                          label={field.description || field.label}
                           value={formData[field.name] || ''}
                           onChange={handleChange}
                           fullWidth
                           required={field.required}
                           error={!!errors[field.name]}
-                          helperText={errors[field.name] || field.description}
+                          helperText={errors[field.name] || ""}
                           multiline={field.multiline || (typeof formData[field.name] === 'string' && formData[field.name].length > 100)}
                           rows={field.multiline ? 4 : 1}
                           margin="normal"

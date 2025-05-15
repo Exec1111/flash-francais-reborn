@@ -32,9 +32,18 @@ async def generate_ai_resource_content(
     Génère le contenu d'une ressource IA en utilisant le prompt approprié.
     """
     try:
+        # Normaliser les clés en minuscules pour éviter les problèmes de casse
+        type_key_lower = type_key.lower() if type_key else type_key
+        subtype_key_lower = subtype_key.lower() if subtype_key else subtype_key
+        
         # Récupérer le nom de prompt depuis le registre
-        prompt_name = PROMPT_REGISTRY.get((type_key, subtype_key))
+        prompt_name = PROMPT_REGISTRY.get((type_key_lower, subtype_key_lower))
         if not prompt_name:
+            # Essayer aussi avec les clés originales pour la rétrocompatibilité
+            prompt_name = PROMPT_REGISTRY.get((type_key, subtype_key))
+            
+        if not prompt_name:
+            logger.error(f"Aucun prompt trouvé pour {type_key}/{subtype_key} (normalisé: {type_key_lower}/{subtype_key_lower})")
             raise ResourceGenerationError(f"Aucun prompt trouvé pour {type_key}/{subtype_key}")
         # Générateur générique basé sur YAML/Jinja
         generator = PromptGenerator(prompt_name)
