@@ -109,11 +109,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
           }
           
           // Si c'est un QCM et que le champ est 'theme', utiliser le titre du premier objet d'étude si disponible
-          if (typeKey.toLowerCase() === 'exercice' && subtypeKey.toLowerCase() === 'qcm' && 
-              field.name === 'theme' && selectedStudyObjects && selectedStudyObjects.length > 0) {
-            console.log('[DEBUG] Utilisation du titre du premier objet d\'étude comme thème pour le QCM:', selectedStudyObjects[0].title);
-            initialData['theme'] = selectedStudyObjects[0].title;
-          }
+ if (
+   field.name === 'theme' &&
+   !initialData.theme &&                     // keep existing value
+   selectedStudyObjects?.length
+ ) {
+   initialData.theme = selectedStudyObjects[0].title;
+ }
         });
         
         setFormSchema(schema);
@@ -189,9 +191,11 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
   };
 
   const handleListChange = (name, value) => {
+    // Stocker la valeur brute pour les champs de liste au lieu de la traiter immédiatement
+    // Le traitement sera fait lors de la soumission du formulaire
     setFormData({
       ...formData,
-      [name]: value.split(',').map(item => item.trim()).filter(item => item !== '')
+      [name]: value
     });
     if (errors[name]) {
       setErrors({
@@ -205,22 +209,38 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
     const newErrors = {};
     let isValid = true;
     if (!formSchema) return true;
+    
+    // Clone des données du formulaire pour traitement
+    const processedFormData = {...formData};
+    
     formSchema.fields.forEach(field => {
-      if (field.required && (formData[field.name] === undefined || formData[field.name] === '')) {
+      // Traitement spécifique pour les champs de liste
+      if (isListField(field) && typeof processedFormData[field.name] === 'string') {
+        processedFormData[field.name] = processedFormData[field.name]
+          .split(',')
+          .map(item => item.trim())
+          .filter(item => item !== '');
+      }
+      
+      if (field.required && (processedFormData[field.name] === undefined || 
+                             processedFormData[field.name] === '' ||
+                             (Array.isArray(processedFormData[field.name]) && processedFormData[field.name].length === 0))) {
         newErrors[field.name] = `${field.description || field.label} est obligatoire`;
         isValid = false;
       }
-      if (field.type === 'number' && formData[field.name] !== undefined) {
-        if (field.validations?.min !== undefined && formData[field.name] < field.validations.min) {
+      
+      if (field.type === 'number' && processedFormData[field.name] !== undefined) {
+        if (field.validations?.min !== undefined && processedFormData[field.name] < field.validations.min) {
           newErrors[field.name] = `${field.description || field.label} doit être au moins ${field.validations.min}`;
           isValid = false;
         }
-        if (field.validations?.max !== undefined && formData[field.name] > field.validations.max) {
+        if (field.validations?.max !== undefined && processedFormData[field.name] > field.validations.max) {
           newErrors[field.name] = `${field.label} ne peut pas dépasser ${field.validations.max}`;
           isValid = false;
         }
       }
     });
+    
     setErrors(newErrors);
     return isValid;
   };
@@ -234,12 +254,26 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
     if (validateForm()) {
       try {
         setError(null);
-        setActiveStep(1);  
+        setActiveStep(1);
+        
+        // Traiter les champs de liste avant soumission
+        const processedFormData = {...formData};
+        
+        if (formSchema) {
+          formSchema.fields.forEach(field => {
+            if (isListField(field) && typeof processedFormData[field.name] === 'string') {
+              processedFormData[field.name] = processedFormData[field.name]
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item !== '');
+            }
+          });
+        }
         
         const requestData = { 
           type_key: typeKey, 
           subtype_key: subtypeKey, 
-          variables: formData 
+          variables: processedFormData 
         };
         
         const token = localStorage.getItem('token');
@@ -415,6 +449,31 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
     if (currentEditIndex > 0) {
       setCurrentEditIndex(currentEditIndex - 1);
     }
+  };
+
+  const handlePrevStep = () => {
+    // Revenir à l'étape précédente dans le processus
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+      
+      // Si on revient de l'étape de génération (1) à la configuration (0), il faut réinitialiser certains états
+      if (activeStep === 1) {
+        // Pas besoin de réinitialiser quoi que ce soit ici
+      }
+      
+      // Si on revient de l'étape de fusion (3) à l'édition (2), réinitialiser les états liés à la fusion
+      if (activeStep === 3) {
+        setMergeSuccess(false);
+        setHtmlPreviewUrl(null);
+      }
+    }
+  };
+
+  // Fonction spécifique pour revenir directement à la configuration depuis l'édition
+  const handleBackToConfiguration = () => {
+    setActiveStep(0); // Revenir directement à l'étape 0 (configuration)
+    setGenerationResults([]);
+    setEditedResults([]);
   };
 
   const handleNextResult = () => {
@@ -777,7 +836,7 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                           id={field.name}
                           name={field.name}
                           label={field.description || field.label}
-                          value={Array.isArray(formData[field.name]) ? formData[field.name].join(', ') : ''}
+                          value={formData[field.name] || ''}
                           onChange={(e) => handleListChange(field.name, e.target.value)}
                           fullWidth
                           required={field.required}
@@ -838,131 +897,158 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                   ))}
                 </Grid>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
-                  {onCancel && (
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+  <div>
+    {activeStep > 0 && (
+      <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handlePrevStep}>
+        Précédent
+      </Button>
+    )}
+  </div>
+  <div>
+                    {onCancel && (
+                      <Button 
+                        variant="outlined" 
+                        color="secondary" 
+                        onClick={onCancel}
+                        sx={{ mr: 1 }}
+                      >
+                        Annuler
+                      </Button>
+                    )}
                     <Button 
-                      variant="outlined" 
-                      color="secondary" 
-                      onClick={onCancel}
+                      variant="contained" 
+                      color="primary" 
+                      onClick={handleSubmitForm}
                       disabled={loading}
                     >
-                      Annuler
+                      Générer
                     </Button>
-                  )}
-                  <Button 
-                    onClick={handleSubmit}
-                    variant="contained" 
-                    color="primary"
-                    disabled={loading}
-                    startIcon={loading && <CircularProgress size={20} color="inherit" />}
-                  >
-                    {loading ? (
-                      <>
-                        <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                        Génération en cours...
-                      </>
-                    ) : (
-                      "Générer"
-                    )}
-                  </Button>
+                  </div>
                 </Box>
               </Box>
             </>
-          )}
-          
-          {activeStep === 1 && (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CircularProgress size={60} />
-              <Typography variant="h6" sx={{ mt: 2 }}>
-                Génération en cours...
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Cela peut prendre quelques instants
-              </Typography>
-            </Box>
-          )}
-          
-          {activeStep === 2 && editedResults.length > 0 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Édition des données brutes avant fusion
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Ressource {currentEditIndex + 1} sur {editedResults.length} - {generatedTitles[currentEditIndex] || "Ressource générée"}
-              </Typography>
-              
-              <ResourceEditorForm 
-                initialTitle={initialTitle}
-                initialDescription={initialDescription}
-                initialData={editedResults[currentEditIndex]} 
-                onSubmit={() => handleMergeAll()}
-                onChange={(data) => handleEditorChange(currentEditIndex, data)}
-                hideButtons={true}
-              />
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+        )}
+        
+        {activeStep === 1 && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Génération en cours...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Cela peut prendre quelques instants
+            </Typography>
+            <Button 
+              variant="outlined"
+              startIcon={<ArrowBackIcon />}
+              onClick={handlePrevStep}
+            >
+              Précédent
+            </Button>
+          </Box>
+        )}
+        
+        {activeStep === 2 && editedResults.length > 0 && (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Édition des données brutes avant fusion
+            </Typography>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Ressource {currentEditIndex + 1} sur {editedResults.length} - {generatedTitles[currentEditIndex] || "Ressource générée"}
+            </Typography>
+            
+            <ResourceEditorForm 
+              initialTitle={initialTitle}
+              initialDescription={initialDescription}
+              initialData={editedResults[currentEditIndex]} 
+              onSubmit={() => handleMergeAll()}
+              onChange={(data) => handleEditorChange(currentEditIndex, data)}
+              hideButtons={true}
+            />
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+              <div>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  onClick={handleBackToConfiguration}
+                  sx={{ mr: 1 }}
+                >
+                  Revenir à la configuration
+                </Button>
                 <Button
                   startIcon={<ArrowBackIcon />}
                   onClick={handlePrevResult}
                   disabled={currentEditIndex === 0}
                 >
-                  Précédent
+                  Résultat précédent
                 </Button>
-                
-                <Box>
-                  {currentEditIndex === editedResults.length - 1 ? (
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleMergeAll}
-                    >
-                      Fusionner
-                    </Button>
-                  ) : (
-                    <Button
-                      endIcon={<ArrowForwardIcon />}
-                      variant="contained"
-                      onClick={handleNextResult}
-                    >
-                      Suivant
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-            </Box>
-          )}
-          
-          {activeStep === 3 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Ressource créée avec succès
-              </Typography>
+              </div>
               
-              {mergeSuccess && htmlPreviewUrl && (
-                <Box sx={{ my: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Aperçu du contenu HTML:
-                  </Typography>
-                  <Button 
-                    variant="outlined" 
+              <div>
+                {currentEditIndex === editedResults.length - 1 ? (
+                  <Button
+                    variant="contained"
                     color="primary"
-                    href={htmlPreviewUrl}
-                    target="_blank"
-                    sx={{ mb: 2 }}
+                    onClick={handleMergeAll}
                   >
-                    Voir l'aperçu HTML
+                    Fusionner
                   </Button>
-                </Box>
-              )}
-              
-              <Typography color="text.secondary" paragraph>
-                La ressource a été correctement fusionnée. Cliquez sur "Terminer" pour enregistrer définitivement le fichier HTML et compléter le processus.
-              </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                ) : (
+                  <Button
+                    endIcon={<ArrowForwardIcon />}
+                    variant="contained"
+                    onClick={handleNextResult}
+                  >
+                    Suivant
+                  </Button>
+                )}
+              </div>
+            </Box>
+          </Box>
+        )}
+        
+        {activeStep === 3 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Ressource créée avec succès
+            </Typography>
+            
+            {mergeSuccess && htmlPreviewUrl && (
+              <Box sx={{ my: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Aperçu du contenu HTML:
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  href={htmlPreviewUrl}
+                  target="_blank"
+                  sx={{ mb: 2 }}
+                >
+                  Voir l'aperçu HTML
+                </Button>
+              </Box>
+            )}
+            
+            <Typography color="text.secondary" paragraph>
+              La ressource a été correctement fusionnée. Cliquez sur "Terminer" pour enregistrer définitivement le fichier HTML et compléter le processus.
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+              <div>
+                <Button 
+                  variant="outlined" 
+                  startIcon={<ArrowBackIcon />}
+                  onClick={handlePrevStep}
+                >
+                  Revenir à l'édition
+                </Button>
+              </div>
+              <div>
                 <Button 
                   variant="contained" 
-                  color="primary"
+                  color="primary" 
                   onClick={handleFinish}
                   disabled={isLoading || !mergeSuccess}
                 >
@@ -972,12 +1058,13 @@ const DynamicAIForm = ({ typeKey, subtypeKey, onSubmit, onSuccess, onCancel, onC
                       Finalisation...
                     </>
                   ) : (
-                    "Terminer"
+                    "Finaliser la ressource"
                   )}
                 </Button>
-              </Box>
+              </div>
             </Box>
-          )}
+          </Box>
+        )}
         </CardContent>
       </Card>
       

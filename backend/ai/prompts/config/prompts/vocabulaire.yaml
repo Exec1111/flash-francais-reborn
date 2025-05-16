@@ -23,18 +23,18 @@ user_prompt_template: |
   Pour chaque mot, fournis une définition courte et adaptée au niveau des apprenants. La sortie doit être une liste d'objets avec les champs "mot" et "definition".
 
 parameters:
-  - name: niveau
-    type: str
-    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
-    enum: [A1, A2, B1, B2, C1, C2]
-  - name: liste_mots
-    type: list
-    description: Liste de mots à utiliser pour l'exercice (optionnel, prioritaire si fourni)
-    default: []
   - name: theme
     type: str
     description: Thème à partir duquel générer les mots de vocabulaire (optionnel)
     default: ""
+  - name: niveau
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants  
+  - name: liste_mots
+    type: list
+    description: Liste de mots à utiliser pour l'exercice (optionnel, prioritaire si fourni)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
