@@ -50,6 +50,8 @@ const ProposeWorks = () => {
   const [generatedTitles, setGeneratedTitles] = useState([]);
   const [currentFormData, setCurrentFormData] = useState(null);
   const [selectedForMerge, setSelectedForMerge] = useState([]); // Nouvel état
+  const [classLevels, setClassLevels] = useState([]);
+  const [selectedClassLevel, setSelectedClassLevel] = useState('');
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
@@ -74,6 +76,70 @@ const ProposeWorks = () => {
           .then(r => setResourceSubTypes(r.data));
       });
   }, []);
+
+  // Récupérer les niveaux de classe disponibles depuis le schema du prompt YAML
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    // En attendant que l'API retourne les valeurs correctement, utiliser les valeurs en dur du YAML
+    // Ces valeurs doivent correspondre à celles définies dans oeuvre_oeuvrecomp.yaml
+    const defaultClassLevels = [
+      '6ème faible', '6ème', '6ème élevé', 
+      '5ème faible', '5ème', '5ème élevé', 
+      '4ème faible', '4ème', '4ème élevé', 
+      '3ème faible', '3ème', '3ème élevé'
+    ];
+    
+    // Mettre à jour avec les valeurs par défaut immédiatement
+    setClassLevels(defaultClassLevels);
+    setSelectedClassLevel(defaultClassLevels[0]);
+
+    // Essayer de récupérer les valeurs depuis l'API (méthode qui pourrait ne pas encore fonctionner)
+    // Utiliser la même API que DynamicAIForm qui récupère le schéma complet
+    axios.get(`${API_BASE_URL}/api/v1/ai/resource-types/oeuvre/${workType==='extrait' ? 'extrait' : 'oeuvrecomp'}/schema`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    })
+    .then(res => {
+      console.log('Schéma du prompt récupéré:', JSON.stringify(res.data, null, 2));
+      
+      // Déboguer le schéma pour comprendre sa structure
+      if (res.data) {
+        console.log('Structure du schéma:', Object.keys(res.data));
+        if (res.data.fields) {
+          console.log('Champs disponibles:', res.data.fields.map(f => f.name));
+        }
+        
+        // Méthode 1: Rechercher le champ niveau_classe via find
+        if (res.data.fields && Array.isArray(res.data.fields)) {
+          const niveauClasseField = res.data.fields.find(field => field.name === 'niveau_classe');
+          console.log('Champ niveau_classe trouvé:', niveauClasseField);
+          
+          if (niveauClasseField && niveauClasseField.validations && niveauClasseField.validations.enum) {
+            console.log('Niveaux de classe disponibles via enum:', niveauClasseField.validations.enum);
+            setClassLevels(niveauClasseField.validations.enum);
+            if (niveauClasseField.validations.enum.length > 0) {
+              setSelectedClassLevel(niveauClasseField.validations.enum[0]);
+            }
+          }
+          // Méthode 2: Rechercher via enum directement dans le champ
+          else if (niveauClasseField && niveauClasseField.enum) {
+            console.log('Niveaux de classe disponibles via champ enum:', niveauClasseField.enum);
+            setClassLevels(niveauClasseField.enum);
+            if (niveauClasseField.enum.length > 0) {
+              setSelectedClassLevel(niveauClasseField.enum[0]);
+            }
+          }
+          // Pour déboguer, vérifier si le champ existe mais pas l'enum
+          else if (niveauClasseField) {
+            console.log('Champ niveau_classe trouvé mais pas d\'enum:', niveauClasseField);
+          }
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Erreur lors de la récupération du schéma:', err);
+      console.log('Utilisation des niveaux de classe par défaut');
+    });
+  }, [workType]); // Dépendance à workType pour récupérer les bons niveaux selon le type d'oeuvre
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,7 +166,7 @@ const ProposeWorks = () => {
         
         const variables = { 
           theme: studyObjectTitle, 
-          niveau_classe: '3ème', 
+          niveau_classe: selectedClassLevel || '3ème', 
           instructions_personnalisees: finalInstructions 
         };
         
@@ -356,6 +422,21 @@ const ProposeWorks = () => {
             >
               <MenuItem value="extrait">Extraits</MenuItem>
               <MenuItem value="oeuvre_complete">Œuvres complètes</MenuItem>
+            </TextField>
+            <TextField
+              label="Niveau de classe"
+              select
+              value={selectedClassLevel}
+              onChange={e => setSelectedClassLevel(e.target.value)}
+              fullWidth
+              margin="normal"
+              helperText="Niveau scolaire des apprenants"
+            >
+              {classLevels.map((level) => (
+                <MenuItem key={level} value={level}>
+                  {level}
+                </MenuItem>
+              ))}
             </TextField>
             <TextField
               label="Instructions complémentaires (optionnel)"

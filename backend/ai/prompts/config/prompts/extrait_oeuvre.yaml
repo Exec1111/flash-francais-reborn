@@ -22,16 +22,19 @@ user_prompt_template: |
 parameters:
   - name: niveau_classe
     type: str
-    label: Niveau de la classe
-    description: Niveau scolaire de la classe (exemple 4e, 3e, Seconde, Première, Terminale, etc.)
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
   - name: theme
     type: str
     label: Thème
     description: Thème pédagogique à étudier
+    default: ""
   - name: instructions_personnalisees
     type: str
     label: Instructions personnalisées
     description: Instructions personnalisées complémentaires
+    default: ""
 constraints:
   - L'extrait doit être pertinent pour le niveau de la classe et le thème donnés.
   - L'extrait ne doit pas dépasser 500 mots sauf si cela est nécessaire à la compréhension.

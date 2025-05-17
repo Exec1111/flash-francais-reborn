@@ -150,7 +150,19 @@ const AdminLLMLogs = () => {
               </Box>
             </DialogTitle>
             <DialogContent>
-              <Box sx={{whiteSpace:'pre-wrap',wordBreak:'break-word',fontFamily:'monospace',fontSize:'0.8rem',maxHeight:'70vh',overflow:'auto',backgroundColor:'#f9f9f9',padding:'10px',borderRadius:'4px'}}>
+              <Box sx={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'monospace',
+                fontSize: '0.85rem',
+                maxHeight: '70vh',
+                overflow: 'auto',
+                backgroundColor: '#111827',
+                color: '#e5e7eb',
+                padding: '16px',
+                borderRadius: '4px',
+                boxShadow: 'inset 0 0 6px rgba(0,0,0,0.3)'
+              }}>
                 {openCell.value}
               </Box>
             </DialogContent>

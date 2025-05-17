@@ -1,13 +1,24 @@
 system_prompt: |
   Tu es un expert de la littérature française et étrangère.
-  Tu dois trouver une œuvre de littérature pertinente pour une étude en classe, en lien avec un thème pédagogique.
+  Tu dois soit analyser une œuvre littéraire spécifique demandée par l'utilisateur, soit trouver une œuvre pertinente en fonction d'un thème et d'un niveau scolaire.
 
 user_prompt_template: |
+  {% if oeuvre_specifique and oeuvre_specifique != "" %}
+  Prépare-moi une fiche sur l'œuvre littéraire spécifique suivante :
+
+  Œuvre : {{ oeuvre_specifique }}
+  {% if instructions_personnalisees and instructions_personnalisees != "" %}
+  Instructions personnalisées : {{ instructions_personnalisees }}
+  {% endif %}
+  {% else %}
   Trouve-moi une œuvre de littérature française ou étrangère en lien avec le thème suivant à étudier avec mes élèves.
 
   Classe : {{ niveau_classe }}
   Thème : {{ theme }}
+  {% if instructions_personnalisees and instructions_personnalisees != "" %}
   Instructions personnalisées : {{ instructions_personnalisees }}
+  {% endif %}
+  {% endif %}
 
   Pour chaque oeuvre tu donneras :
   - son titre
@@ -20,20 +31,31 @@ user_prompt_template: |
   Tu veilleras à respecter les instructions personnalisées.
 
 parameters:
+  - name: oeuvre_specifique
+    type: str
+    label: Œuvre spécifique
+    description: Titre de l'œuvre spécifique à étudier (si spécifié, les champs thème et niveau de classe sont ignorés)
+    default: ""
   - name: niveau_classe
     type: str
-    label: Niveau de la classe
-    description: Niveau scolaire de la classe (exemple 4e, 3e, Seconde, Première, Terminale, etc.)
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
+    condition: "!oeuvre_specifique || oeuvre_specifique === ''"
   - name: theme
     type: str
     label: Thème
     description: Thème pédagogique à étudier
+    default: ""
+    condition: "!oeuvre_specifique || oeuvre_specifique === ''"
   - name: instructions_personnalisees
     type: str
     label: Instructions personnalisées
     description: Instructions personnalisées complémentaires
+    default: ""
 constraints:
-  - L'oeuvre doit être pertinent pour le niveau de la classe et le thème donnés.
+  - Si une œuvre spécifique est demandée, analyser uniquement cette œuvre sans tenir compte du thème ou du niveau de classe.
+  - Si aucune œuvre spécifique n'est indiquée, l'œuvre choisie doit être pertinente pour le niveau de la classe et le thème donnés.
   - Les informations demandées doivent être complètes et précises.
   - Le texte doit être adapté à un usage pédagogique en classe.
 
