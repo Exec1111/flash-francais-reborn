@@ -1,4 +1,5 @@
 import api from './api';
+import paginationConfig from '../config/pagination';
 
 // URL de base pour les séquences
 const SEQUENCES_ENDPOINT = '/sequences';
@@ -25,7 +26,7 @@ const sequenceService = {
    * @param {number} limit - Nombre d'éléments à récupérer (pagination)
    * @returns {Promise} - Promesse avec la réponse
    */
-  getSequences: async (skip = 0, limit = 100) => {
+  getSequences: async (skip = 0, limit = paginationConfig.defaultItemsPerPage) => {
     try {
       const response = await api.get(`${SEQUENCES_ENDPOINT}?skip=${skip}&limit=${limit}`);
       return response.data;

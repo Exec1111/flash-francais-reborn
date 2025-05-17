@@ -14,7 +14,7 @@ def get_objective_by_title(db: Session, title: str):
     return db.query(Objective).filter(Objective.title == title).first()
 
 def get_objectives(db: Session, skip: int = 0, limit: int = 10, search: Optional[str] = None):
-    """Récupère une liste d'objectifs, avec recherche optionnelle."""
+    """Récupère une liste d'objectifs, avec recherche optionnelle, et le nombre total."""
     query = db.query(Objective)
 
     if search:
@@ -26,7 +26,10 @@ def get_objectives(db: Session, skip: int = 0, limit: int = 10, search: Optional
             )
         )
 
-    return query.offset(skip).limit(limit).all()
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    
+    return {"total": total, "items": items}
 
 def create_objective(db: Session, objective: ObjectiveCreate):
     """Crée un nouvel objectif."""

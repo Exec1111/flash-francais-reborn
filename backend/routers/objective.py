@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from database import get_db
 from crud import objective as crud_objective
 from schemas import objective as schemas_objective
+from schemas.pagination import PaginatedResponse
 # Importer les schémas "simples" si/quand ils seront créés
 from schemas.common import SequenceIdentifier
 from schemas.session import SessionReadSimple
@@ -26,7 +27,7 @@ def create_objective(objective: schemas_objective.ObjectiveCreate, db: Session =
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@objective_router.get("/", response_model=List[schemas_objective.ObjectiveRead])
+@objective_router.get("/", response_model=PaginatedResponse[schemas_objective.ObjectiveRead])
 def read_objectives(
     skip: int = 0, 
     limit: int = 10, 
@@ -34,8 +35,18 @@ def read_objectives(
     db: Session = Depends(get_db)
     ):
     """Récupère une liste d'objectifs, potentiellement filtrée par terme de recherche."""
-    objectives = crud_objective.get_objectives(db, skip=skip, limit=limit, search=search)
-    return objectives
+    objectives_data = crud_objective.get_objectives(db, skip=skip, limit=limit, search=search)
+    
+    # Explicitement convertir les objets SQLAlchemy en schémas Pydantic ObjectiveRead
+    # ObjectiveRead.from_orm(item) est utilisé car ObjectiveRead.Config.from_attributes = True
+    try:
+        pydantic_items = [schemas_objective.ObjectiveRead.from_orm(item) for item in objectives_data["items"]]
+    except Exception as e:
+        # Log l'erreur de conversion si elle se produit ici pour un diagnostic plus approfondi
+        print(f"Error converting Objective ORM item to Pydantic schema: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error processing objective data")
+
+    return PaginatedResponse(total=objectives_data["total"], items=pydantic_items)
 
 @objective_router.get("/{objective_id}", response_model=schemas_objective.ObjectiveRead)
 def read_objective(objective_id: int, db: Session = Depends(get_db)):
@@ -146,7 +157,6 @@ def get_sessions_for_objective(objective_id: int, db: Session = Depends(get_db))
 async def get_objectives_by_ids(request: ObjectiveIdsRequest = None, objective_ids: List[int] = Body(None), db: Session = Depends(get_db)):
     """Récupère plusieurs objectifs par leurs IDs."""
     try:
-        # Déterminer la source des IDs d'objectifs (soit du modèle Pydantic, soit directement du corps JSON)
         ids_to_fetch = []
         
         if request and hasattr(request, 'objective_ids') and request.objective_ids:

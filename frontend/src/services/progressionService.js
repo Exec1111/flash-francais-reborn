@@ -1,4 +1,5 @@
 import api from './api';
+import paginationConfig from '../config/pagination';
 
 const API_URL = '/progressions'; // Chemin relatif à la baseURL d'axios
 
@@ -59,12 +60,25 @@ const deleteProgression = async (progressionId, token) => {
     return response.data;
 };
 
+/**
+ * Récupère toutes les progressions avec pagination.
+ * 
+ * @param {number} skip - Le nombre d'éléments à sauter pour la pagination.
+ * @param {number} limit - Le nombre d'éléments à retourner par page.
+ * @returns {Promise<Object>} - Les progressions récupérées avec le total.
+ */
+const getAllProgressions = async (skip = 0, limit = paginationConfig.progressions.itemsPerPage) => {
+    const response = await api.get(`${API_URL}?skip=${skip}&limit=${limit}`);
+    return response.data;
+};
+
 
 const progressionService = {
   getProgressionById,
   createProgression,
   updateProgression,
   deleteProgression,
+  getAllProgressions,
 };
 
 export default progressionService;

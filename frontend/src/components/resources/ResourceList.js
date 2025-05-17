@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   Button as MuiButton,
+  Pagination,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,16 +29,17 @@ import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import resourceService from '../../services/resourceService';
 import resourceTypeService from '../../services/resourceTypeService';
-import ResourceDocumentLink from './ResourceDocumentLink'; // Importer le nouveau composant
+import ResourceDocumentLink from './ResourceDocumentLink';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
+import paginationConfig from '../../config/pagination';
 
 const ResourceList = () => {
   const { user } = useAuth();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState(() => {
-    // Récupérer la préférence utilisateur au démarrage ou utiliser 'grid' par défaut
     return getViewPreference('resources');
   }); 
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
@@ -45,6 +47,11 @@ const ResourceList = () => {
   const [resourceTypes, setResourceTypes] = useState({});
   const [resourceSubtypes, setResourceSubtypes] = useState({});
   const [loadingTypes, setLoadingTypes] = useState(false);
+  // États pour la pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalResources, setTotalResources] = useState(0);
+  const itemsPerPage = paginationConfig.resources.itemsPerPage;
   const navigate = useNavigate();
 
   // Colonnes pour la DataGrid (vue tabulaire)
@@ -64,7 +71,6 @@ const ResourceList = () => {
       headerName: 'Type', 
       width: 130,
       valueGetter: (params) => {
-        // Priorité : resourceTypes du state, puis params.row.type, sinon vide
         return resourceTypes[params.row.type_id]?.value || params.row.type?.value || '';
       },
       valueFormatter: (params) => params.value ? (params.value.charAt(0).toUpperCase() + params.value.slice(1)) : 'Non spécifié'
@@ -115,26 +121,38 @@ const ResourceList = () => {
   // Base URL pour l'API et les fichiers statiques du backend
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
-  // Fonction de chargement des ressources
-  const fetchResources = async () => {
+  // Fonction de chargement des ressources avec pagination
+  const fetchResources = async (currentPage = 1) => {
     setLoading(true);
     try {
-      const response = await api.get('/resources'); 
-      setResources(response.data.items);
+      const skip = (currentPage - 1) * itemsPerPage;
+      const params = {
+        skip: skip,
+        limit: itemsPerPage
+      };
+      const response = await resourceService.getAll(params);
+      
+      // Mise à jour des ressources et des informations de pagination
+      setResources(response.items || []);
+      setTotalResources(response.total || 0);
+      setTotalPages(Math.ceil(response.total / itemsPerPage) || 1);
       
       // Récupérer les types et sous-types pour toutes les ressources
-      await fetchResourceTypesInfo(response.data.items);
+      await fetchResourceTypesInfo(response.items);
     } catch (err) {
-      if (err.response && err.response.status !== 401) {
-        console.error('Erreur lors du chargement des ressources:', err);
-      }
-      if (!err.response) {
-         console.error('Erreur réseau ou autre lors du chargement des ressources:', err);
-      }
+      console.error('Erreur lors du chargement des ressources:', err);
       setResources([]);
+      setTotalPages(1);
+      setTotalResources(0);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Gestionnaire de changement de page
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+    fetchResources(newPage);
   };
   
   // Fonction pour récupérer les informations de type et sous-type
@@ -182,33 +200,31 @@ const ResourceList = () => {
       console.error('ResourceList: ID utilisateur non défini');
       return;
     }
-
-    // Redirection vers la page de création avec l'ID de l'utilisateur
-    navigate(`/resources/new?userId=${userId}`);
+    
     console.log('ResourceList: Redirection vers /resources/new avec userId:', userId);
-  };
-
-  const handleEditResource = (id) => {
-    navigate(`/resources/edit/${id}`);
+    navigate('/resources/new', { state: { userId } });
   };
 
   const handleViewResource = (id) => {
-    navigate(`/resources/view/${id}`);
+    navigate(`/resources/${id}`);
   };
 
-  const handleDeleteResource = async (id) => {
+  const handleEditResource = (id) => {
+    navigate(`/resources/${id}/edit`);
+  };
+
+  const handleDeleteResource = (id) => {
     setResourceToDelete(id);
     setOpenConfirmDialog(true);
   };
 
   const confirmDelete = async () => {
     try {
-      // Utiliser l'instance api importée.
-      // Axios gère le baseURL et l'en-tête Authorization via l'intercepteur.
-      const response = await api.delete(`/resources/${resourceToDelete}`); 
-      
-      // Recharger la liste après suppression
-      fetchResources();
+      await resourceService.delete(resourceToDelete);
+      // Recharger la liste après suppression (rester sur la même page sauf si c'était le dernier élément de la page)
+      const newTotalPages = Math.ceil((totalResources - 1) / itemsPerPage);
+      const newPage = page > newTotalPages ? newTotalPages || 1 : page;
+      fetchResources(newPage);
     } catch (err) {
       console.error('Erreur lors de la suppression de la ressource:', err);
     } finally {
@@ -232,10 +248,11 @@ const ResourceList = () => {
 
   // Effet de chargement initial
   useEffect(() => {
-    fetchResources();
+    fetchResources(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) {
+  if (loading && resources.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', pt: 4 }}>
         <CircularProgress />
@@ -278,88 +295,111 @@ const ResourceList = () => {
       </Box>
 
       {viewMode === 'table' ? (
-        <Paper sx={{ width: '100%', overflow: 'hidden', mb: 2 }}>
-          <DataGrid
-            rows={resources}
-            columns={columns}
-            autoHeight
-            disableSelectionOnClick
-            checkboxSelection={false}
-            sx={{ border: 'none' }}
-            getRowId={row => row.id}
-            onCellClick={(params, event) => {
-              // Désactiver la sélection, gérer la navigation via le titre ou les boutons actions
-              if (params.field === 'title') {
-                navigate(`/resources/${params.row.id}`);
-              }
-            }}
-          />
-        </Paper>
+        <>
+          <Paper sx={{ width: '100%', overflow: 'hidden', mb: 2 }}>
+            <DataGrid
+              rows={resources}
+              columns={columns}
+              autoHeight
+              disableSelectionOnClick
+              checkboxSelection={false}
+              sx={{ border: 'none' }}
+              getRowId={row => row.id}
+              pageSize={itemsPerPage}
+              rowCount={totalResources}
+              paginationMode="server"
+              page={page - 1} // DataGrid utilise un index zéro-based
+              onPageChange={(newPage) => handlePageChange(null, newPage + 1)}
+              onCellClick={(params, event) => {
+                // Désactiver la sélection, gérer la navigation via le titre ou les boutons actions
+                if (params.field === 'title') {
+                  navigate(`/resources/${params.row.id}`);
+                }
+              }}
+            />
+          </Paper>
+
+        </>
       ) : (
-        <Grid container spacing={3}>
-          {resources.map((resource) => (
-            <Grid item xs={12} sm={6} md={4} key={resource.id}>
-              <Card>
-                <CardHeader
-                  title={<Typography variant="h6" sx={{ color: 'white' }}>{resource.title}</Typography>}
-                  subheader={resource.description}
-                />
-                <CardContent>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Type:</strong> {
-                      loadingTypes ? "Chargement..." : 
-                      resourceTypes[resource.type_id]?.value || 
-                      resource.type?.value || 
-                      'Non spécifié'
-                    }
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Sous-type:</strong> {
-                      loadingTypes ? "Chargement..." : 
-                      resourceSubtypes[resource.sub_type_id]?.value || 
-                      resource.sub_type?.value || 
-                      'Non spécifié'
-                    }
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
-                    {/* Utiliser le nouveau composant pour gérer le lien */}
-                    <ResourceDocumentLink resource={resource} />
-                  </Typography>
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <IconButton 
-                        size="small" 
-                        title="Voir" 
-                        data-action="view"
-                        onClick={() => handleViewResource(resource.id)}
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        title="Modifier" 
-                        data-action="edit"
-                        onClick={() => handleEditResource(resource.id)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        title="Supprimer" 
-                        color="error"
-                        data-action="delete"
-                        onClick={() => handleDeleteResource(resource.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        // Mode grille
+        <>
+          {resources.length === 0 ? (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Aucune ressource trouvée.
+            </Alert>
+          ) : (
+            <>
+              <Grid container spacing={3}>
+                {resources.map((resource) => (
+                  <Grid item xs={12} sm={6} md={4} key={resource.id}>
+                    <Card 
+                      sx={{ 
+                        height: '100%', 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        '&:hover': { boxShadow: 6 } 
+                      }}
+                    >
+                      <CardHeader 
+                        title={resource.title} 
+                        titleTypographyProps={{ variant: 'h6', fontWeight: 'bold', color: 'primary.main' }}
+                        sx={{ pb: 0 }}
+                      />
+                      <CardContent sx={{ pt: 1, pb: 1, flex: 1 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                          Type: {resourceTypes[resource.type_id]?.value || 'Non spécifié'}
+                        </Typography>
+                        {resource.sub_type_id && (
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Sous-type: {resourceSubtypes[resource.sub_type_id]?.value || 'Non spécifié'}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          {resource.description || 'Aucune description disponible.'}
+                        </Typography>
+                        <Box sx={{ mt: 'auto', pt: 2 }}>
+                          <ResourceDocumentLink resource={resource} />
+                        </Box>
+                      </CardContent>
+                      <Box sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'space-between' }}>
+                        <Box>
+                          <IconButton size="small" title="Voir" onClick={() => handleViewResource(resource.id)}>
+                            <VisibilityIcon />
+                          </IconButton>
+                          <IconButton size="small" title="Modifier" onClick={() => handleEditResource(resource.id)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Box>
+                        <IconButton size="small" title="Supprimer" color="error" onClick={() => handleDeleteResource(resource.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+              
+
+            </>
+          )}
+        </>
       )}
+      
+      {/* Pagination centralisée en dehors des conditionnels */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange} 
+            color="primary" 
+          />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Affichage de {Math.min(itemsPerPage, resources.length)} sur {totalResources} ressources
+          </Typography>
+        </Box>
+      )}
+      
       <Dialog
         open={openConfirmDialog}
         onClose={cancelDelete}

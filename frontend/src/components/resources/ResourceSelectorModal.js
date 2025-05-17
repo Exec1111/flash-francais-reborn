@@ -12,7 +12,8 @@ import {
   CircularProgress,
   TextField,
   Box,
-  Typography
+  Typography,
+  Pagination
 } from '@mui/material';
 import resourceService from '../../services/resourceService';
 
@@ -22,30 +23,40 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
   const [selectedResources, setSelectedResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     if (open) {
       setSelectedResources(initialSelectedResources);
-      fetchResources();
+      setCurrentPage(1); 
+      fetchResources(1, searchTerm); 
     }
     // eslint-disable-next-line
-  }, [open]);
+  }, [open, initialSelectedResources]); 
 
-  const fetchResources = async () => {
+  const fetchResources = async (page, currentSearchTerm) => {
     setLoading(true);
     setError('');
     try {
-      const all = await resourceService.getAll();
-      let filtered = Array.isArray(all) ? all : (all.items || []);
-      if (searchTerm) {
-        filtered = filtered.filter(r =>
-          (r.title || r.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-      setResourceSearchResults(filtered);
+      const skip = (page - 1) * itemsPerPage;
+      const params = {
+        skip,
+        limit: itemsPerPage,
+        search: currentSearchTerm || null, 
+        typeId: null, 
+        subTypeId: null 
+      };
+      const response = await resourceService.getAll(params);
+      
+      setResourceSearchResults(response.items || []);
+      setTotalPages(Math.ceil(response.total / itemsPerPage) || 0);
+
     } catch (err) {
       setError(err.detail || err.message || 'Erreur lors du chargement des ressources');
       setResourceSearchResults([]);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -66,8 +77,16 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
-    // Optionnel : lancer la recherche à chaque frappe
-    // fetchResources();
+  };
+
+  const triggerSearch = () => {
+    setCurrentPage(1); 
+    fetchResources(1, searchTerm);
+  };
+
+  const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+    fetchResources(value, searchTerm);
   };
 
   return (
@@ -82,10 +101,10 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
             fullWidth
             margin="dense"
             onKeyDown={e => {
-              if (e.key === 'Enter') fetchResources();
+              if (e.key === 'Enter') triggerSearch(); 
             }}
           />
-          <Button sx={{ mt: 1 }} onClick={fetchResources} variant="outlined" size="small">Rechercher</Button>
+          <Button sx={{ mt: 1 }} onClick={triggerSearch} variant="outlined" size="small">Rechercher</Button> 
         </Box>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
@@ -109,6 +128,16 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
               </ListItem>
             ))}
           </List>
+        )}
+        {totalPages > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </Box>
         )}
       </DialogContent>
       <DialogActions>

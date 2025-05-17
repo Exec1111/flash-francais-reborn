@@ -15,7 +15,8 @@ import {
     Alert,
     Typography,
     Box,
-    IconButton
+    IconButton,
+    Pagination // Import du composant Pagination
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
@@ -28,6 +29,8 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const objectivesPerPage = 10; // Limite pour la recherche
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
 
     // Initialiser la sélection interne quand le modal s'ouvre
     useEffect(() => {
@@ -35,20 +38,21 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
             // S'assurer que initialSelectedObjectives est bien un tableau
             const initialArray = Array.isArray(initialSelectedObjectives) ? initialSelectedObjectives : [];
             setSelectedObjectives(initialArray);
+            setCurrentPage(1); // Toujours commencer à la page 1 à l'ouverture
             // Charger les objectifs initiaux (sans terme de recherche) ou les résultats du terme actuel
-            fetchObjectives(searchTerm);
+            fetchObjectives(searchTerm, 1); // Passer la page initiale
         }
     }, [open, initialSelectedObjectives]); // Dépendance à initialSelectedObjectives ajoutée
 
     // Fonction pour récupérer les objectifs depuis l'API
-    const fetchObjectives = useCallback(async (term) => {
+    const fetchObjectives = useCallback(async (term, page = 1) => {
         setLoading(true);
         setError('');
         try {
             const token = localStorage.getItem('token');
             const params = {
                 limit: objectivesPerPage,
-                skip: 0 // Pas de pagination pour l'instant
+                skip: (page - 1) * objectivesPerPage // Calculer skip en fonction de la page
             };
             if (term) {
                 params.search = term;
@@ -58,12 +62,16 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
                 headers: { Authorization: `Bearer ${token}` },
                 params: params
             });
-            // S'assurer que response.data est un tableau
-            setObjectiveSearchResults(Array.isArray(response.data) ? response.data : []);
+            // La réponse est maintenant { total: number, items: Objective[] }
+            setObjectiveSearchResults(Array.isArray(response.data.items) ? response.data.items : []);
+            setTotalPages(Math.ceil(response.data.total / objectivesPerPage));
+            setCurrentPage(page); // Mettre à jour la page actuelle après le fetch réussi
+
         } catch (err) {
             console.error("Erreur lors de la recherche des objectifs:", err);
             setError('Impossible de charger les objectifs. Veuillez réessayer.');
             setObjectiveSearchResults([]); // Vider les résultats en cas d'erreur
+            setTotalPages(0);
         } finally {
             setLoading(false);
         }
@@ -71,7 +79,7 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
 
     // Utilisation du debounce pour la recherche
     const debouncedFetchObjectives = useMemo(
-        () => _debounce(fetchObjectives, 300),
+        () => _debounce((term, page) => fetchObjectives(term, page), 300),
         [fetchObjectives] // Recréer si fetchObjectives change
     );
 
@@ -79,7 +87,8 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
     useEffect(() => {
         // Ne pas lancer de recherche vide au début si on ne veut pas de résultats initiaux
          if (open) { // Assurer que la recherche n'est déclenchée que si le modal est ouvert
-            debouncedFetchObjectives(searchTerm);
+            setCurrentPage(1); // Réinitialiser à la page 1 pour une nouvelle recherche
+            debouncedFetchObjectives(searchTerm, 1);
          }
          // Cleanup debounce à la fermeture ou au changement de terme
          return () => {
@@ -90,6 +99,11 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
     // Gérer le changement du terme de recherche
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
+    };
+
+    // Gérer le changement de page
+    const handlePageChange = (event, newPage) => {
+        fetchObjectives(searchTerm, newPage);
     };
 
     // Gérer le clic sur une checkbox (sélection/désélection)
@@ -116,7 +130,6 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
         new Set(selectedObjectives.map(o => o.id)),
         [selectedObjectives]
     );
-
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -202,6 +215,17 @@ const ObjectiveSelectorModal = ({ open, onClose, initialSelectedObjectives = [],
                             </Typography>
                          )}
                     </List>
+                )}
+
+                {totalPages > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                        <Pagination 
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
+                            color="primary"
+                        />
+                    </Box>
                 )}
 
                  {/* Afficher les objectifs déjà sélectionnés pour info */}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -9,6 +9,7 @@ from schemas.study_object import (
     StudyObjectRead,
     StudyObjectUpdate
 )
+from schemas.pagination import PaginatedResponse
 from dependencies import get_current_user
 from models import User
 
@@ -22,17 +23,22 @@ def create(obj: StudyObjectCreate, db: Session = Depends(get_db), current_user: 
     db_obj = crud.create_study_object(db, obj)
     return db_obj
 
-@router.get("/", response_model=List[StudyObjectRead])
-def read_all(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_objs = crud.get_study_objects(db)
-    return [StudyObjectRead.from_orm_with_resources(obj) for obj in db_objs]
+@router.get("/", response_model=PaginatedResponse[StudyObjectRead])
+def read_all(
+    db: Session = Depends(get_db), 
+    skip: int = Query(0, ge=0, description="Nombre d'éléments à sauter"), 
+    limit: int = Query(10, ge=1, le=200, description="Nombre maximum d'éléments à retourner"),
+    current_user: User = Depends(get_current_user)
+    ):
+    study_objects_data = crud.get_study_objects(db, skip=skip, limit=limit)
+    pydantic_items = [StudyObjectRead.from_orm_with_resources(item) for item in study_objects_data["items"]]
+    return PaginatedResponse(total=study_objects_data["total"], items=pydantic_items)
 
 @router.get("/{obj_id}", response_model=StudyObjectRead)
 def read_one(obj_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_obj = crud.get_study_object(db, obj_id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="StudyObject not found")
-    # Utilise la méthode from_orm_with_resources pour garantir le retour des resource_ids
     return StudyObjectRead.from_orm_with_resources(db_obj)
 
 @router.patch("/{obj_id}", response_model=StudyObjectRead)

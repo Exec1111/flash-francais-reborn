@@ -38,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
 import resourceService from '../../services/resourceService';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
+import paginationConfig from '../../config/pagination';
 
 const StudyObjectList = () => {
   const [studyObjects, setStudyObjects] = useState([]);
@@ -53,7 +54,7 @@ const StudyObjectList = () => {
   // États pour la pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = paginationConfig.studyObjects.itemsPerPage;
 
   // État pour le mode d'affichage
   const [viewMode, setViewMode] = useState(() => {
@@ -68,10 +69,10 @@ const StudyObjectList = () => {
     setLoading(true);
     try {
       const skip = (page - 1) * itemsPerPage;
-      const data = await studyObjectService.getStudyObjects(skip, itemsPerPage);
+      const response = await studyObjectService.getStudyObjects(skip, itemsPerPage);
       // Pour chaque objet, récupérer les titres des ressources associées
       const dataWithResources = await Promise.all(
-        data.map(async (obj) => {
+        response.items.map(async (obj) => {
           let resourceTitles = [];
           try {
             const detail = await studyObjectService.getStudyObjectById(obj.id);
@@ -97,7 +98,7 @@ const StudyObjectList = () => {
         })
       );
       setStudyObjects(dataWithResources);
-      setTotalPages(Math.ceil(data.length / itemsPerPage) || 1);
+      setTotalPages(Math.ceil(response.total / itemsPerPage) || 1);
     } catch (err) {
       setError(`Erreur lors du chargement des objets d'étude : ${err.detail || err.message || 'Erreur inconnue'}`);
     } finally {
@@ -222,7 +223,6 @@ const StudyObjectList = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
                   <TableCell>Titre</TableCell>
                   <TableCell>Ressources liées</TableCell>
                   <TableCell align="center">Actions</TableCell>
@@ -231,7 +231,6 @@ const StudyObjectList = () => {
               <TableBody>
                 {studyObjects.map((studyObject) => (
                   <TableRow key={studyObject.id}>
-                    <TableCell>{studyObject.id}</TableCell>
                     <TableCell style={{ cursor: 'pointer', color: '#5a47d1' }} onClick={() => navigate(`/study-objects/${studyObject.id}`)}>
                       {studyObject.title}
                     </TableCell>
@@ -349,15 +348,18 @@ const StudyObjectList = () => {
         </Grid>
       )}
 
-      {/* Pagination déplacée ici, en dehors du conditionnel */}
+      {/* Pagination centralisée en dehors des conditionnels */}
       {totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange} 
+            color="primary" 
           />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Affichage de {Math.min(itemsPerPage, studyObjects.length)} sur {(totalPages * itemsPerPage)} objets d'étude
+          </Typography>
         </Box>
       )}
 

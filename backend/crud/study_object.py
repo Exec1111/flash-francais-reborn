@@ -11,10 +11,14 @@ def get_study_object(db: Session, study_object_id: int) -> Optional[StudyObject]
     ).filter(StudyObject.id == study_object_id).first()
 
 
-def get_study_objects(db: Session, skip: int = 0, limit: int = 100) -> List[StudyObject]:
-    return db.query(StudyObject)\
-        .options(selectinload(StudyObject.progressions), selectinload(StudyObject.resources))\
-        .offset(skip).limit(limit).all()
+def get_study_objects(db: Session, skip: int = 0, limit: int = 100):
+    query = db.query(StudyObject).options(
+        selectinload(StudyObject.progressions), 
+        selectinload(StudyObject.resources)
+    )
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return {"total": total, "items": items}
 
 
 def get_study_objects_by_progression(db: Session, progression_id: int) -> List[StudyObject]:

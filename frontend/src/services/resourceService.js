@@ -1,6 +1,7 @@
 import axios from 'axios';
 import api from './api';
 import authService from './auth'; // Garder l'import si d'autres fonctions d'authService sont utilisées ailleurs
+import paginationConfig from '../config/pagination';
 
 // Configuration de l'intercepteur pour les tokens
 axios.interceptors.request.use((config) => {
@@ -14,13 +15,27 @@ axios.interceptors.request.use((config) => {
 const RESOURCE_ENDPOINT = '/resources';
 
 const resourceService = {
-  // Récupérer toutes les ressources
-  getAll: async () => {
+  // Récupérer toutes les ressources avec pagination et filtres
+  getAll: async (params = { skip: 0, limit: paginationConfig.resources.itemsPerPage, search: null, typeId: null, subTypeId: null }) => {
     try {
-      const response = await api.get(RESOURCE_ENDPOINT);
-      return response.data;
+      const queryParams = new URLSearchParams();
+      queryParams.append('skip', params.skip || 0);
+      queryParams.append('limit', params.limit || paginationConfig.resources.itemsPerPage);
+      if (params.search) {
+        queryParams.append('search', params.search);
+      }
+      if (params.typeId) {
+        queryParams.append('typeId', params.typeId);
+      }
+      if (params.subTypeId) {
+        queryParams.append('subTypeId', params.subTypeId);
+      }
+      const response = await api.get(`${RESOURCE_ENDPOINT}?${queryParams.toString()}`);
+      return response.data; // Doit retourner { total: number, items: [] }
     } catch (error) {
-      throw error;
+      // Améliorer la gestion d'erreur pour donner plus de contexte
+      console.error("Error fetching resources:", error.response?.data || error.message);
+      throw error.response?.data || { detail: 'Erreur lors de la récupération des ressources' };
     }
   },
 

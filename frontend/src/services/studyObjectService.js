@@ -1,11 +1,16 @@
 import api from './api';
+import paginationConfig from '../config/pagination';
 
 const STUDY_OBJECTS_ENDPOINT = '/study_objects';
 
 const studyObjectService = {
-  getStudyObjects: async (skip = 0, limit = 100) => {
+  getStudyObjects: async (skip = 0, limit = paginationConfig.studyObjects.itemsPerPage, search = null) => {
     try {
-      const response = await api.get(`${STUDY_OBJECTS_ENDPOINT}?skip=${skip}&limit=${limit}`);
+      let url = `${STUDY_OBJECTS_ENDPOINT}?skip=${skip}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      const response = await api.get(url);
       return response.data;
     } catch (error) {
       throw error.response?.data || { detail: 'Erreur lors de la récupération des objets d\'étude' };

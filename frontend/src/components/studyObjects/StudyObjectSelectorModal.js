@@ -15,7 +15,8 @@ import {
     Alert,
     Typography,
     Box,
-    IconButton
+    IconButton,
+    Pagination
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
@@ -28,59 +29,67 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const objectsPerPage = 10;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
 
     useEffect(() => {
         if (open) {
             const initialArray = Array.isArray(initialSelectedStudyObjects) ? initialSelectedStudyObjects : [];
             setSelectedStudyObjects(initialArray);
-            fetchStudyObjects(searchTerm);
+            setCurrentPage(1);
+            fetchStudyObjects(searchTerm, 1);
         }
     }, [open, initialSelectedStudyObjects]);
 
-    const fetchStudyObjects = useCallback(async (term) => {
+    const fetchStudyObjects = useCallback(async (term, page) => {
         setLoading(true);
         setError('');
         try {
+            const skip = (page - 1) * objectsPerPage;
             const params = {
                 limit: objectsPerPage,
-                skip: 0
+                skip: skip
             };
             if (term) {
                 params.search = term;
             }
-            // On suppose que l'API supporte le paramètre 'search', sinon il faut adapter ici
-            const all = await studyObjectService.getStudyObjects(params.skip, params.limit);
-            let filtered = Array.isArray(all) ? all : (all.items || []);
-            if (term) {
-                filtered = filtered.filter(obj =>
-                    (obj.title || obj.name || '').toLowerCase().includes(term.toLowerCase())
-                );
-            }
-            setStudyObjectSearchResults(filtered);
+            
+            const response = await studyObjectService.getStudyObjects(params.skip, params.limit, params.search);
+            
+            setStudyObjectSearchResults(response.items || []);
+            setTotalPages(Math.ceil(response.total / objectsPerPage) || 0);
+
         } catch (err) {
             setError('Impossible de charger les objets d\'étude. Veuillez réessayer.');
             setStudyObjectSearchResults([]);
+            setTotalPages(0);
         } finally {
             setLoading(false);
         }
     }, [objectsPerPage]);
 
     const debouncedFetchStudyObjects = useMemo(
-        () => _debounce(fetchStudyObjects, 300),
+        () => _debounce((term, page) => fetchStudyObjects(term, page), 300),
         [fetchStudyObjects]
     );
 
     useEffect(() => {
         if (open) {
-            debouncedFetchStudyObjects(searchTerm);
+            debouncedFetchStudyObjects(searchTerm, currentPage);
         }
         return () => {
             debouncedFetchStudyObjects.cancel();
         };
-    }, [searchTerm, open, debouncedFetchStudyObjects]);
+    }, [searchTerm, open, debouncedFetchStudyObjects, currentPage]);
 
     const handleSearchChange = (event) => {
-        setSearchTerm(event.target.value);
+        const newSearchTerm = event.target.value;
+        setSearchTerm(newSearchTerm);
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (event, value) => {
+        setCurrentPage(value);
     };
 
     const handleToggle = (studyObject) => () => {
@@ -182,6 +191,16 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
                                 </ListItem>
                             ))}
                         </List>
+                    </Box>
+                )}
+                {totalPages > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                        <Pagination
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
+                            color="primary"
+                        />
                     </Box>
                 )}
             </DialogContent>

@@ -4,6 +4,7 @@ from typing import List, Optional
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload, ResourceListResponse
 from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
 from schemas.study_object import StudyObjectReadShort # Import global
+from schemas.pagination import PaginatedResponse # AJOUT
 from database import get_db
 import crud.resource # Importer spécifiquement le module requis
 from crud.resource import get_upload_path
@@ -239,21 +240,21 @@ async def create_resource_route(
         raise HTTPException(status_code=500, detail="Erreur interne du serveur.")
 
 # --- Route GET pour lister toutes les ressources de l'utilisateur ---
-@resource_router.get("/", response_model=ResourceListResponse) # Utiliser le nouveau schéma de réponse
-def read_resources(
+@resource_router.get("/", response_model=PaginatedResponse[ResourceResponse]) # MODIFICATION
+async def read_resources(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
-    page: int = Query(1, ge=1, alias="page"), # Utiliser page au lieu de skip
-    limit: int = Query(10, ge=5, le=100, alias="limit"), # Limite par défaut à 10
+    skip: int = Query(0, ge=0, description="Nombre d'éléments à sauter"),
+    limit: int = Query(10, ge=1, le=200, description="Nombre maximum d'éléments à retourner"),
     search_term: Optional[str] = Query(None, min_length=1, max_length=100, alias="search"),
     type_id: Optional[int] = Query(None, ge=1, alias="typeId"),
     sub_type_id: Optional[int] = Query(None, ge=1, alias="subTypeId")
 ):
     """Récupère la liste paginée des ressources pour l'utilisateur courant, avec options de filtrage."""
-    skip = (page - 1) * limit
-    logger.info(f"Lecture des ressources page {page}, limite {limit} pour l'utilisateur {current_user.id} avec filtres: search='{search_term}', type={type_id}, subtype={sub_type_id}")
+    logger.info(f"Lecture des ressources pour l'utilisateur {current_user.id} avec skip={skip}, limit={limit}, search='{search_term}', typeId={type_id}, subTypeId={sub_type_id}")
+    
     resources_data = crud.resource.get_resources(
-        db, 
+        db=db, 
         user_id=current_user.id, 
         skip=skip, 
         limit=limit, 
@@ -261,8 +262,16 @@ def read_resources(
         type_id=type_id,
         sub_type_id=sub_type_id
     )
-    # Le retour doit correspondre à ResourceListResponse
-    return resources_data
+    
+    # Convertir les objets SQLAlchemy en schémas Pydantic ResourceResponse
+    # ResourceResponse.from_orm(item) est utilisé car ResourceResponse.Config.from_attributes = True
+    try:
+        pydantic_items = [ResourceResponse.from_orm(item) for item in resources_data["items"]]
+    except Exception as e:
+        logger.error(f"Error converting Resource ORM item to Pydantic schema: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error processing resource data")
+
+    return PaginatedResponse(total=resources_data["total"], items=pydantic_items)
 
 # --- Route GET pour les ressources d'une session spécifique ---
 @resource_router.get("/by_session/{session_id}", response_model=list[ResourceResponse])

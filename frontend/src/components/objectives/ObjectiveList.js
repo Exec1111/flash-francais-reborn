@@ -36,6 +36,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import objectiveService from '../../services/objectiveService';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
+import paginationConfig from '../../config/pagination';
 
 const ObjectiveList = () => {
   const [objectives, setObjectives] = useState([]);
@@ -51,7 +52,7 @@ const ObjectiveList = () => {
   // États pour la pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = paginationConfig.objectives.itemsPerPage;
   
   // État pour le mode d'affichage (nous ajoutons le support de différents modes de vue)
   const [viewMode, setViewMode] = useState(() => {
@@ -66,13 +67,24 @@ const ObjectiveList = () => {
     setLoading(true);
     try {
       const skip = (page - 1) * itemsPerPage;
-      const data = await objectiveService.getObjectives(skip, itemsPerPage);
-      setObjectives(data);
-      // Dans un cas réel, le backend devrait renvoyer le nombre total d'éléments pour calculer le nombre de pages
-      // Pour l'instant, on suppose que s'il y a moins d'éléments que itemsPerPage, c'est la dernière page
-      setTotalPages(Math.ceil(data.length / itemsPerPage) || 1);
+      // objectiveService.getObjectives retourne maintenant { total: xxx, items: [...] }
+      const responseData = await objectiveService.getObjectives(skip, itemsPerPage);
+      console.log('Response data from objectiveService.getObjectives:', responseData);
+      
+      if (responseData && typeof responseData.total === 'number' && Array.isArray(responseData.items)) {
+        setObjectives(responseData.items);
+        setTotalPages(Math.ceil(responseData.total / itemsPerPage) || 1);
+      } else {
+        // Gérer le cas où la réponse n'a pas le format attendu
+        console.error('Format de réponse inattendu de getObjectives:', responseData);
+        setObjectives([]);
+        setTotalPages(1);
+        setError('Erreur lors de la récupération du format des objectifs.');
+      }
     } catch (err) {
       setError(`Erreur lors du chargement des objectifs : ${err.detail || err.message || 'Erreur inconnue'}`);
+      setObjectives([]); // Vider en cas d'erreur pour éviter d'afficher d'anciennes données
+      setTotalPages(1); // Réinitialiser à 1 page pour éviter des erreurs de pagination
     } finally {
       setLoading(false);
     }

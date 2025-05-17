@@ -1,4 +1,5 @@
 import api from './api';
+import paginationConfig from '../config/pagination';
 
 // URL de base pour les objectifs
 const OBJECTIVES_ENDPOINT = '/objectives';
@@ -25,7 +26,7 @@ const objectiveService = {
    * @param {number} limit - Nombre d'éléments à récupérer (pagination)
    * @returns {Promise} - Promesse avec la réponse
    */
-  getObjectives: async (skip = 0, limit = 100) => {
+  getObjectives: async (skip = 0, limit = paginationConfig.objectives.itemsPerPage) => {
     try {
       const response = await api.get(`${OBJECTIVES_ENDPOINT}?skip=${skip}&limit=${limit}`);
       return response.data;
