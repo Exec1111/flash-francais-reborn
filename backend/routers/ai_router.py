@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form, Body
 from sqlalchemy.orm import Session
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 import logging
 import os
@@ -99,9 +99,28 @@ async def generate_resource(
     """
     logger.info(f"Génération de ressource IA de type {request.type_key}/{request.subtype_key} demandée par l'utilisateur {current_user.email}")
     
+    # Log détaillé des variables envoyées à l'IA
+    logger.info(f"Variables de requête pour {request.type_key}/{request.subtype_key}: {request.variables}")
+    
     try:
+        # Logs détaillés avant la génération
+        logger.info(f"Détails de la requête de génération:")
+        logger.info(f"Type: {request.type_key}")
+        logger.info(f"Sous-type: {request.subtype_key}")
+        logger.info(f"Utilisateur ID: {current_user.id}, Email: {current_user.email}")
+        
+        # Analyser spécifiquement les variables
+        if 'parameters' in request.variables:
+            logger.info(f"Paramètres: {request.variables['parameters']}")
+            
+        if isinstance(request.variables, dict):
+            for key, value in request.variables.items():
+                logger.info(f"Variable '{key}': {value}")
+        
         import time
         start_time = time.perf_counter()
+        
+        logger.info("Début de l'appel au service de génération d'IA...")
         content = await ai_resource_service.generate_ai_resource_content(
             type_key=request.type_key,
             subtype_key=request.subtype_key,
@@ -110,9 +129,22 @@ async def generate_resource(
             duration_ms=None  # Sera mesuré dans la fonction si non fourni
         )
         duration_ms = int((time.perf_counter() - start_time) * 1000)
-        # Optionnel : vous pouvez logger duration_ms ici si besoin
+        logger.info(f"Appel au service de génération d'IA terminé en {duration_ms}ms")
         
-        logger.info(f"Contenu généré avec succès pour {request.type_key}/{request.subtype_key}")
+        # Vérifier si le contenu est None
+        if content is None:
+            logger.error("Contenu généré est None")
+            raise ResourceGenerationError("Aucun contenu généré par l'IA")
+        
+        # Log détaillé du contenu généré
+        logger.info(f"Contenu généré avec succès pour {request.type_key}/{request.subtype_key} en {duration_ms}ms")
+        logger.info(f"Réponse du service IA: {content}")
+        
+        # Vérification de la validité du contenu généré
+        if not content or (isinstance(content, dict) and len(content) == 0):
+            logger.error(f"Contenu généré vide ou invalide pour {request.type_key}/{request.subtype_key}")
+            raise ResourceGenerationError(f"Contenu généré vide ou invalide pour {request.type_key}/{request.subtype_key}")
+            
         return {"content": content}
         
     except ResourceGenerationError as e:
@@ -388,14 +420,21 @@ async def generate_sessions(
             detail=f"Une erreur inattendue s'est produite: {str(e)}"
         )
 
+# Définition du modèle pour les paramètres de configuration des exercices
+class ExerciseConfigParams(BaseModel):
+    niveau_classe: Optional[str] = None
+    nombre_ressources: Optional[int] = None
+
 @router.post(
     "/sessions/{session_id}/suggest-exercises",
     response_model=AISuggestionResponse,
     summary="Suggère des types d'exercices pour une session donnée",
     description="Analyse une session et suggère des types d'exercices pertinents à générer par IA."
 )
+
 async def suggest_exercises_for_session_endpoint(
     session_id: int,
+    config_params: ExerciseConfigParams = Body(default=None),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user) # Authentification
 ):
@@ -427,14 +466,25 @@ async def suggest_exercises_for_session_endpoint(
                 summary += " (IA)"
             existing_resources_summary.append(summary)
             
-    # 5. Appeler le service de suggestion
+    # 5. Préparation des paramètres de configuration pour le prompt IA
+    config_dict = {}
+    if config_params:
+        if config_params.niveau_classe:
+            config_dict['niveau_classe'] = config_params.niveau_classe
+        if config_params.nombre_ressources:
+            config_dict['nombre_ressources'] = config_params.nombre_ressources
+
+    logger.info(f"Configuration pour suggestion d'exercices: {config_dict}")
+            
+    # 6. Appeler le service de suggestion avec les nouveaux paramètres
     try:
         suggestions_data = await ai_resource_service.suggest_exercise_types_for_session(
             session_title=session.title or "Session sans titre",
-            session_description=session.description or "",
+            session_description=session.notes or "",
             session_objectives=session_objectives_titles,
             sequence_study_objects=sequence_study_objects_titles,
-            existing_resources_summary=existing_resources_summary
+            existing_resources_summary=existing_resources_summary,
+            **config_dict
         )
         
         # Transformation de la réponse de l'IA pour correspondre au schéma attendu

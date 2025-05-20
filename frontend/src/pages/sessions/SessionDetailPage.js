@@ -115,15 +115,18 @@ const SessionDetailPage = () => {
     }
   };
 
-  const handleWizardClose = (refreshNeeded = true) => {
+  const handleWizardClose = (needsRefresh = false) => {
     setWizardOpen(false);
-    // Rafraîchir les données de la session si des ressources ont été ajoutées
-    if (refreshNeeded) {
-      // Rafraîchir les données de l'arborescence
-      refreshTreeData();
-      // Rafraîchir les détails de la session
-      fetchSessionDetails();
+    if (needsRefresh) {
+      fetchSessionDetails(); // Recharger les détails de la session pour afficher les nouvelles ressources
     }
+  };
+
+  // Fonction appelée lorsque des ressources sont générées avec succès
+  const handleResourcesGenerated = (newResources) => {
+    console.log("[SessionDetailPage] Ressources générées avec succès:", newResources);
+    // Rafraîchir les détails de la session pour afficher les nouvelles ressources
+    fetchSessionDetails();
   };
 
   if (loading) {
@@ -154,10 +157,11 @@ const SessionDetailPage = () => {
   if (wizardOpen) {
     return (
       <ResourceGenerationWizard
-        sessionId={session.id}
+        sessionId={String(session.id)} // Conversion en chaîne pour respecter le PropType
         sessionTitle={session.title}
         sequenceId={session.sequence_id} 
         onClose={handleWizardClose}
+        onResourcesGenerated={handleResourcesGenerated} // Ajout de la prop requise
       />
     );
   }

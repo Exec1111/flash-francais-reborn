@@ -27,7 +27,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../services/api';
-import ResourceSelectorModal from './ResourceSelectorModal';
+import ResourceSelectorModal from '../resources/ResourceSelectorModal';
 import ObjectiveSelectorModal from '../sequences/ObjectiveSelectorModal'; // Importer la modale des objectifs
 import { useTreeData } from '../../contexts/TreeDataContext';
 

@@ -22,6 +22,8 @@ async def suggest_exercise_types_for_session(
     session_objectives: List[str],
     sequence_study_objects: List[str],
     existing_resources_summary: List[str],
+    niveau_classe: str = None,
+    nombre_ressources: int = None,
     user_id: int = None
 ) -> Dict[str, Any]:
     """
@@ -40,7 +42,7 @@ async def suggest_exercise_types_for_session(
     """
  
     # Liste blanche des types de prompts considérés comme de vrais exercices
-    EXERCISE_TYPES = ["exercice"]
+    EXERCISE_TYPES = ["exercice", "oeuvre", "lecon"]
     
     available_exercise_types = []
     # Parcourir PROMPT_REGISTRY pour trouver les prompts d'exercices
@@ -73,6 +75,15 @@ async def suggest_exercise_types_for_session(
         "existing_resources_summary": existing_resources_summary,
         "available_exercise_types": available_exercise_types
     }
+    
+    # Ajouter les nouveaux paramètres s'ils sont fournis
+    if niveau_classe:
+        input_vars_for_suggester["niveau_classe"] = niveau_classe
+        logger.info(f"Niveau de classe spécifié pour la suggestion: {niveau_classe}")
+        
+    if nombre_ressources:
+        input_vars_for_suggester["nombre_ressources"] = nombre_ressources
+        logger.info(f"Nombre de ressources demandé pour la suggestion: {nombre_ressources}")
 
     try:
         # Appel à la fonction de génération

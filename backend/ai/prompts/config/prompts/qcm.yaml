@@ -27,6 +27,7 @@ parameters:
   - name: nombre_questions
     type: int
     description: nombre de questions au total
+    default: 5
   - name: nb_options
     type: int
     default: 4

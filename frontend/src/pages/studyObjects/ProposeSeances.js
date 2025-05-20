@@ -34,6 +34,8 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import axios from "axios";
+import ObjectiveSelectorModal from '../../components/sequences/ObjectiveSelectorModal';
+import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
 
 const ProposeSeances = () => {
   const { id } = useParams(); // ID de la séquence
@@ -42,7 +44,8 @@ const ProposeSeances = () => {
   const [sequenceTitle, setSequenceTitle] = useState("");
   const [nombreSeances, setNombreSeances] = useState("3");
   const [autoNombreSeances, setAutoNombreSeances] = useState(false);
-  const [niveau, setNiveau] = useState("B1");
+  const [classLevels, setClassLevels] = useState([]);
+  const [niveau, setNiveau] = useState("");
   const [inclureRessources, setInclureRessources] = useState(true);
   const [instructions, setInstructions] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -55,6 +58,10 @@ const ProposeSeances = () => {
   const [allObjectives, setAllObjectives] = useState([]);
   const [allResources, setAllResources] = useState([]);
   const [resourcesMap, setResourcesMap] = useState({});
+  
+  // États pour les modales
+  const [objectiveModalOpen, setObjectiveModalOpen] = useState(false);
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
   
@@ -151,6 +158,69 @@ const ProposeSeances = () => {
     };
     fetchResources();
   }, [API_BASE_URL]);
+  
+  // Récupérer les niveaux de classe disponibles depuis le schema du prompt YAML
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    // En attendant que l'API retourne les valeurs correctement, utiliser les valeurs en dur du YAML
+    // Ces valeurs doivent correspondre à celles définies dans session_generator.yaml
+    const defaultClassLevels = [
+      '6ème faible', '6ème', '6ème élevé', 
+      '5ème faible', '5ème', '5ème élevé', 
+      '4ème faible', '4ème', '4ème élevé', 
+      '3ème faible', '3ème', '3ème élevé'
+    ];
+    
+    // Mettre à jour avec les valeurs par défaut immédiatement
+    setClassLevels(defaultClassLevels);
+    setNiveau(defaultClassLevels[0]);
+
+    // Essayer de récupérer les valeurs depuis l'API
+    axios.get(`${API_BASE_URL}/api/v1/ai/resource-types/session/generator/schema`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    })
+    .then(res => {
+      console.log('Schéma du prompt récupéré:', JSON.stringify(res.data, null, 2));
+      
+      // Déboguer le schéma pour comprendre sa structure
+      if (res.data) {
+        console.log('Structure du schéma:', Object.keys(res.data));
+        if (res.data.fields) {
+          console.log('Champs disponibles:', res.data.fields.map(f => f.name));
+        }
+        
+        // Méthode 1: Rechercher le champ niveau via find
+        if (res.data.fields && Array.isArray(res.data.fields)) {
+          const niveauClasseField = res.data.fields.find(field => field.name === 'niveau');
+          console.log('Champ niveau trouvé:', niveauClasseField);
+          
+          if (niveauClasseField && niveauClasseField.validations && niveauClasseField.validations.enum) {
+            console.log('Niveaux de classe disponibles via enum:', niveauClasseField.validations.enum);
+            setClassLevels(niveauClasseField.validations.enum);
+            if (niveauClasseField.validations.enum.length > 0) {
+              setNiveau(niveauClasseField.validations.enum[0]);
+            }
+          }
+          // Méthode 2: Rechercher via enum directement dans le champ
+          else if (niveauClasseField && niveauClasseField.enum) {
+            console.log('Niveaux de classe disponibles via champ enum:', niveauClasseField.enum);
+            setClassLevels(niveauClasseField.enum);
+            if (niveauClasseField.enum.length > 0) {
+              setNiveau(niveauClasseField.enum[0]);
+            }
+          }
+          // Pour déboguer, vérifier si le champ existe mais pas l'enum
+          else if (niveauClasseField) {
+            console.log('Champ niveau trouvé mais pas d\'enum:', niveauClasseField);
+          }
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Erreur lors de la récupération du schéma:', err);
+      console.log('Utilisation des niveaux de classe par défaut');
+    });
+  }, [API_BASE_URL]);
 
   const handleConfigSubmit = (e) => {
     e.preventDefault();
@@ -207,22 +277,50 @@ const ProposeSeances = () => {
   
   // Gestion des modifications d'objectifs
   const handleObjectivesChange = (objectives) => {
-    const updatedSeances = [...editedSeances];
-    updatedSeances[currentEditIndex] = {
-      ...updatedSeances[currentEditIndex],
+    handleEditorChange(currentEditIndex, {
+      ...editedSeances[currentEditIndex],
       objective_ids: objectives
-    };
-    setEditedSeances(updatedSeances);
+    });
   };
   
   // Gestion des modifications de ressources
   const handleResourcesChange = (resources) => {
-    const updatedSeances = [...editedSeances];
-    updatedSeances[currentEditIndex] = {
-      ...updatedSeances[currentEditIndex],
+    handleEditorChange(currentEditIndex, {
+      ...editedSeances[currentEditIndex],
       resource_ids: resources
-    };
-    setEditedSeances(updatedSeances);
+    });
+  };
+  
+  // Ouvrir la modale de sélection d'objectifs
+  const openObjectiveModal = () => {
+    setObjectiveModalOpen(true);
+  };
+  
+  // Fermer la modale de sélection d'objectifs
+  const closeObjectiveModal = () => {
+    setObjectiveModalOpen(false);
+  };
+  
+  // Sauvegarder les objectifs sélectionnés depuis la modale
+  const handleSaveObjectives = (selectedObjectives) => {
+    handleObjectivesChange(selectedObjectives.map(obj => obj.id));
+    setObjectiveModalOpen(false);
+  };
+  
+  // Ouvrir la modale de sélection de ressources
+  const openResourceModal = () => {
+    setResourceModalOpen(true);
+  };
+  
+  // Fermer la modale de sélection de ressources
+  const closeResourceModal = () => {
+    setResourceModalOpen(false);
+  };
+  
+  // Sauvegarder les ressources sélectionnées depuis la modale
+  const handleSaveResources = (selectedResources) => {
+    handleResourcesChange(selectedResources.map(res => res.id));
+    setResourceModalOpen(false);
   };
 
   const handlePrevResult = () => {
@@ -309,12 +407,11 @@ const ProposeSeances = () => {
                       onChange={(e) => setNiveau(e.target.value)}
                       label="Niveau des apprenants"
                     >
-                      <MenuItem value="A1">A1 - Débutant</MenuItem>
-                      <MenuItem value="A2">A2 - Élémentaire</MenuItem>
-                      <MenuItem value="B1">B1 - Intermédiaire</MenuItem>
-                      <MenuItem value="B2">B2 - Intermédiaire avancé</MenuItem>
-                      <MenuItem value="C1">C1 - Avancé</MenuItem>
-                      <MenuItem value="C2">C2 - Maîtrise</MenuItem>
+                      {classLevels.map((level) => (
+                        <MenuItem key={level} value={level}>
+                          {level}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -505,76 +602,73 @@ const ProposeSeances = () => {
                         />
                       </Grid>
                       
-                      {/* Affichage des ID des objectifs associés */}
-                      {editedSeances[currentEditIndex]?.objective_ids && 
-                       (
-                        <Grid item xs={12}>
-                          <Paper variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" gutterBottom>
+                      {/* Affichage des objectifs associés avec bouton pour ouvrir la modale */}
+                      <Grid item xs={12}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="subtitle2">
                               Objectifs associés :
                             </Typography>
-                            <FormControl fullWidth sx={{ mt: 1 }}>
-                              <InputLabel id="objectives-select-label">Objectifs</InputLabel>
-                              <Select
-                                labelId="objectives-select-label"
-                                multiple
-                                value={editedSeances[currentEditIndex].objective_ids || []}
-                                onChange={(e) => handleObjectivesChange(e.target.value)}
-                                renderValue={(selected) => (
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                    {selected.map((objId) => (
-                                      <Chip 
-                                        key={objId} 
-                                        label={objectivesMap[objId] || allObjectives.find(o => o.id === objId)?.title || `Objectif ${objId}`} 
-                                        size="small" 
-                                      />
-                                    ))}
-                                  </Box>
-                                )}
-                              >
-                                {allObjectives.map((objective) => (
-                                  <MenuItem key={objective.id} value={objective.id}>
-                                    {objective.title}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </Paper>
-                        </Grid>
-                      )}
+                            <Button 
+                              variant="outlined" 
+                              size="small" 
+                              onClick={openObjectiveModal}
+                            >
+                              Sélectionner des objectifs
+                            </Button>
+                          </Box>
+                          
+                          {/* Affichage des objectifs sélectionnés */}
+                          {editedSeances[currentEditIndex]?.objective_ids?.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {editedSeances[currentEditIndex].objective_ids.map((objId) => (
+                                <Chip 
+                                  key={objId} 
+                                  label={objectivesMap[objId] || allObjectives.find(o => o.id === objId)?.title || `Objectif ${objId}`} 
+                                  size="small" 
+                                />
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Aucun objectif sélectionné
+                            </Typography>
+                          )}
+                        </Paper>
+                      </Grid>
                       
                       {/* Sélection et affichage des ressources associées */}
                       <Grid item xs={12}>
                         <Paper variant="outlined" sx={{ p: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Ressources associées :
-                          </Typography>
-                          <FormControl fullWidth sx={{ mt: 1 }}>
-                            <InputLabel id="resources-select-label">Ressources</InputLabel>
-                            <Select
-                              labelId="resources-select-label"
-                              multiple
-                              value={editedSeances[currentEditIndex]?.resource_ids || []}
-                              onChange={(e) => handleResourcesChange(e.target.value)}
-                              renderValue={(selected) => (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {selected.map((resId) => (
-                                    <Chip 
-                                      key={resId} 
-                                      label={resourcesMap[resId] || allResources.find(r => r.id === resId)?.title || `Ressource ${resId}`} 
-                                      size="small" 
-                                    />
-                                  ))}
-                                </Box>
-                              )}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="subtitle2">
+                              Ressources associées :
+                            </Typography>
+                            <Button 
+                              variant="outlined" 
+                              size="small" 
+                              onClick={openResourceModal}
                             >
-                              {allResources.map((resource) => (
-                                <MenuItem key={resource.id} value={resource.id}>
-                                  {resource.title} {resource.type?.value ? `(${resource.type.value})` : ''}
-                                </MenuItem>
+                              Sélectionner des ressources
+                            </Button>
+                          </Box>
+                          
+                          {/* Affichage des ressources sélectionnées */}
+                          {editedSeances[currentEditIndex]?.resource_ids?.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {editedSeances[currentEditIndex].resource_ids.map((resId) => (
+                                <Chip 
+                                  key={resId} 
+                                  label={resourcesMap[resId] || allResources.find(r => r.id === resId)?.title || `Ressource ${resId}`} 
+                                  size="small" 
+                                />
                               ))}
-                            </Select>
-                          </FormControl>
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Aucune ressource sélectionnée
+                            </Typography>
+                          )}
                         </Paper>
                       </Grid>
                     </Grid>
@@ -637,6 +731,27 @@ const ProposeSeances = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Modales de sélection */}
+      <ObjectiveSelectorModal
+        open={objectiveModalOpen}
+        onClose={closeObjectiveModal}
+        initialSelectedObjectives={editedSeances[currentEditIndex]?.objective_ids?.map(id => {
+          const obj = allObjectives.find(o => o.id === id);
+          return obj || { id: id, title: objectivesMap[id] || `Objectif ${id}` };
+        }) || []}
+        onSave={handleSaveObjectives}
+      />
+      
+      <ResourceSelectorModal
+        open={resourceModalOpen}
+        onClose={closeResourceModal}
+        initialSelectedResources={editedSeances[currentEditIndex]?.resource_ids?.map(id => {
+          const res = allResources.find(r => r.id === id);
+          return res || { id: id, title: resourcesMap[id] || `Ressource ${id}` };
+        }) || []}
+        onSave={handleSaveResources}
+      />
     </Box>
   );
 };

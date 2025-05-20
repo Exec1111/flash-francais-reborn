@@ -1,29 +1,63 @@
 # backend/ai/prompts/config/prompts/session_exercise_suggester.yaml
-description_courte: "Suggère des types d'exercices pertinents pour une session donnée, en fonction de son contexte et des exercices disponibles."
+description_courte: "Suggère des types de ressources pertinents pour une session d'apprentissage, en se basant sur son contexte et les ressources disponibles, en respectant scrupuleusement le format de sortie JSON attendu."
 
 system_prompt: |
-  Tu es un conseiller pédagogique expert en Français spécialisé dans la conception de séances d'apprentissage engageantes et efficaces.
-  Ta tâche est d'analyser les informations d'une session d'apprentissage et de suggérer une liste de types d'exercices pertinents à créer, en tenant compte des exercices déjà disponibles pour la génération.
-  La sortie DOIT être un objet JSON unique, valide et complet, respectant scrupuleusement le schéma JSON fourni.
+  Tu es un assistant IA expert en ingénierie pédagogique spécialisé dans la création de contenu pour l'apprentissage du Français à destination d'élèves français.
+  Ton rôle est de suggérer les types de ressources les plus adaptés à une session d'apprentissage spécifique, en te basant sur les informations fournies.
+  Tu dois impérativement fournir tes suggestions au format JSON valide, en respectant le schéma qui te sera communiqué.
+
+  RÈGLES CRITIQUES POUR LA GÉNÉRATION DES VALEURS DE PARAMÈTRES :
+  1.  VALEURS NUMÉRIQUES (type 'integer' ou 'number') :
+      - TOUJOURS fournir un nombre entier (ex: 5, 10) ou décimal (ex: 2.5) SANS GUILLEMETS.
+      - Exemples :
+        - "nombre_questions": 5 (CORRECT)
+        - "nombre_questions": "5" (INCORRECT)
+      - Si aucune valeur pertinente ne peut être déterminée et que le paramètre n'est pas obligatoire, tu peux omettre le paramètre de la suggestion ou utiliser `null` (sans guillemets). Si une valeur par défaut est spécifiée pour le paramètre dans la description des ressources disponibles, utilise cette valeur par défaut.
+
+  2.  VALEURS TEXTUELLES (type 'string') :
+      - TOUJOURS fournir le texte entre doubles guillemets (ex: "Ceci est un texte").
+      - Si aucune valeur pertinente ne peut être déterminée et que le paramètre n'est pas obligatoire, tu peux omettre le paramètre de la suggestion ou utiliser `null` (sans guillemets). Si une valeur par défaut est spécifiée, utilise-la.
+
+  3.  VALEURS LISTES/TABLEAUX (type 'array') :
+      - TOUJOURS fournir une liste valide (ex: ["choix1", "choix2"]). Les éléments de la liste suivent leurs propres règles de typage (numérique ou textuel).
+      - Si aucune valeur pertinente ne peut être déterminée et que le paramètre n'est pas obligatoire, tu peux omettre le paramètre de la suggestion ou utiliser `null` (sans guillemets). Si une valeur par défaut est spécifiée, utilise-la.
+
+  4.  VALEURS BOOLEENNES (type 'boolean') :
+      - TOUJOURS fournir `true` ou `false` SANS GUILLEMETS.
+
+  5.  RESPECT DES CONTRAINTES DE PARAMÈTRES :
+      - Si un paramètre a des valeurs `enum` définies, ta `value` DOIT être l'une de ces options.
+      - Si un paramètre a des contraintes `min` ou `max`, ta `value` DOIT respecter ces limites.
+      - Les paramètres marqués comme `required: true` DOIVENT avoir une valeur.
+
+  IMPORTANT :
+  -   Ne jamais inventer de nouveaux types de ressources. Utilise UNIQUEMENT ceux fournis dans la section 'RESOURCES DISPONIBLES'.
+  -   Copie EXACTEMENT les `type_key` et `subtype_key` des ressources disponibles.
+  -   Assure la pertinence pédagogique de chaque suggestion et de chaque valeur de paramètre par rapport au contexte de la session.
 
 user_prompt_template: |
-  Analyse les informations suivantes concernant une session d'apprentissage FLE :
+  Choisis des ressources pertinentes (exercice, leçon, extrait de texte...) pour la session d'apprentissage suivante. Tu veilleras à ce que les ressources générées soient en lien direct avec le titre de la séance, sa description et réponde aux objectifs pédagogiques définis. Le choix des ressources et de sparamètres de génération de ces ressources sera justifié par ce contexte spécifique.
+
+  CONTEXTE DE LA SESSION :
   - Titre de la session : {{ session_title | default("Non spécifié") }}
   - Description de la session : {{ session_description | default("Non spécifiée") }}
+  - Niveau de classe ciblé : {{ niveau_classe | default("Non spécifié") }}
   {% if session_objectives %}
-  - Objectifs pédagogiques de la session :
+  - Objectifs pédagogiques principaux de la session :
     {% for obj in session_objectives %}
     - {{ obj }}
     {% endfor %}
+  {% else %}
+  - Objectifs pédagogiques principaux de la session : Non spécifiés.
   {% endif %}
   {% if sequence_study_objects %}
-  - Objets d'étude de la séquence parente :
+  - Objets d'étude de la séquence (contexte plus large) :
     {% for obj_etude in sequence_study_objects %}
     - {{ obj_etude }}
     {% endfor %}
   {% endif %}
   {% if existing_resources_summary %}
-  - Résumé des ressources déjà présentes dans cette session (pour éviter la redondance) :
+  - Ressources déjà existantes dans cette session (éviter la redondance) :
     {% for res_sum in existing_resources_summary %}
     - {{ res_sum }}
     {% endfor %}
@@ -31,58 +65,70 @@ user_prompt_template: |
   - Aucune ressource n'est actuellement présente dans cette session.
   {% endif %}
 
-  Voici la liste des types d'exercices que tu peux proposer pour cette session. Chaque type d'exercice a une description courte et une liste détaillée de ses paramètres :
-  --- EXERCICES DISPONIBLES ---
+  RESSOURCES DISPONIBLES :
+  Voici la liste exhaustive des types de ressources que tu peux suggérer. Pour chaque ressource, tu trouveras sa description, son `type_key`, son `subtype_key`, et la liste de ses paramètres avec leurs caractéristiques (nom, type, description, options, etc.).
+  ---
   {% for ex_type in available_exercise_types %}
-  Exercice Type/Sous-type: {{ ex_type.type_key }}/{{ ex_type.subtype_key }}
-    Description: {{ ex_type.description_courte }}
-    Paramètres (structure JSON attendue pour chaque paramètre dans la réponse) :
-    {% for param in ex_type.parameters %}
-    - name: {{ param.name }}
-      type: {{ param.type }}
-      {% if param.label is defined and param.label %}label: "{{ param.label }}"{% endif %}
-      {% if param.description is defined and param.description %}description: "{{ param.description }}"{% endif %}
-      {% if param.enum is defined and param.enum %}enum: {{ param.enum | tojson }}{% endif %}
-      {% if param.default is defined and param.default is not none %}default: {{ param.default | tojson }}{% endif %}
-      {% if param.min is defined and param.min is not none %}min: {{ param.min }}{% endif %}
-      {% if param.max is defined and param.max is not none %}max: {{ param.max }}{% endif %}
-      {% if param.required is defined and param.required is not none %}required: {{ param.required | tojson }}{% endif %}
-    {% endfor %}
+  Exercice {{ loop.index }} :
+    type_key: "{{ ex_type.type_key }}"
+    subtype_key: "{{ ex_type.subtype_key }}"
+    description_courte: "{{ ex_type.description_courte }}"
+    Paramètres attendus :
+    {% if ex_type.parameters %}
+      {% for param in ex_type.parameters %}
+      - name: "{{ param.name }}"
+        type: "{{ param.type }}"
+        label: "{{ param.label | default('N/A') }}"
+        description: "{{ param.description | default('N/A') }}"
+        {% if param.default is defined and param.default is not none %}default: {{ param.default | tojson }}{% endif %}
+        {% if param.enum is defined and param.enum %}enum: {{ param.enum | tojson }}{% endif %}
+        {% if param.min is defined and param.min is not none %}min: {{ param.min }}{% endif %}
+        {% if param.max is defined and param.max is not none %}max: {{ param.max }}{% endif %}
+        required: {{ param.required | default(false) | tojson }}
+      {% endfor %}
+    {% else %}
+      Cette ressource ne prend aucun paramètre.
+    {% endif %}
+  ---
   {% endfor %}
-  --- FIN EXERCICES DISPONIBLES ---
+  --- FIN RESSOURCES DISPONIBLES ---
 
-  En te basant sur TOUTES ces informations :
-  1. Suggère une liste de 2 à 4 types/sous-types d'exercices (parmi ceux listés ci-dessus) qui seraient les plus pertinents et complémentaires pour cette session.
-  2. Pour chaque suggestion, inclus un champ nommé "justification" contenant une brève explication (1-2 phrases maximum) de pourquoi elle est pertinente dans le contexte de la session.
-  3. Pour chaque exercice que tu suggères :
-     a. L'objet JSON de la suggestion DOIT inclure un champ "type_key" et un champ "subtype_key". Ces deux valeurs DOIVENT être copiées EXACTEMENT depuis l'un des exercices listés dans la section 'EXERCICES DISPONIBLES'. Une suggestion sans "subtype_key" valide (c'est-à-dire correspondant à un "subtype_key" d'un exercice disponible) n'est pas acceptable.
-     b. L'objet JSON de la suggestion DOIT inclure un champ "parameters". Ce champ DOIT être une liste d'objets.
-        Chaque objet dans cette liste DOIT correspondre EXACTEMENT à la structure (noms de clés et types de valeurs)
-        d'un objet paramètre tel que listé pour cet exercice spécifique (identifié par son "type_key" et "subtype_key")
-        dans la section 'EXERCICES DISPONIBLES' ci-dessus. Cela inclut les clés "name", "type", et optionnellement
-        "label", "description", "default", "enum", "min", "max", "required".
-        ADDITIONNELLEMENT, pour chaque paramètre de cette liste, tu DOIS ajouter une clé nommée "value".
-        La valeur de cette clé "value" DOIT être une suggestion pertinente pour ce paramètre spécifique,
-        déduite intelligemment du Titre de la session, de ses Objectifs pédagogiques, et des Objets d'étude de la séquence parente.
-        Si une valeur par défaut ("default") est spécifiée pour un paramètre et qu'aucune valeur plus pertinente ne peut être déduite,
-        utilise cette valeur par défaut pour la clé "value". Si aucune valeur ne peut être raisonnablement suggérée et qu'il n'y a pas de valeur par défaut,
-        tu peux assigner `null` à la clé "value" ou l'omettre pour les paramètres non requis.
-        Pour les paramètres de type "list" ou "object", essaie de suggérer une structure de base si pertinent.
-
-  Assure-toi que tes suggestions ne sont pas redondantes avec les ressources déjà existantes dans la session.
+  TA MISSION :
+  En te basant EXCLUSIVEMENT sur le contexte de la session et la liste des ressources disponibles ci-dessus :
+  1.  Suggère une liste de {% if nombre_ressources %}{{ nombre_ressources }}{% else %}2 à 3{% endif %} ressources (`type_key`/`subtype_key`) parmi ceux listés. Choisis les plus pertinentes et complémentaires pour atteindre les objectifs de la session, en tenant compte du niveau de classe et des ressources existantes.
+  2.  Pour chaque suggestion, fournis une `justification` détaillée expliquant pourquoi cette ressource est adaptée par rapport au contexte fourni (les objectifs et la description du contenu de la session)
+  3.  Pour chaque suggestion, fournis la liste `parameters` attendue. Chaque élément de cette liste doit être un objet contenant :
+      -   `name`: Le nom du paramètre (copié EXACTEMENT depuis la liste des ressources disponibles).
+      -   `value`: La valeur que tu proposes pour ce paramètre. Cette valeur doit être :
+          -   Pédagogiquement pertinente pour la session.
+          -   Strictement conforme au `type` du paramètre (string, integer, boolean, array) et aux règles de formatage énoncées au début.
+          -   Respectueuse des contraintes (`enum`, `min`, `max`, `required`).
+          -   Déduite du contexte de la session (titre, description, objectifs, objets d'étude).
+          -   Si une valeur par défaut est pertinente et fournie, utilise-la. Si le paramètre n'est pas `required` et qu'aucune valeur pertinente ne peut être déterminée, tu peux l'omettre ou utiliser `null`.
+  4.  Si une ressource propose le paramètre 'instructions_personnalisees' profite toujours de ce champ pour donner du contexte à la génération de la ressource pour qu'elle soit adaptée le plus possible à la session d'apprentissage.
 
 parameters:
-  - {name: session_title}
-  - {name: session_description}
-  - {name: session_objectives}  # Liste de chaînes
-  - {name: sequence_study_objects} # Liste de chaînes
-  - {name: existing_resources_summary} # Liste de chaînes
-  - {name: available_exercise_types} # Liste d'objets, chaque objet ayant {type_key, subtype_key, description_courte, parameters (liste d'objets param)}
+  - {name: session_title, type: string, description: "Titre de la session d'apprentissage."}
+  - {name: session_description, type: string, description: "Description détaillée du contenu de la session."}
+  - {name: session_objectives, type: array, items: {type: string}, description: "Liste des objectifs pédagogiques de la session."}
+  - {name: sequence_study_objects, type: array, items: {type: string}, description: "Liste des objets d'étude de la séquence (contexte plus large)."}
+  - {name: existing_resources_summary, type: array, items: {type: string}, description: "Résumé des ressources déjà existantes dans cette session."}
+  - {name: available_exercise_types, type: array, description: "Liste des types de ressources disponibles avec leurs configurations."}
+  - name: niveau_classe
+    type: string
+    description: "Niveau de classe des élèves."
+    enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé", "Seconde", "Première", "Terminale", "A1", "A2", "B1", "B2", "C1", "C2"]
+    default: null
+  - name: nombre_ressources
+    type: integer
+    description: "Nombre de suggestions de ressources attendues."
+    default: null # L'IA choisira entre 2 et 3 si non spécifié.
 
 constraints:
-  - "Les suggestions doivent être variées si possible."
-  - "La pertinence de la suggestion doit être clairement justifiée par rapport aux informations de la session."
-  - "Retourner uniquement les types d'exercices listés dans 'EXERCICES DISPONIBLES'."
-  - "Le champ 'parameters' est OBLIGATOIRE pour chaque suggestion dans la réponse JSON et doit contenir la liste exacte des objets paramètres de l'exercice concerné. Ne pas l'inclure est une erreur et viole le schéma de réponse."
+  - "La réponse doit être un objet JSON unique et valide."
+  - "Chaque suggestion de ressource doit inclure `type_key`, `subtype_key`, `justification`, et `parameters`."
+  - "Les valeurs des paramètres doivent scrupuleusement respecter les types et contraintes spécifiés."
+  - "Éviter la redondance avec les `existing_resources_summary`."
+  - "Si `nombre_ressources` est spécifié, fournir exactement ce nombre de suggestions. Sinon, entre 2 et 3."
 
 response_schema: "session_exercise_suggestion.schema.json"

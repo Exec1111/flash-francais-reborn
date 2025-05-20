@@ -53,11 +53,11 @@ user_prompt_template: |
   }
 
 parameters:
-  - name: niveau
+  - name: niveau_classe
     type: str
-    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
-    enum: [A1, A2, B1, B2, C1, C2]
-    default: "B1"
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
   - name: champs_specifiques
     type: list
     description: Liste spécifique de champs lexicaux à utiliser (optionnel, prioritaire si fourni)
@@ -69,7 +69,7 @@ parameters:
   - name: nombre_champs
     type: int
     description: Nombre de champs lexicaux à générer (optionnel)
-    default: 0
+    default: 3
   - name: min_mots_par_champ
     type: int
     description: Nombre minimum de mots par champ lexical (optionnel)
@@ -78,7 +78,7 @@ parameters:
     type: int
     description: Nombre maximum de mots par champ lexical (optionnel)
     default: 10
-  - name: instructions_supplementaires
+  - name: instructions_personnalisees
     type: str
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
     default: ""
@@ -89,8 +89,6 @@ constraints:
   - Éviter les mots trop rares ou trop techniques sauf pour les niveaux C1-C2.
   - Ne pas utiliser de mots qui pourraient appartenir à plusieurs champs lexicaux proposés.
   - Chaque champ lexical doit avoir un nom clair et descriptif (par exemple "la peur", "la joie", etc.).
-  - Pour les niveaux A1-A2, privilégier des mots simples et courants.
-  - Pour les niveaux B1-B2, inclure des synonymes et vocabulaire plus varié.
-  - Pour les niveaux C1-C2, inclure du vocabulaire riche et nuancé.
+
 
 response_schema: "champlex.schema.json"

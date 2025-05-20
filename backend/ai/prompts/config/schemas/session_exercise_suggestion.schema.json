@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SessionExerciseSuggestionResponse",
-  "description": "Schéma pour la réponse de l'IA suggérant des types d'exercices pour une session.",
+  "description": "Schéma pour la réponse de l'IA suggérant des types d'exercices pour une session, avec des paramètres simplifiés.",
   "type": "object",
   "properties": {
     "suggestions": {
@@ -12,48 +12,52 @@
         "properties": {
           "type_key": {
             "type": "string",
-            "description": "La clé du type d'exercice suggéré (ex: 'grammaire', 'vocabulaire')."
+            "description": "La clé du type d'exercice suggéré (ex: 'grammaire', 'vocabulaire'), copiée EXACTEMENT depuis les exercices disponibles."
           },
           "subtype_key": {
             "type": "string",
-            "description": "La clé du sous-type d'exercice suggéré (ex: 'qcm', 'texte_a_trous')."
+            "description": "La clé du sous-type d'exercice suggéré (ex: 'qcm', 'texte_a_trous'), copiée EXACTEMENT depuis les exercices disponibles."
           },
           "justification": {
             "type": "string",
             "description": "Brève explication (1-2 phrases) de la pertinence de cette suggestion pour la session."
           },
-          "parameters": { 
+          "parameters": {
             "type": "array",
-            "description": "Liste des paramètres requis pour l'exercice suggéré, tels que définis dans sa configuration.",
+            "description": "Liste des paramètres pour l'exercice suggéré. Chaque paramètre doit avoir un nom et une valeur.",
             "items": {
               "type": "object",
-              "properties": { 
-                "name": {"type": "string"},
-                "type": {"type": "string"},
-                "label": {"type": "string"},
-                "description": {"type": "string"},
-                "default": {
-                  "description": "Valeur par défaut du paramètre.",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Nom du paramètre, doit correspondre EXACTEMENT à un nom de paramètre de l'exercice disponible concerné."
+                },
+                "value": {
+                  "description": "Valeur suggérée par l'IA pour ce paramètre. Le type de cette valeur doit correspondre au type attendu pour ce paramètre. Peut être 'null' si le paramètre n'est pas requis et qu'aucune valeur pertinente n'est trouvée.",
                   "anyOf": [
                     { "type": "string" },
-                    { "type": "number" },
-                    { "type": "integer" },
+                    { "type": "number" }, 
                     { "type": "boolean" },
-                    { "type": "array", "items": {"type": "string"} }
+                    {
+                      "type": "array",
+                      "items": { 
+                        "anyOf": [
+                          { "type": "string" },
+                          { "type": "number" },
+                          { "type": "boolean" },
+                          { "type": "null" }
+                        ]
+                      }
+                    },
+                    { "type": "null" }
                   ]
-                },
-                "enum": {"type": "array", "items": {"type": "string"}},
-                "min": {"type": "number"},
-                "max": {"type": "number"},
-                "required": {"type": "boolean"},
-                "value": {
-                  "type": ["string", "number", "boolean", "array", "object"],
-                  "description": "La valeur suggérée par l'IA pour ce paramètre, dans le contexte de la session.",
-                  "nullable": true
                 }
               },
-              "required": ["name", "type"],
-              "additionalProperties": true 
+              "required": [
+                "name",
+                "value"
+              ],
+              "additionalProperties": false
             }
           }
         },
@@ -65,8 +69,8 @@
         ],
         "additionalProperties": false
       },
-      "minItems": 2,
-      "maxItems": 4
+      "minItems": 1,
+      "description": "L'IA devrait retourner entre 2 et 3 suggestions par défaut, ou le nombre spécifié dans le prompt."
     }
   },
   "required": [

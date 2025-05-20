@@ -39,11 +39,11 @@ user_prompt_template: |
   }
 
 parameters:
-  - name: niveau
+  - name: niveau_classe
     type: str
-    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
-    enum: [A1, A2, B1, B2, C1, C2]
-    default: "B1"
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
   - name: champ_lexical
     type: str
     description: Champ lexical à utiliser (optionnel)
@@ -56,7 +56,7 @@ parameters:
     type: int
     description: Pourcentage de mots hors champ lexical (optionnel)
     default: 50
-  - name: instructions_supplementaires
+  - name: instructions_personnalisees
     type: str
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
     default: ""

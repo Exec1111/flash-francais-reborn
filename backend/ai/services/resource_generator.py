@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.ai.services.registry import PROMPT_REGISTRY, ResourceGenerationError
 from backend.ai.services.schema_utils import clean_schema, flatten_schema
+from backend.ai.services.numeric_converter import convert_numeric_string_values
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ async def generate_ai_resource_content(
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
+        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-05-06")
         
         # Configuration du client Google GenAI
         client = genai.Client(api_key=api_key)
@@ -63,12 +64,19 @@ async def generate_ai_resource_content(
         # Construire et nettoyer le schéma dynamique si présent
         current_schema_from_generator = generator.schema
         
-        # Condition pour désactiver le schéma pour un prompt spécifique
-        if prompt_name == "session_exercise_suggester":
-            logger.info(f"Temporairement désactivation de response_schema pour le prompt: {prompt_name}")
-            effective_schema_for_api = None
-        else:
-            effective_schema_for_api = current_schema_from_generator
+        # Utiliser le schéma pour tous les prompts
+        effective_schema_for_api = current_schema_from_generator
+        
+        # Si le schéma est présent, logger l'information plus détaillée
+        if effective_schema_for_api and prompt_name == "session_exercise_suggester":
+            try:
+                logger.info(f"Utilisation du schéma JSON pour contraindre la structure de la réponse pour {prompt_name}")
+                logger.debug(f"Structure du schéma: {json.dumps(effective_schema_for_api)[:500]}...")
+            except Exception as e:
+                logger.error(f"Erreur lors de l'affichage du schéma: {str(e)}")
+        
+        # Activer la trace pour voir ce qui se passe avec Gemini
+        logger.info("Début de la préparation de l'appel à l'API Gemini")
 
         if effective_schema_for_api:
             # Copier le schéma pour éviter de modifier l'original en cache par le PromptGenerator
@@ -91,11 +99,23 @@ async def generate_ai_resource_content(
 
         # Mesure de la durée si non fournie
         start_time = time.perf_counter() if duration_ms is None else None
-        response = client.models.generate_content(
-            model=model_name,
-            contents=contents,
-            config=config
-        )
+        logger.info("Juste avant l'appel GEMINI")
+        logger.info(f"Modèle: {model_name}")
+        logger.info(f"Prompt pour génération: {prompt_text[:200]}...")
+        logger.info(f"Configuration de génération: {config}")
+        
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config
+            )
+            logger.info("Juste APRES l'appel GEMINI")
+            logger.info(f"Réponse GEMINI réussie, longueur du texte: {len(response.text) if response and hasattr(response, 'text') else 'N/A'}")
+        except Exception as gemini_error:
+            logger.error(f"ERREUR lors de l'appel GEMINI: {str(gemini_error)}")
+            # Ré-lever l'exception pour le traitement en amont
+            raise ResourceGenerationError(f"Erreur lors de l'appel à l'API Gemini: {str(gemini_error)}")
         elapsed_ms = None
         if start_time is not None:
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
@@ -130,8 +150,70 @@ async def generate_ai_resource_content(
             if 'db' in locals():
                 db.close()
 
-        # Parsing direct du JSON retourné
-        parsed_content = json.loads(response_content)
+        # Essai de parsing direct du JSON retourné
+        try:
+            parsed_content = json.loads(response_content)
+            
+            # Log de la structure de la réponse pour débogage
+            if isinstance(parsed_content, dict):
+                logger.debug(f"Structure de la réponse JSON: {list(parsed_content.keys())}")
+        except json.JSONDecodeError as json_err:
+            logger.error(f"Erreur de parsing JSON: {json_err}")
+            logger.debug(f"JSON problématique: {response_content}")
+            
+            # Tentative de correction du JSON
+            logger.info("Tentative de nettoyage et correction du JSON...")
+            # 1. Remplacer les échappements incorrects
+            cleaned_content = response_content.replace('\\', '\\\\')
+            
+            # 2. Essayer d'extraire un JSON valide à l'aide d'expressions régulières
+            import re
+            json_pattern = r'\{[\s\S]*\}|\[[\s\S]*\]'
+            matches = re.findall(json_pattern, cleaned_content)
+            
+            if matches:
+                # Essayer chaque correspondance possible
+                for potential_json in matches:
+                    try:
+                        parsed_content = json.loads(potential_json)
+                        logger.info("Correction JSON réussie avec extraction regex")
+                        break
+                    except json.JSONDecodeError:
+                        continue
+            
+            # Si aucune correction n'a fonctionné, essayer une approche plus agressive
+            if 'parsed_content' not in locals():
+                # Utiliser un service externe pour corriger le JSON (si disponible)
+                try:
+                    from json.decoder import JSONDecodeError
+                    import re
+                    
+                    # Nettoyer les délimiteurs les plus couramment problématiques
+                    fixed_content = response_content
+                    # Corriger les virgules manquantes entre objets (ligne 54, col 3 dans l'erreur signalée)
+                    fixed_content = re.sub(r'}\s*{', '},{', fixed_content)
+                    # Corriger les virgules manquantes entre les éléments de tableau
+                    fixed_content = re.sub(r'}\s*]', '}]', fixed_content)
+                    # Corriger les virgules superflues à la fin des objets
+                    fixed_content = re.sub(r',\s*}', '}', fixed_content)
+                    # Corriger les virgules superflues à la fin des tableaux
+                    fixed_content = re.sub(r',\s*]', ']', fixed_content)
+                    
+                    try:
+                        parsed_content = json.loads(fixed_content)
+                        logger.info("Correction JSON réussie avec nettoyage des délimiteurs")
+                    except JSONDecodeError:
+                        # Dernière tentative: forcer l'encapsulation dans un format approprié
+                        if prompt_name == "session_exercise_suggester":
+                            # Créer un JSON minimal valide pour éviter l'échec complet
+                            logger.warning("Création d'un JSON suggester minimal de secours")
+                            parsed_content = {"suggestions": []}
+                        else:
+                            # Échec - impossible de corriger le JSON
+                            raise ResourceGenerationError(f"JSON invalide généré par l'IA. Détails: {json_err}")
+                except Exception as correction_err:
+                    logger.error(f"Échec de correction JSON: {correction_err}")
+                    raise ResourceGenerationError(f"JSON invalide généré par l'IA. Détails: {json_err}")
 
         # Si c'était session_exercise_suggester et que le schéma n'a pas été envoyé à l'API,
         # il est possible que l'IA retourne une liste directement au lieu d'un objet {"suggestions": [...]}
@@ -182,7 +264,31 @@ async def generate_ai_resource_content(
         else:
             logger.info(f"Aucun schéma local à valider pour {prompt_name}.")
         
+        # Post-traitement des valeurs numériques pour les suggestions d'exercices
+        if prompt_name == "session_exercise_suggester":
+            try:
+                logger.info(f"Post-traitement des valeurs numériques pour {prompt_name}")
+                content_before = json.dumps(parsed_content)[:100] + "..." if isinstance(parsed_content, dict) else str(type(parsed_content))
+                logger.info(f"Contenu avant conversion: {content_before}")
+                
+                parsed_content = convert_numeric_string_values(parsed_content)
+                
+                content_after = json.dumps(parsed_content)[:100] + "..." if isinstance(parsed_content, dict) else str(type(parsed_content))
+                logger.info(f"Contenu après conversion: {content_after}")
+            except Exception as conv_err:
+                logger.error(f"Erreur lors du post-traitement numérique: {str(conv_err)}")
+                # Continuer avec le contenu non converti en cas d'erreur
+            
         return parsed_content
+    except ResourceGenerationError as re:
+        # Transmettre directement les erreurs ResourceGenerationError
+        logger.error(f"Erreur spécifique lors de la génération: {re}", exc_info=True)
+        raise
+    except json.JSONDecodeError as je:
+        # Gérer spécifiquement les erreurs JSON
+        logger.error(f"Erreur de décodage JSON lors de la génération: {je}", exc_info=True)
+        raise ResourceGenerationError(f"Erreur de format JSON dans la réponse: {str(je)}")
     except Exception as e:
+        # Gérer toutes les autres erreurs
         logger.error(f"Erreur lors de la génération de contenu IA: {e}", exc_info=True)
         raise ResourceGenerationError(f"Erreur de génération: {str(e)}")

@@ -5,7 +5,7 @@
  */
 
 // Importer depuis la nouvelle structure
-import ResourceGenerationWizard from './ResourceGenerationWizard/index';
+import ResourceGenerationWizard from './ResourceGenerationWizard';
 
 // Reexporter le composant pour maintenir la compatibilite avec le code existant
 export default ResourceGenerationWizard;

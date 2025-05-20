@@ -77,11 +77,16 @@ const _suggestionsCache = {};
  * Récupère les suggestions d'exercices pour une session avec mise en cache.
  * 
  * @param {string|number} sessionId - L'ID de la session.
+ * @param {Object} [config] - Paramètres de configuration pour les suggestions
+ * @param {string} [config.niveau_classe] - Niveau de classe des élèves
+ * @param {number} [config.nombre_ressources] - Nombre de ressources à suggérer
  * @returns {Promise<object>} - Objet contenant les suggestions.
  */
-const getSuggestions = async (sessionId) => {
-  // Clé de cache unique pour cette session
-  const cacheKey = `suggestions_${sessionId}`;
+const getSuggestions = async (sessionId, config = {}) => {
+  // Clé de cache unique pour cette session et sa configuration
+  const configKey = config.niveau_classe ? `_niveau=${config.niveau_classe}` : '';
+  const countKey = config.nombre_ressources ? `_count=${config.nombre_ressources}` : '';
+  const cacheKey = `suggestions_${sessionId}${configKey}${countKey}`;
   const cacheTime = 30 * 1000; // 30 secondes en millisecondes
   
   // Vérifier si des données en cache valides existent
@@ -97,8 +102,8 @@ const getSuggestions = async (sessionId) => {
       throw new Error("Authentification requise. Veuillez vous reconnecter.");
     }
     
-    console.log(`[API] Appel API suggestions d'exercices pour session ${sessionId}`);
-    const response = await api.post(`/ai/sessions/${sessionId}/suggest-exercises`, null, {
+    console.log(`[API] Appel API suggestions d'exercices pour session ${sessionId} avec config:`, config);
+    const response = await api.post(`/ai/sessions/${sessionId}/suggest-exercises`, config, {
       headers: { Authorization: `Bearer ${token}` },
     });
     

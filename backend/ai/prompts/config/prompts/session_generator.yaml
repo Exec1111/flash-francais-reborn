@@ -49,9 +49,8 @@ parameters:
     description: Titre de la séquence pédagogique pour laquelle générer des séances
   - name: niveau
     type: str
-    description: Niveau des apprenants (A1, A2, B1, B2, C1, C2)
-    enum: [A1, A2, B1, B2, C1, C2]
-  - name: inclure_ressources
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
     type: bool
     description: Indique si les ressources doivent être incluses dans les séances
   - name: ressources_disponibles
