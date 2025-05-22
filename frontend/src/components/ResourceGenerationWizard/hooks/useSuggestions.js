@@ -31,10 +31,34 @@ export const useSuggestions = (sessionId, activeStep, configParams) => {
         setIsSuggestionRequestPending(true);
         setSuggestionsError(null);
         try {
-          const response = await aiService.getSuggestions(sessionId, {
+          // Logs de débogage plus détaillés
+          console.log("%c[useSuggestions] Débogage configuration", "background: #9c27b0; color: white; padding: 2px 5px; font-weight: bold;");
+          console.log("Paramètres de configuration reçus par le hook:", configParams);
+          
+          // Vérifier spécifiquement type_resources
+          if (configParams.type_resources) {
+            console.log("%cAnalyse de type_resources:", "color: #9c27b0; font-weight: bold;", {
+              estTableau: Array.isArray(configParams.type_resources),
+              longueur: configParams.type_resources.length,
+              contenu: JSON.stringify(configParams.type_resources),
+              premierElement: configParams.type_resources.length > 0 ? configParams.type_resources[0] : null
+            });
+          } else {
+            console.log("%ctype_resources", "color: #9c27b0;", "non défini ou vide");
+          }
+          
+          // Préparer les paramètres pour l'API
+          const apiParams = {
             niveau_classe: configParams.niveau_classe || undefined,
-            nombre_ressources: configParams.nombre_ressources ? parseInt(configParams.nombre_ressources) : undefined
-          });
+            nombre_ressources: configParams.nombre_ressources ? parseInt(configParams.nombre_ressources) : undefined,
+            support_id: configParams.support_id || undefined,
+            type_resources: configParams.type_resources && configParams.type_resources.length > 0 ? configParams.type_resources : undefined
+          };
+          
+          console.log("%cParamètres préparés pour l'API:", "background: #ff9800; color: white; font-weight: bold;", apiParams);
+          
+          // Faire l'appel API
+          const response = await aiService.getSuggestions(sessionId, apiParams);
           setSuggestions(response.suggestions || []);
           setSelectedSuggestionsIndices({});
         } catch (err) {
@@ -47,7 +71,7 @@ export const useSuggestions = (sessionId, activeStep, configParams) => {
       };
       fetchSuggestions();
     }
-  }, [activeStep, sessionId, configParams.niveau_classe, configParams.nombre_ressources, isSuggestionRequestPending]);
+  }, [activeStep, sessionId, configParams.niveau_classe, configParams.nombre_ressources, configParams.support_id, configParams.type_resources, isSuggestionRequestPending]);
 
   /**
    * Sélectionner/désélectionner une suggestion

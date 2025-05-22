@@ -248,7 +248,8 @@ async def read_resources(
     limit: int = Query(10, ge=1, le=200, description="Nombre maximum d'éléments à retourner"),
     search_term: Optional[str] = Query(None, min_length=1, max_length=100, alias="search"),
     type_id: Optional[int] = Query(None, ge=1, alias="typeId"),
-    sub_type_id: Optional[int] = Query(None, ge=1, alias="subTypeId")
+    sub_type_id: Optional[int] = Query(None, ge=1, alias="subTypeId"),
+    type_key: Optional[str] = Query(None, alias="typeKey") # AJOUT pour filtrer par clé de type
 ):
     """Récupère la liste paginée des ressources pour l'utilisateur courant, avec options de filtrage."""
     logger.info(f"Lecture des ressources pour l'utilisateur {current_user.id} avec skip={skip}, limit={limit}, search='{search_term}', typeId={type_id}, subTypeId={sub_type_id}")
@@ -260,7 +261,8 @@ async def read_resources(
         limit=limit, 
         search_term=search_term,
         type_id=type_id,
-        sub_type_id=sub_type_id
+        sub_type_id=sub_type_id,
+        type_key=type_key
     )
     
     # Convertir les objets SQLAlchemy en schémas Pydantic ResourceResponse

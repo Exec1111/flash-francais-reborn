@@ -80,20 +80,9 @@ const ProposeWorks = () => {
   // Récupérer les niveaux de classe disponibles depuis le schema du prompt YAML
   useEffect(() => {
     const token = localStorage.getItem('token');
-    // En attendant que l'API retourne les valeurs correctement, utiliser les valeurs en dur du YAML
-    // Ces valeurs doivent correspondre à celles définies dans oeuvre_oeuvrecomp.yaml
-    const defaultClassLevels = [
-      '6ème faible', '6ème', '6ème élevé', 
-      '5ème faible', '5ème', '5ème élevé', 
-      '4ème faible', '4ème', '4ème élevé', 
-      '3ème faible', '3ème', '3ème élevé'
-    ];
+    setError(""); // Réinitialiser les erreurs
     
-    // Mettre à jour avec les valeurs par défaut immédiatement
-    setClassLevels(defaultClassLevels);
-    setSelectedClassLevel(defaultClassLevels[0]);
-
-    // Essayer de récupérer les valeurs depuis l'API (méthode qui pourrait ne pas encore fonctionner)
+    // Récupérer les niveaux de classe depuis l'API
     // Utiliser la même API que DynamicAIForm qui récupère le schéma complet
     axios.get(`${API_BASE_URL}/api/v1/ai/resource-types/oeuvre/${workType==='extrait' ? 'extrait' : 'oeuvrecomp'}/schema`, { 
       headers: { Authorization: `Bearer ${token}` } 
@@ -131,13 +120,19 @@ const ProposeWorks = () => {
           // Pour déboguer, vérifier si le champ existe mais pas l'enum
           else if (niveauClasseField) {
             console.log('Champ niveau_classe trouvé mais pas d\'enum:', niveauClasseField);
+            setError("Schéma incomplet : le champ niveau_classe existe mais ne contient pas de valeurs d'énumération.");
+            setClassLevels([]);
+          } else {
+            setError("Schéma incomplet : le champ niveau_classe n'a pas été trouvé dans le schéma.");
+            setClassLevels([]);
           }
         }
       }
     })
     .catch(err => {
       console.error('Erreur lors de la récupération du schéma:', err);
-      console.log('Utilisation des niveaux de classe par défaut');
+      setError("Impossible de récupérer les niveaux de classe depuis l'API. Veuillez réessayer ou contacter l'administrateur.");
+      setClassLevels([]);
     });
   }, [workType]); // Dépendance à workType pour récupérer les bons niveaux selon le type d'oeuvre
 

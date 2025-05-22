@@ -29,7 +29,8 @@ def get_resource(db: Session, resource_id: int):
 def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100,
                   search_term: Optional[str] = None,
                   type_id: Optional[int] = None,
-                  sub_type_id: Optional[int] = None) -> Dict:
+                  sub_type_id: Optional[int] = None,
+                  type_key: Optional[str] = None) -> Dict:
     logger.info(f"Recherche des ressources pour l'utilisateur {user_id} avec critères: terme='{search_term}', type={type_id}, subtype={sub_type_id}")
     query = db.query(Resource).options(
         joinedload(Resource.sessions),
@@ -52,6 +53,11 @@ def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100,
     if sub_type_id is not None:
         # Assurez-vous que le sous-type est pertinent pour le type sélectionné si nécessaire
         query = query.filter(Resource.sub_type_id == sub_type_id)
+
+    if type_key is not None:
+        # Assumant que ResourceType a un champ 'key' (par exemple, 'oeuvre', 'exercice', etc.)
+        # et que Resource.type est la relation vers ResourceType
+        query = query.join(Resource.type).filter(ResourceType.key == type_key)
 
     # Compter le total AVANT la pagination
     total = query.count()
@@ -111,6 +117,58 @@ def get_resources_by_session(db: Session, session_id: int, user_id: int, skip: i
         
     except Exception as e:
         logger.error(f"Erreur lors de la recherche des ressources pour la session {session_id}: {str(e)}")
+        raise
+
+def get_resources_by_session_and_type(db: Session, session_id: int, type_key: str = None, subtype_key: str = None):
+    """
+    Récupère les ressources d'une session avec filtrage optionnel par type et sous-type.
+    
+    Args:
+        db: Session de base de données
+        session_id: ID de la session
+        type_key: Clé du type de ressource (optionnel)
+        subtype_key: Clé du sous-type de ressource (optionnel)
+    
+    Returns:
+        Liste des ressources correspondant aux critères
+    """
+    from models.association_tables import session_resource_association
+    from sqlalchemy.orm import joinedload
+    
+    try:
+        logger.info(f"Recherche des ressources pour la session {session_id} avec filtres type_key={type_key}, subtype_key={subtype_key}")
+        
+        # Query de base pour obtenir les ressources associées à la session
+        query = db.query(Resource).join(
+            session_resource_association,
+            Resource.id == session_resource_association.c.resource_id
+        ).filter(session_resource_association.c.session_id == session_id)
+        
+        # Ajouter les jointures pour type et sous-type
+        query = query.options(
+            joinedload(Resource.type),
+            joinedload(Resource.sub_type),
+            joinedload(Resource.sessions)
+        )
+        
+        # Filtrer par type si spécifié
+        if type_key:
+            query = query.join(ResourceType, Resource.type_id == ResourceType.id)
+            query = query.filter(ResourceType.key == type_key)
+            
+        # Filtrer par sous-type si spécifié
+        if subtype_key:
+            query = query.join(ResourceSubType, Resource.sub_type_id == ResourceSubType.id)
+            query = query.filter(ResourceSubType.key == subtype_key)
+        
+        resources = query.all()
+        
+        logger.info(f"Trouvé {len(resources)} ressources correspondant aux critères dans la session {session_id}")
+        
+        return resources
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de la recherche des ressources par type pour la session {session_id}: {str(e)}")
         raise 
 
 def get_resources_standalone(db: Session, skip: int = 0, limit: int = 100):

@@ -24,11 +24,16 @@ const resourceService = {
       if (params.search) {
         queryParams.append('search', params.search);
       }
-      if (params.typeId) {
-        queryParams.append('typeId', params.typeId);
-      }
-      if (params.subTypeId) {
-        queryParams.append('subTypeId', params.subTypeId);
+      if (params.typeKey) { // Prioriser typeKey si présent
+        queryParams.append('typeKey', params.typeKey);
+      } else {
+        // Sinon, utiliser typeId et subTypeId comme avant
+        if (params.typeId) {
+          queryParams.append('typeId', params.typeId);
+        }
+        if (params.subTypeId) {
+          queryParams.append('subTypeId', params.subTypeId);
+        }
       }
       const response = await api.get(`${RESOURCE_ENDPOINT}?${queryParams.toString()}`);
       return response.data; // Doit retourner { total: number, items: [] }

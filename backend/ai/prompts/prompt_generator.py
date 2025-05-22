@@ -32,12 +32,16 @@ class PromptGenerator:
             self.schema = None
 
     def build(self, **kwargs) -> tuple[str, str]:  # (system_prompt, user_prompt)
-        # Appliquer valeurs par défaut
-        params = {}
+        # Appliquer valeurs par défaut et conserver tous les paramètres reçus
+        params = kwargs.copy()  # Commencer avec tous les paramètres reçus
+        
+        # Ajouter les valeurs par défaut pour les paramètres déclarés s'ils ne sont pas déjà présents
         for p in self.parameters:
             name = p.get("name")
-            params[name] = kwargs.get(name, p.get("default"))
-        # Rendre le template
+            if name not in params and "default" in p:
+                params[name] = p.get("default")
+                
+        # Rendre le template avec tous les paramètres disponibles
         user_prompt = self.template.render(**params, constraints=self.constraints)
         return self.system_prompt, user_prompt
 

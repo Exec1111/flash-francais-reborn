@@ -36,7 +36,17 @@ system_prompt: |
   -   Assure la pertinence pédagogique de chaque suggestion et de chaque valeur de paramètre par rapport au contexte de la session.
 
 user_prompt_template: |
-  Choisis des ressources pertinentes (exercice, leçon, extrait de texte...) pour la session d'apprentissage suivante. Tu veilleras à ce que les ressources générées soient en lien direct avec le titre de la séance, sa description et réponde aux objectifs pédagogiques définis. Le choix des ressources et de sparamètres de génération de ces ressources sera justifié par ce contexte spécifique.
+  Choisis des ressources pertinentes (exercice, leçon, extrait de texte...) pour la session d'apprentissage suivante. Tu veilleras à ce que les ressources générées soient en lien direct avec le titre de la séance, sa description et répondent aux objectifs pédagogiques définis.
+  
+  {% if support %}
+  IMPORTANT - SUPPORT DE TRAVAIL :
+  Cette session utilise comme support pédagogique l'œuvre suivante :
+  - Titre : {{ support.title }}
+  - Contenu :
+  """{{ support.content }}"""
+  
+  Tu DOIS t'appuyer sur ce support pour proposer des exercices pertinents. Tes suggestions doivent faire référence spécifique aux éléments de ce texte et utiliser son contenu comme base pour les exercices.
+  {% endif %}
 
   CONTEXTE DE LA SESSION :
   - Titre de la session : {{ session_title | default("Non spécifié") }}
@@ -66,6 +76,13 @@ user_prompt_template: |
   {% endif %}
 
   RESSOURCES DISPONIBLES :
+  {% if selected_exercise_types and selected_exercise_types|length > 0 %}
+  ATTENTION : L'utilisateur a sélectionné spécifiquement les types d'exercices suivants. TU DOIS OBLIGATOIREMENT te limiter à ces types d'exercices pour tes suggestions :
+  {% for selected in selected_exercise_types %}
+  - type_key: "{{ selected.type_key }}" / subtype_key: "{{ selected.subtype_key }}"
+  {% endfor %}
+  {% endif %}
+  
   Voici la liste exhaustive des types de ressources que tu peux suggérer. Pour chaque ressource, tu trouveras sa description, son `type_key`, son `subtype_key`, et la liste de ses paramètres avec leurs caractéristiques (nom, type, description, options, etc.).
   ---
   {% for ex_type in available_exercise_types %}
@@ -119,10 +136,27 @@ parameters:
     description: "Niveau de classe des élèves."
     enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé", "Seconde", "Première", "Terminale", "A1", "A2", "B1", "B2", "C1", "C2"]
     default: null
+  - name: selected_exercise_types
+    type: array
+    description: "Types d'exercices explicitement choisis par l'utilisateur. Si présent, ce paramètre a priorité sur nombre_ressources."
+    items:
+      type: object
+      properties:
+        type_key: 
+          type: string
+          description: "Clé du type d'exercice"
+        subtype_key:
+          type: string
+          description: "Clé du sous-type d'exercice"
+    default: null
   - name: nombre_ressources
     type: integer
     description: "Nombre de suggestions de ressources attendues."
     default: null # L'IA choisira entre 2 et 3 si non spécifié.
+  - name: support
+    type: dict
+    description: "Support pédagogique associé à la session (optionnel)"
+    default: null
 
 constraints:
   - "La réponse doit être un objet JSON unique et valide."

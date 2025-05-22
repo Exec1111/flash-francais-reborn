@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from database import Base
-from .association_tables import session_resource_association, objective_resource_association, study_object_resource
+# Les tables d'association sont maintenant importées depuis models/__init__.py
+from models import session_resource_association, objective_resource_association, study_object_resource
 
 # --- Modèle pour les Types de Ressources ---
 class ResourceType(Base):

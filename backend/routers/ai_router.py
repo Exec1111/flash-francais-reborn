@@ -5,6 +5,10 @@ from pydantic import BaseModel
 import logging
 import os
 import uuid
+import json
+from config import get_settings
+
+settings = get_settings()
 
 from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
@@ -17,6 +21,9 @@ from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
 from backend.schemas.session import SessionCreate
 from backend.schemas.ai_suggestion import AISuggestionResponse
+from models import ResourceType, ResourceSubType
+from backend.crud.resource import get_resources_by_session_and_type, get_resource
+from backend.schemas.resource import ResourceRead
 from backend.crud.sequence import get_sequence
 from backend.crud.session import create_session_with_user, get_session_by_id
 import logging
@@ -196,11 +203,26 @@ async def get_resource_type_schema(
             field_type = "number" if str(p.get("type")).lower() in ("int", "integer") else "string"
             # Validations et valeurs par défaut
             validations = {}
-            if "enum" in p:
-                validations["enum"] = p["enum"]
-            default = p.get("default")
+            default = p.get("default")  # Définir default AVANT de l'utiliser
             # Champ requis si pas de default
             required = default is None
+            
+            if "enum" in p:
+                validations["enum"] = p["enum"]
+                # Ajouter aussi directement l'énumération comme attribut du champ
+                # pour faciliter l'accès dans le frontend
+                form_fields.append({
+                    "name": p["name"],
+                    "label": p.get("label", p["name"]),
+                    "description": p.get("description", ""),
+                    "type": field_type,
+                    "required": required,
+                    "default": default,
+                    "validations": validations,
+                    "enum": p["enum"]  # Ajouter directement l'énumération ici
+                })
+                continue  # Passer à l'itération suivante
+            # default et required sont déjà définis plus haut, pas besoin de les redéfinir ici
             form_fields.append({
                 "name": p["name"],
                 "label": p.get("label", p["name"]),
@@ -235,6 +257,21 @@ async def merge_resource(
     """
     Endpoint pour fusionner un contenu JSON édité avec un modèle HTML (uploadé ou par défaut).
     """
+    # Logs détaillés pour diagnostiquer l'erreur 422
+    logger.info(f"[Fusion][DEBUG] Reçu requête pour type={type_key}, subtype={subtype_key}")
+    logger.info(f"[Fusion][DEBUG] model_file présent: {model_file is not None}")
+    logger.info(f"[Fusion][DEBUG] model_name: {model_name}")
+    try:
+        # Logs du contenu JSON (première partie seulement pour ne pas surcharger les logs)
+        json_str = data_json[:200] + "..." if len(data_json) > 200 else data_json
+        logger.info(f"[Fusion][DEBUG] data_json reçu: {json_str}")
+        # Vérifier que le JSON est valide
+        json_data = json.loads(data_json)
+        logger.info(f"[Fusion][DEBUG] JSON valide, structure: {list(json_data.keys()) if isinstance(json_data, dict) else 'liste ou autre type'}") 
+    except json.JSONDecodeError as e:
+        logger.error(f"[Fusion][ERREUR] JSON invalide: {e}")
+        raise HTTPException(status_code=422, detail=f"Format JSON invalide: {str(e)}")
+        
     if not type_key or not subtype_key:
         logger.error(f"[Fusion][ERREUR] type_key ou subtype_key manquant dans la requête : type_key={type_key}, subtype_key={subtype_key}")
         raise HTTPException(status_code=400, detail="type_key et subtype_key sont obligatoires.")
@@ -420,10 +457,46 @@ async def generate_sessions(
             detail=f"Une erreur inattendue s'est produite: {str(e)}"
         )
 
+@router.get(
+    "/sessions/{session_id}/available-supports",
+    response_model=List[ResourceRead],
+    summary="Récupère les œuvres disponibles dans une session comme supports potentiels",
+    description="Retourne la liste des ressources de type 'oeuvre' associées à la session spécifiée."
+)
+async def get_available_supports(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Récupère les ressources de type 'oeuvre' disponibles dans une session pour servir de support à la génération d'exercices.
+    """
+    logger.info(f"[TRACE] API GET /ai/sessions/{session_id}/available-supports appelé par user_id={current_user.id} email={current_user.email}")
+    
+    try:
+        # Récupérer les ressources de type 'OEUVRE' pour cette session (clé en majuscules dans la BDD)
+        resources = get_resources_by_session_and_type(db, session_id=session_id, type_key="OEUVRE")
+        
+        if not resources:
+            logger.info(f"Aucune ressource de type 'oeuvre' trouvée pour la session {session_id}")
+            return []
+        
+        # Convertir en schéma Pydantic pour la réponse
+        return [ResourceRead.model_validate(resource) for resource in resources]
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des supports pour la session {session_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Une erreur est survenue lors de la récupération des supports disponibles: {str(e)}"
+        )
+
 # Définition du modèle pour les paramètres de configuration des exercices
 class ExerciseConfigParams(BaseModel):
     niveau_classe: Optional[str] = None
     nombre_ressources: Optional[int] = None
+    type_resources: Optional[List[Dict[str, str]]] = None  # Liste des types/sous-types de ressources à inclure
+    support_id: Optional[int] = None  # ID de la ressource de type 'oeuvre' à utiliser comme support
 
 @router.post(
     "/sessions/{session_id}/suggest-exercises",
@@ -473,6 +546,50 @@ async def suggest_exercises_for_session_endpoint(
             config_dict['niveau_classe'] = config_params.niveau_classe
         if config_params.nombre_ressources:
             config_dict['nombre_ressources'] = config_params.nombre_ressources
+        if config_params.type_resources:
+            config_dict['type_resources'] = config_params.type_resources
+            logger.info(f"Types de ressources spécifiés: {config_params.type_resources}")
+        
+        # Récupération du support si spécifié
+        if config_params.support_id:
+            logger.info(f"DEBUG: Support ID reçu: {config_params.support_id}")
+            support_resource = get_resource(db, resource_id=config_params.support_id)
+            if not support_resource:
+                logger.warning(f"Support ID {config_params.support_id} non trouvé")
+            else:
+                # Afficher le type de support à titre informatif
+                logger.info(f"Type de support: {support_resource.type.key if support_resource.type else 'inconnu'}, subtype: {support_resource.sub_type.key if support_resource.sub_type else 'inconnu'}")
+                # Accepter tous les types de supports
+                # Ajouter l'information du support à la configuration
+                # Lire le contenu du fichier à partir du chemin file_path
+                content = ""
+                try:
+                    file_path = support_resource.file_path
+                    if file_path:
+                        upload_dir = settings.UPLOADS_BASE_DIR
+                        absolute_path = os.path.join(upload_dir, file_path)
+                        if os.path.exists(absolute_path):
+                            with open(absolute_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            logger.info(f"Fichier lu avec succès : {absolute_path}")
+                        else:
+                            logger.warning(f"Le fichier n'existe pas : {absolute_path}")
+                    else:
+                        logger.warning(f"Chemin de fichier non spécifié pour la ressource ID {support_resource.id}")
+                except Exception as e:
+                    logger.error(f"Erreur lors de la lecture du fichier : {e}")
+                
+                config_dict['support'] = {
+                    'id': support_resource.id,
+                    'title': support_resource.title,
+                    'content': content
+                }
+                logger.info(f"DEBUG: Support ajouté à config_dict avec titre: {support_resource.title}")
+                logger.info(f"DEBUG: Contenu du support (extrait): {content[:100] if content else 'Vide'}...")
+                logger.info(f"Support utilisé pour la génération: {support_resource.title} (ID: {support_resource.id})")
+        else:
+            logger.info("DEBUG: Aucun support_id reçu dans config_params")
+
 
     logger.info(f"Configuration pour suggestion d'exercices: {config_dict}")
             

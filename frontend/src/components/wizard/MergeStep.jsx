@@ -10,7 +10,11 @@ import {
   Checkbox,
   Link,
   Tooltip,
-  Divider
+  Divider,
+  List,
+  ListItemButton,
+  ListItemText,
+  ListItemIcon
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -58,7 +62,7 @@ const MergeStep = ({
   return (
     <Box sx={{ my: 2 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Étape 4: Fusion HTML avec templates
+        Fusion HTML avec templates
       </Typography>
       
       {/* Affichage de l'avancement global */}
@@ -77,79 +81,87 @@ const MergeStep = ({
       </Alert>
 
       {/* Liste des exercices avec leur statut de fusion et options de sélection */}
-      <Box sx={{ mb: 3 }}>
+      <List sx={{ mb: 3 }}>
         {resourcesToMerge.map((resource, index) => {
           const mergeStatus = finalMergedResources[index]?.mergeStatus;
           const isConserved = finalMergedResources[index]?.conserved !== false; // Par défaut, conserver
           const htmlUrl = finalMergedResources[index]?.html_url;
           
           return (
-            <Box 
+            <ListItemButton 
               key={index} 
+              onClick={() => handleToggleResourceConservation(index)}
+              disabled={mergeStatus !== 'success'}
               sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                p: 1.5, 
+                border: '1px solid #eee', 
                 mb: 1, 
-                border: '1px solid #eee',
-                borderRadius: 1,
-                bgcolor: isConserved ? 'rgba(232, 245, 233, 0.2)' : 'transparent'
+                borderRadius: '4px', 
+                bgcolor: isConserved ? 'action.hover' : 'transparent',
+                display: 'flex',
+                alignItems: 'flex-start',
+                flexDirection: 'column',
+                p: 2
               }}
             >
-              {/* Checkbox pour conserver/supprimer */}
-              <Checkbox 
-                checked={isConserved}
-                onChange={() => handleToggleResourceConservation(index)}
-                disabled={mergeStatus !== 'success'}
-                color="primary"
-                sx={{ mr: 1 }}
-              />
-              
-              {/* Indicateur de statut */}
-              <Box sx={{ mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30 }}>
-                {isMerging && index === currentMergeIndex && <CircularProgress size={24} />}
-                {mergeStatus === 'success' && <CheckCircleIcon color="success" />}
-                {mergeStatus === 'error' && <ErrorIcon color="error" />}
-                {!mergeStatus && index !== currentMergeIndex && <HourglassEmptyIcon color="disabled" />}
+              <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+                {/* Checkbox pour conserver/supprimer */}
+                <Checkbox 
+                  checked={isConserved}
+                  onChange={() => handleToggleResourceConservation(index)}
+                  disabled={mergeStatus !== 'success'}
+                  edge="start"
+                  disableRipple
+                />
+                
+                {/* Indicateur de statut */}
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  {isMerging && index === currentMergeIndex && <CircularProgress size={24} />}
+                  {mergeStatus === 'success' && <CheckCircleIcon color="success" />}
+                  {mergeStatus === 'error' && <ErrorIcon color="error" />}
+                  {!mergeStatus && index !== currentMergeIndex && <HourglassEmptyIcon color="disabled" />}
+                </ListItemIcon>
+                
+                {/* Informations sur l'exercice */}
+                <ListItemText
+                  primary={`${resource.suggestion.type_key} - ${resource.suggestion.subtype_key}`}
+                  secondary={
+                    <>
+                      {mergeStatus === 'error' && (
+                        <Typography variant="caption" color="error.main">
+                          {finalMergedResources[index]?.error || "Erreur lors de la fusion"}
+                        </Typography>
+                      )}
+                      {mergeStatus === 'success' && (
+                        <Typography variant="caption" color="text.secondary">
+                          Template: {finalMergedResources[index]?.template_path || "Template automatique"}
+                        </Typography>
+                      )}
+                    </>
+                  }
+                />
               </Box>
               
-              {/* Informations sur l'exercice */}
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="subtitle2">
-                  {resource.suggestion.type_key} / {resource.suggestion.subtype_key}
-                </Typography>
-                {mergeStatus === 'error' && (
-                  <Typography variant="caption" color="error.main">
-                    {finalMergedResources[index]?.error || "Erreur lors de la fusion"}
-                  </Typography>
-                )}
-                {mergeStatus === 'success' && (
-                  <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                      Template: {finalMergedResources[index]?.template_path || "Template automatique"}
-                    </Typography>
-                    
-                    {htmlUrl && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="primary"
-                        startIcon={<OpenInNewIcon />}
-                        href={htmlUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{ mt: 0.5 }}
-                      >
-                        Visualiser le document HTML
-                      </Button>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            </Box>
+              {/* Bouton de visualisation pour les exercices fusionnés avec succès */}
+              {mergeStatus === 'success' && 
+               (finalMergedResources[index]?.mergedHtml || finalMergedResources[index]?.html_url) && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="primary"
+                  startIcon={<OpenInNewIcon />}
+                  href={finalMergedResources[index]?.mergedHtml || finalMergedResources[index]?.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ mt: 1, alignSelf: 'flex-end' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Visualiser le document HTML
+                </Button>
+              )}
+            </ListItemButton>
           );
         })}
-      </Box>
+      </List>
 
       {/* Message d'erreur global si présent */}
       {htmlMergeError && <Alert severity="error" sx={{ my: 2 }}>{htmlMergeError}</Alert>}
@@ -165,7 +177,15 @@ const MergeStep = ({
         <Button 
           variant="contained" 
           color="success"
-          onClick={handleSaveResources} 
+          onClick={() => {
+            // Récupérer les ressources prêtes à sauvegarder et les passer au gestionnaire
+            const resourcesToSave = finalMergedResources.filter(r => 
+              r.mergeStatus === 'success' && 
+              r.conserved !== false
+            );
+            console.log("[MergeStep] Ressources à sauvegarder:", resourcesToSave);
+            handleSaveResources(resourcesToSave);
+          }} 
           disabled={isMerging || isSavingResources || !areAllMergesAttempted() || finalMergedResources.filter(r => r.mergeStatus === 'success' && r.conserved !== false).length === 0}
           startIcon={isSavingResources ? <CircularProgress size={20} color="inherit" /> : null}
         >

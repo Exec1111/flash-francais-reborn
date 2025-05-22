@@ -26,7 +26,7 @@ const GenerationStep = ({
 }) => {
   return (
     <Box sx={{ my: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>Étape 2: Génération des exercices</Typography>
+      <Typography variant="h6" sx={{ mb: 2 }}>Génération des exercices</Typography>
       {isGenerating && generationStatus.some(s => s.status === 'loading') && 
         <CircularProgress sx={{ display: 'block', margin: 'auto', my: 2 }} />
       }
@@ -44,18 +44,38 @@ const GenerationStep = ({
               primary={
                 <>
                   <Chip 
-                    label={item.type_key || ''} 
+                    label={item.suggestion?.type_key || 'Type inconnu'} 
                     color="primary" 
                     size="small" 
                     variant="outlined" 
                     sx={{ mr: 1 }}
                   />
-                  {item.subtype_key || ''}
+                  <Chip 
+                    label={item.suggestion?.subtype_key || 'Sous-type inconnu'} 
+                    color="secondary" 
+                    size="small" 
+                    variant="outlined" 
+                  />
                 </>
               }
-              secondary={item.status === 'error' ? 
-                (typeof item.error === 'string' ? item.error : formatErrorMessage(item.error, "Erreur de génération")) : 
-                (item.status === 'success' ? 'Généré avec succès' : 'En attente...')}
+              secondary={
+                <Box sx={{ mt: 0.5 }}>
+                  {item.status === 'error' ? 
+                    (typeof item.error === 'string' ? item.error : formatErrorMessage(item.error, "Erreur de génération")) : 
+                    (item.status === 'success' ? 
+                      'Généré avec succès' : 
+                      item.status === 'loading' ? 'Génération en cours...' : 'En attente...')}
+                  {item.suggestion?.parameters && item.suggestion.parameters.length > 0 && (
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                      {item.suggestion.parameters
+                        .filter(p => p.name === 'theme' || p.name === 'instructions_personnalisees')
+                        .map(p => p.value)
+                        .filter(Boolean)
+                        .join(' - ')}
+                    </Typography>
+                  )}
+                </Box>
+              }
             />
           </ListItem>
         ))}

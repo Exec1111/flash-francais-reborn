@@ -27,7 +27,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
 import api from '../../services/api';
 
-const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], onSave }) => {
+const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], onSave, filterType = null }) => {
+    // Log de débogage pour vérifier si filterType est correctement passé
+    console.log("%cResourceSelectorModal initialisé avec:", "background: #2196f3; color: white; font-weight: bold; padding: 3px 5px;", {
+        estOuvert: open,
+        ressourcesInitiales: initialSelectedResources.length,
+        typeFiltre: filterType
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedResources, setSelectedResources] = useState([]);
@@ -48,17 +54,17 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
     useEffect(() => {
         if (open) {
             setSelectedResources(initialSelectedResources || []);
-            // Optionnel: lancer une recherche initiale si nécessaire ou si le terme est vide
-            // fetchResources(''); 
-            fetchResources(1, searchTerm, selectedTypeId, selectedSubTypeId); // Charger la première page
-            fetchResourceTypes(); // Charger les types
-            // Réinitialiser les états si nécessaire
-            // setSearchTerm('');
-            // setSelectedTypeId('');
-            // setSelectedSubTypeId('');
-            // setCurrentPage(1);
+            
+            // Afficher dans la console si un filtre de type est spécifié
+            if (filterType) {
+                console.log(`%cModal ouvert avec filtre de type: ${filterType}`, 'background: #ff9800; color: white; padding: 2px 5px;');
+            }
+            
+            // Charger la première page avec le filtre de type si spécifié
+            fetchResources(1, searchTerm, selectedTypeId, selectedSubTypeId);
+            fetchResourceTypes();
         }
-    }, [open, initialSelectedResources]);
+    }, [open, initialSelectedResources, filterType]);
 
     // Charger les types de ressources
     const fetchResourceTypes = async () => {
@@ -101,21 +107,45 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
 
     // Fonction pour récupérer les ressources depuis l'API avec debounce
     // Suppression du debounce ici, on le gèrera sur l'input de recherche directement
-    const fetchResources = useCallback(async (page, term, typeId, subTypeId) => {
+    const fetchResources = useCallback(async (page, term, typeIdFromState, subTypeIdFromState) => {
         setLoading(true);
         setError('');
         try {
             const token = localStorage.getItem('token');
-            const params = {
+            
+            const stackTrace = new Error().stack;
+            console.log("%cStackTrace de l'appel fetchResources:", "color: #607d8b;", stackTrace);
+            
+            console.log("%cValeur de filterType dans fetchResources (avant construction params):", "background: #673ab7; color: white; padding: 2px 5px;", {
+                filterType,
+                typeIdFromState,
+                subTypeIdFromState
+            });
+            
+            const apiParams = {
                 page: page,
                 limit: resourcesPerPage,
-                search: term || undefined, // N'envoyer que si non vide
-                typeId: typeId || undefined,
-                subTypeId: subTypeId || undefined,
+                search: term || undefined,
             };
+
+            if (filterType) {
+                console.log(`%cUtilisation du filtre prioritaire filterType: ${filterType}. Les sélections de type/sous-type du formulaire seront ignorées.`, 'background: #e91e63; color: white; font-weight: bold; padding: 3px 5px;');
+                apiParams.typeKey = filterType;
+            } else {
+                // Si filterType n'est pas défini, utiliser les valeurs des menus déroulants
+                if (typeIdFromState) apiParams.typeId = typeIdFromState;
+                if (subTypeIdFromState) apiParams.subTypeId = subTypeIdFromState;
+            }
+            
+            console.log("%cParamètres finaux pour la requête API:", "background: #009688; color: white; font-weight: bold; padding: 3px 5px;", apiParams);
+            
+            const queryString = new URLSearchParams(apiParams).toString();
+            console.log("%cURL de la requête envoyée:", "background: #795548; color: white; padding: 3px 5px;", 
+                `/resources/?${queryString}`);
+                
             const response = await api.get('/resources/', {
                 headers: { Authorization: `Bearer ${token}` },
-                params: params
+                params: apiParams
             });
             setSearchResults(response.data.items || []);
             setTotalResources(response.data.total || 0);
@@ -127,7 +157,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         } finally {
             setLoading(false);
         }
-    }, [resourcesPerPage]); // Dépendances : seulement resourcesPerPage car les autres sont passés en arguments
+    }, [resourcesPerPage, filterType]); // filterType ajouté aux dépendances
 
     // Appliquer le debounce spécifiquement à l'appel déclenché par la recherche textuelle
     const debouncedFetchResources = useMemo(() => _debounce(fetchResources, 500), [fetchResources]);
@@ -136,10 +166,17 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
     useEffect(() => {
         // Éviter l'appel initial redondant si 'open' le gère déjà
         if (open) {
-             // Pas besoin de debounce pour les changements de page/filtres
-             fetchResources(currentPage, searchTerm, selectedTypeId, selectedSubTypeId);
+            console.log("%cRechargement des ressources avec filtres changés:", "background: #673ab7; color: white;", {
+                page: currentPage,
+                searchTerm,
+                typeId: selectedTypeId,
+                subTypeId: selectedSubTypeId,
+                typeFilter: filterType
+            });
+            // Pas besoin de debounce pour les changements de page/filtres
+            fetchResources(currentPage, searchTerm, selectedTypeId, selectedSubTypeId);
         }
-    }, [currentPage, selectedTypeId, selectedSubTypeId, open]); // Ne pas inclure searchTerm ici pour utiliser le debounce
+    }, [open, currentPage, selectedTypeId, selectedSubTypeId, fetchResources, filterType]); // Ne pas inclure searchTerm ici pour utiliser le debounce
 
     // Gérer le changement du terme de recherche
     const handleSearchChange = (event) => {

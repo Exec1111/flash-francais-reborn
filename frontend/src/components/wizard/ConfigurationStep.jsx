@@ -13,7 +13,16 @@ import {
   Alert,
   Card,
   CardContent,
-  FormHelperText
+  FormHelperText,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
+  Chip,
+  Grid,
+  Divider,
+  FormLabel,
+  FormGroup,
+  FormControlLabel
 } from '@mui/material';
 import api from '../../services/api';
 
@@ -21,14 +30,94 @@ const ConfigurationStep = ({
   sessionId,
   onContinue,
   onClose,
-  initialConfig = { niveau_classe: '', nombre_ressources: '' }
+  initialConfig = { niveau_classe: '', nombre_ressources: '', type_resources: [], support_id: null, selectionMode: 'auto' }
 }) => {
   const [config, setConfig] = useState(initialConfig);
   const [classLevels, setClassLevels] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [loadingSchema, setLoadingSchema] = useState(false);
+  const [availableResourceTypes, setAvailableResourceTypes] = useState([]);
+  const [loadingResourceTypes, setLoadingResourceTypes] = useState(false);
+  const [availableSupports, setAvailableSupports] = useState([]);
+  const [loadingSupports, setLoadingSupports] = useState(false);
 
+  // Charger les types de ressources disponibles
+  useEffect(() => {
+    const fetchAvailableResourceTypes = async () => {
+      setLoadingResourceTypes(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentification requise");
+
+        // Récupérer les types de ressources disponibles
+        const response = await api.get('/ai/resource-types', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data && response.data.types) {
+          const resourceTypes = [];
+          
+          // Transformer les données en format utilisable pour notre UI
+          // Types est un dictionnaire avec clés = type_key et valeurs = {subtypes: [...]}
+          Object.entries(response.data.types).forEach(([typeKey, typeInfo]) => {
+            if (typeInfo.subtypes && typeInfo.subtypes.length > 0) {
+              typeInfo.subtypes.forEach(subtypeKey => {
+                resourceTypes.push({
+                  type_key: typeKey,
+                  type_name: typeKey, // Utiliser la clé comme nom par défaut
+                  subtype_key: subtypeKey,
+                  subtype_name: subtypeKey, // Utiliser la clé comme nom par défaut
+                  description: ''
+                });
+              });
+            }
+          });
+          
+          console.log('Types de ressources disponibles:', resourceTypes);
+          setAvailableResourceTypes(resourceTypes);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des types de ressources:", err);
+        setError("Impossible de charger les types de ressources disponibles.");
+      } finally {
+        setLoadingResourceTypes(false);
+      }
+    };
+
+    fetchAvailableResourceTypes();
+  }, []);
+
+  // Charger les supports disponibles pour cette session
+  useEffect(() => {
+    const fetchAvailableSupports = async () => {
+      if (!sessionId) return;
+      
+      setLoadingSupports(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("Authentification requise");
+
+        // Récupérer les œuvres disponibles pour cette session
+        const response = await api.get(`/ai/sessions/${sessionId}/available-supports`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        console.log('Supports disponibles:', response.data);
+        setAvailableSupports(response.data || []);
+      } catch (err) {
+        console.error("Erreur lors du chargement des supports:", err);
+        setError("Impossible de charger les supports disponibles.");
+      } finally {
+        setLoadingSupports(false);
+      }
+    };
+
+    fetchAvailableSupports();
+  }, [sessionId]);
+  
   // Charger les niveaux de classe depuis le backend
   useEffect(() => {
     const fetchClassLevels = async () => {
@@ -53,35 +142,14 @@ const ConfigurationStep = ({
           if (niveauField && niveauField.enum) {
             console.log('Niveaux de classe récupérés:', niveauField.enum);
             setClassLevels(niveauField.enum);
-          } else {
-            console.log('Champ niveau_classe non trouvé dans le schéma, utilisation des valeurs specifiées manuellement');
-            // Valeurs correspondant à celles définies dans le fichier YAML
-            setClassLevels([
-              "6ème faible", "6ème", "6ème élevé", 
-              "5ème faible", "5ème", "5ème élevé", 
-              "4ème faible", "4ème", "4ème élevé", 
-              "3ème faible", "3ème", "3ème élevé"
-            ]);
-          }
-        } else {
-          console.log('Structure de schéma inattendue, utilisation des valeurs spécifiées manuellement');
-          // Valeurs correspondant à celles définies dans le fichier YAML
-          setClassLevels([
-            "6ème faible", "6ème", "6ème élevé", 
-            "5ème faible", "5ème", "5ème élevé", 
-            "4ème faible", "4ème", "4ème élevé", 
-            "3ème faible", "3ème", "3ème élevé"
-          ]);
-        }
+          } else if (niveauField && niveauField.validations && niveauField.validations.enum) {
+            // Alternative - chercher dans validations.enum
+            console.log('Niveaux de classe récupérés depuis validations:', niveauField.validations.enum);
+            setClassLevels(niveauField.validations.enum);
+          } 
+        } 
       } catch (err) {
         console.error("Erreur lors du chargement des niveaux de classe:", err);
-        // Utiliser des valeurs correspondant à celles définies dans le fichier YAML
-        setClassLevels([
-          "6ème faible", "6ème", "6ème élevé", 
-          "5ème faible", "5ème", "5ème élevé", 
-          "4ème faible", "4ème", "4ème élevé", 
-          "3ème faible", "3ème", "3ème élevé"
-        ]);
       } finally {
         setLoadingSchema(false);
       }
@@ -97,10 +165,87 @@ const ConfigurationStep = ({
       [name]: value
     }));
   };
+  
+  // Gestionnaire spécifique pour la sélection multiple des types de ressources
+  const handleResourceTypesChange = (event) => {
+    const selectedIndices = event.target.value;
+    
+    console.log("%cIndices sélectionnés:", "color: #3f51b5; font-weight: bold;", selectedIndices);
+    
+    // Transformer directement les indices en objets type_key/subtype_key
+    const selectedResourceTypes = selectedIndices.map(index => {
+      if (index >= 0 && index < availableResourceTypes.length) {
+        const resourceType = availableResourceTypes[index];
+        return {
+          type_key: resourceType.type_key,
+          subtype_key: resourceType.subtype_key,
+          index: index // Conserver l'indice pour faciliter le rendu
+        };
+      }
+      return null;
+    }).filter(item => item !== null);
+    
+    console.log("%cTypes d'exercices transformés:", "color: #4caf50; font-weight: bold;", selectedResourceTypes);
+    
+    setConfig(prev => ({
+      ...prev,
+      type_resources: selectedResourceTypes
+    }));
+  };
+  
+  // Obtenir les indices des types de ressources sélectionnés
+  const getSelectedResourceTypeIndices = () => {
+    if (!config.type_resources || !config.type_resources.length || !availableResourceTypes.length) {
+      return [];
+    }
+    
+    // Maintenant que type_resources contient des objets avec index
+    const indices = config.type_resources.map(item => item.index || -1).filter(index => index !== -1);
+    console.log("%cgetSelectedResourceTypeIndices retourne:", "color: #8bc34a;", indices);
+    return indices;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onContinue(config);
+    
+    // Créer une copie du config
+    const configToSubmit = { ...config };
+    
+    // Débogage des type_resources sélectionnés
+    console.log("%ctype_resources avant envoi:", "background: #3f51b5; color: white; padding: 2px 5px;", {
+      valeur: config.type_resources,
+      type: typeof config.type_resources,
+      estTableau: Array.isArray(config.type_resources),
+      longueur: config.type_resources ? config.type_resources.length : 0
+    });
+    
+    // Déterminer automatiquement le mode de sélection si l'utilisateur a sélectionné des types
+    if (config.type_resources && config.type_resources.length > 0) {
+      configToSubmit.selectionMode = 'manual';
+      console.log("%cSélection en mode manuel car des types sont sélectionnés", "color: #3f51b5;");
+      
+      // Nettoyer les objets pour n'envoyer que type_key et subtype_key
+      // En supprimant les propriétés supplémentaires comme 'index'
+      const cleanedTypes = config.type_resources.map(item => ({
+        type_key: item.type_key,
+        subtype_key: item.subtype_key
+      }));
+      
+      // Mettre à jour le configToSubmit avec les types nettoyés
+      configToSubmit.type_resources = cleanedTypes;
+      configToSubmit.nombre_ressources = ''; // Désactiver le nombre en mode manuel
+      
+      console.log('%cTypes d\'exercices nettoyés pour l\'API:', 'background: #4caf50; color: white; padding: 2px 5px;', cleanedTypes);
+    } else {
+      // Mode auto ou aucune sélection
+      configToSubmit.type_resources = [];
+      console.log('%cAucun type sélectionné, tableau vide envoyé', 'color: #f44336;');
+    }
+    
+    // Log pour débogage
+    console.log('%cConfiguration finale envoyée:', 'background: #9c27b0; color: white; padding: 2px 5px;', configToSubmit);
+    
+    onContinue(configToSubmit);
   };
 
   return (
@@ -139,17 +284,160 @@ const ConfigurationStep = ({
               </Select>
             </FormControl>
 
-            <TextField
-              fullWidth
-              label="Nombre de ressources à générer (optionnel)"
-              name="nombre_ressources"
-              type="number"
-              value={config.nombre_ressources}
-              onChange={handleChange}
-              inputProps={{ min: 1, max: 10 }}
-              helperText="Laissez vide pour que l'IA détermine le nombre optimal (généralement 2 à 4)"
-              sx={{ mb: 2 }}
-            />
+            <FormControl component="fieldset" sx={{ mb: 3 }}>
+              <FormLabel component="legend">Mode de génération des ressources</FormLabel>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={config.selectionMode === 'auto'}
+                      onChange={() => {
+                        setConfig({
+                          ...config,
+                          selectionMode: 'auto',
+                          type_resources: []
+                        });
+                      }}
+                      name="selectionMode"
+                      value="auto"
+                      disabled={loading}
+                    />
+                  }
+                  label="Génération automatique avec nombre défini"
+                />
+                
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={config.selectionMode === 'manual'}
+                      onChange={() => {
+                        setConfig({
+                          ...config,
+                          selectionMode: 'manual',
+                          nombre_ressources: ''
+                        });
+                      }}
+                      name="selectionMode"
+                      value="manual"
+                      disabled={loading}
+                    />
+                  }
+                  label="Sélection manuelle des types d'exercices"
+                />
+              </FormGroup>
+              <FormHelperText>
+                Choisissez un mode de génération. Soit un nombre de ressources automatiquement choisies par l'IA, soit une sélection précise des types d'exercices.
+              </FormHelperText>
+            </FormControl>
+            
+            {config.selectionMode === 'auto' && (
+              <TextField
+                fullWidth
+                type="number"
+                name="nombre_ressources"
+                label="Nombre de ressources souhaitées"
+                value={config.nombre_ressources}
+                onChange={handleChange}
+                margin="normal"
+                helperText="Si non spécifié, l'IA choisira automatiquement le nombre optimal."
+                disabled={loading}
+                inputProps={{ min: 1, max: 10 }}
+                sx={{ mb: 3 }}
+              />
+            )}
+            
+            {config.selectionMode === 'manual' && (
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel id="resource-types-label">Types d'exercices spécifiques</InputLabel>
+                <Select
+                  labelId="resource-types-label"
+                  multiple
+                  value={getSelectedResourceTypeIndices()}
+                  onChange={handleResourceTypesChange}
+                  input={<OutlinedInput label="Types d'exercices spécifiques" />}
+                  renderValue={(selected) => {
+                    console.log("%cRenderValue sélection:", "background: #00bcd4; color: white;", selected);
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((index) => {
+                          // Vérification supplémentaire pour s'assurer que l'index est valide
+                          if (index >= 0 && index < availableResourceTypes.length) {
+                            return (
+                              <Chip 
+                                key={index} 
+                                label={`${availableResourceTypes[index].type_name}: ${availableResourceTypes[index].subtype_name}`}
+                              />
+                            );
+                          }
+                          return null;
+                        }).filter(Boolean)}
+                      </Box>
+                    );
+                  }}
+                  disabled={loadingResourceTypes || !availableResourceTypes.length}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300
+                      },
+                    },
+                  }}
+                >
+                  {loadingResourceTypes ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      Chargement des types de ressources...
+                    </MenuItem>
+                  ) : (
+                    availableResourceTypes.map((resource, index) => (
+                      <MenuItem key={index} value={index}>
+                        <Checkbox checked={getSelectedResourceTypeIndices().indexOf(index) > -1} />
+                        <ListItemText 
+                          primary={`${resource.type_name}: ${resource.subtype_name}`} 
+                          secondary={resource.description} 
+                        />
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+                <FormHelperText>
+                  Sélectionnez les types d'exercices que vous souhaitez explicitement inclure dans les suggestions.
+                </FormHelperText>
+              </FormControl>
+            )}
+            
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel id="support-label">Support pédagogique (Œuvre)</InputLabel>
+              <Select
+                labelId="support-label"
+                name="support_id"
+                value={config.support_id || ''}
+                onChange={handleChange}
+                label="Support pédagogique (Œuvre)"
+                disabled={loadingSupports || !availableSupports.length}
+              >
+                <MenuItem value="">
+                  <em>Aucun support spécifique</em>
+                </MenuItem>
+                {loadingSupports ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Chargement des supports disponibles...
+                  </MenuItem>
+                ) : (
+                  availableSupports.map((support) => (
+                    <MenuItem key={support.id} value={support.id}>
+                      {support.title}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+              <FormHelperText>
+                Sélectionnez une œuvre comme support pédagogique pour que les exercices générés y fassent référence.
+              </FormHelperText>
+            </FormControl>
+            
+            <Divider sx={{ my: 2 }} />
 
             {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
 

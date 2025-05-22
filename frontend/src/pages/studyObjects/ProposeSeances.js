@@ -162,21 +162,10 @@ const ProposeSeances = () => {
   // Récupérer les niveaux de classe disponibles depuis le schema du prompt YAML
   useEffect(() => {
     const token = localStorage.getItem('token');
-    // En attendant que l'API retourne les valeurs correctement, utiliser les valeurs en dur du YAML
-    // Ces valeurs doivent correspondre à celles définies dans session_generator.yaml
-    const defaultClassLevels = [
-      '6ème faible', '6ème', '6ème élevé', 
-      '5ème faible', '5ème', '5ème élevé', 
-      '4ème faible', '4ème', '4ème élevé', 
-      '3ème faible', '3ème', '3ème élevé'
-    ];
+    setError(""); // Réinitialiser les erreurs
     
-    // Mettre à jour avec les valeurs par défaut immédiatement
-    setClassLevels(defaultClassLevels);
-    setNiveau(defaultClassLevels[0]);
-
-    // Essayer de récupérer les valeurs depuis l'API
-    axios.get(`${API_BASE_URL}/api/v1/ai/resource-types/session/generator/schema`, { 
+    // Récupérer les niveaux de classe depuis l'API
+    axios.get(`${API_BASE_URL}/api/v1/ai/resource-types/seance/generator/schema`, { 
       headers: { Authorization: `Bearer ${token}` } 
     })
     .then(res => {
@@ -212,13 +201,19 @@ const ProposeSeances = () => {
           // Pour déboguer, vérifier si le champ existe mais pas l'enum
           else if (niveauClasseField) {
             console.log('Champ niveau trouvé mais pas d\'enum:', niveauClasseField);
+            setError("Schéma incomplet : le champ niveau existe mais ne contient pas de valeurs d'énumération.");
+            setClassLevels([]);
+          } else {
+            setError("Schéma incomplet : le champ niveau n'a pas été trouvé dans le schéma.");
+            setClassLevels([]);
           }
         }
       }
     })
     .catch(err => {
       console.error('Erreur lors de la récupération du schéma:', err);
-      console.log('Utilisation des niveaux de classe par défaut');
+      setError("Impossible de récupérer les niveaux de classe depuis l'API. Veuillez réessayer ou contacter l'administrateur.");
+      setClassLevels([]);
     });
   }, [API_BASE_URL]);
 

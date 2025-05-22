@@ -20,7 +20,9 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
   const [activeStep, setActiveStep] = useState(0);
   const [configParams, setConfigParams] = useState({
     niveau_classe: '',
-    nombre_ressources: ''
+    nombre_ressources: '',
+    type_resources: [],
+    support_id: null
   });
 
   // Hooks spécifiques à chaque étape
@@ -110,6 +112,15 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
         alert(validationResult.message);
         return;
       }
+      
+      // Vérifier que les ressources sont valides et sous forme de tableau
+      if (!validationResult.resources || !Array.isArray(validationResult.resources)) {
+        console.error("[handleNextStep] Les ressources ne sont pas un tableau valide:", validationResult.resources);
+        alert("Erreur: Les ressources ne sont pas dans un format valide. Veuillez vérifier les logs pour plus de détails.");
+        return;
+      }
+      
+      console.log("[handleNextStep] Ressources prêtes pour la sauvegarde:", validationResult.resources);
       
       // Sauvegarder les ressources
       saving.handleSaveResources(validationResult.resources);

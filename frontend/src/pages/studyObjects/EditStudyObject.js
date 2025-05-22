@@ -201,6 +201,7 @@ const EditStudyObject = () => {
         onClose={() => setResourceModalOpen(false)}
         initialSelectedResources={associatedResources}
         onSave={setAssociatedResources}
+        filterType="OEUVRE" // Filtre pour n'afficher que les ressources de type "oeuvre"
       />
       
       {/* Notification de succès */}

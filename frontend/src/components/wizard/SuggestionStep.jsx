@@ -23,7 +23,7 @@ const SuggestionStep = ({
 }) => {
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 2 }}>Étape 1: Suggestions d'exercices</Typography>
+      <Typography variant="h6" sx={{ mb: 2 }}>Suggestions d'exercices</Typography>
       {isLoadingSuggestions && <CircularProgress sx={{ display: 'block', margin: 'auto', my: 2 }} />}
       {suggestionsError && <Alert severity="error" sx={{ my: 2 }}>{suggestionsError}</Alert>}
       {!isLoadingSuggestions && !suggestionsError && suggestions.length === 0 && (

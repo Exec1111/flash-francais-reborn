@@ -2,7 +2,8 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 # Importer les tables d'association
-from models.association_tables import sequence_objective_association, session_objective_association, objective_resource_association
+# Les tables d'association sont maintenant importées depuis models/__init__.py
+from models import sequence_objective_association, session_objective_association, objective_resource_association
 
 class Objective(Base):
     __tablename__ = "objectives"

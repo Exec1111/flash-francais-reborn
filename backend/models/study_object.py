@@ -2,7 +2,8 @@ from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
-from .association_tables import progression_study_object, study_object_resource, sequence_study_object
+# Les tables d'association sont maintenant importées depuis models/__init__.py
+from models import progression_study_object, study_object_resource, sequence_study_object
 
 class StudyObject(Base):
     __tablename__ = "study_objects"

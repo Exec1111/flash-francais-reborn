@@ -50,7 +50,7 @@ const EditStep = ({
   return (
     <Box sx={{ my: 2 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Étape 3: Édition des exercices générés ({currentEditIndex + 1} / {resourcesToEdit.length})
+        Édition des exercices générés ({currentEditIndex + 1} / {resourcesToEdit.length})
       </Typography>
       
       <Card variant="outlined" sx={{ mb: 2, p: 2 }}>

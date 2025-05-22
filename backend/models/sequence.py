@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
-from models.association_tables import sequence_objective_association, sequence_study_object
+# Les tables d'association sont maintenant importées depuis models/__init__.py
+from models import sequence_objective_association, sequence_study_object
 from datetime import datetime
 
 class Sequence(Base):

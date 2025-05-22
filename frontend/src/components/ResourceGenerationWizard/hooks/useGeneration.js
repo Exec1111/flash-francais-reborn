@@ -1,7 +1,7 @@
 /**
  * Hook pour la gestion de la génération des ressources
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateAllResources } from '../services/generationService';
 
 /**
@@ -14,6 +14,10 @@ import { generateAllResources } from '../services/generationService';
 export const useGeneration = (activeStep, sessionId, configParams) => {
   const [generationStatus, setGenerationStatus] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Utiliser une référence pour éviter les générations multiples
+  const generationInProgressRef = useRef(false);
+  const generationTriggeredRef = useRef(false);
 
   /**
    * Initialiser le statut de génération pour les suggestions sélectionnées
@@ -35,6 +39,12 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
    * Déclencher la génération de toutes les ressources
    */
   const triggerGeneration = useCallback(() => {
+    // Vérifier si une génération est déjà en cours pour éviter les appels multiples
+    if (generationInProgressRef.current) {
+      console.log("[useGeneration] Génération déjà en cours, ignorer l'appel");
+      return;
+    }
+    
     if (generationStatus.length === 0 || !generationStatus.some(s => s.status === 'pending')) {
       console.log("[useGeneration] Aucune génération à effectuer");
       return;
@@ -42,25 +52,39 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
     
     console.log("[useGeneration] Déclenchement de la génération");
     setIsGenerating(true);
+    generationInProgressRef.current = true;
     
     generateAllResources(
       generationStatus,
       sessionId,
       configParams,
       (updatedStatus) => setGenerationStatus(updatedStatus),
-      () => setIsGenerating(false)
+      () => {
+        setIsGenerating(false);
+        generationInProgressRef.current = false;
+      }
     );
   }, [generationStatus, sessionId, configParams]);
 
   // Déclencher la génération automatiquement lorsque l'étape active est "Génération"
   useEffect(() => {
-    if (activeStep === 2 && generationStatus.some(s => s.status === 'pending')) {
-      console.log("[useGeneration] Déclenchement automatique de la génération");
+    // Vérifier si cette étape a déjà déclenché une génération pour éviter les appels multiples
+    if (activeStep === 2 && !generationTriggeredRef.current && 
+        generationStatus.some(s => s.status === 'pending') && 
+        !generationInProgressRef.current) {
       
-      // Utiliser setTimeout pour s'assurer que l'état est bien mis à jour
+      console.log("[useGeneration] Déclenchement automatique de la génération");
+      generationTriggeredRef.current = true;
+      
+      // Utiliser setTimeout pour s'assurer que l'état est bien mis à jour et éviter les appels multiples
       setTimeout(() => {
-        triggerGeneration();
+        if (!generationInProgressRef.current) {
+          triggerGeneration();
+        }
       }, 300);
+    } else if (activeStep !== 2) {
+      // Réinitialiser le drapeau lorsqu'on quitte l'étape de génération
+      generationTriggeredRef.current = false;
     }
   }, [activeStep, generationStatus, triggerGeneration]);
 

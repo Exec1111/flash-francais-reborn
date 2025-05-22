@@ -48,7 +48,22 @@ async def generate_ai_resource_content(
             raise ResourceGenerationError(f"Aucun prompt trouvé pour {type_key}/{subtype_key}")
         # Générateur générique basé sur YAML/Jinja
         generator = PromptGenerator(prompt_name)
+        
+        # Afficher les variables d'entrée pour débogage
+        logger.info(f"DEBUG PROMPT: Variables d'entrée pour {type_key}/{subtype_key}:")
+        if 'support' in input_variables:
+            logger.info(f"DEBUG PROMPT: Support présent dans les variables d'entrée: {input_variables['support'].get('title', 'Titre manquant')}")
+            logger.info(f"DEBUG PROMPT: Contenu du support (extrait): {input_variables['support'].get('content', '')[:100]}...")
+        else:
+            logger.info("DEBUG PROMPT: Aucun support dans les variables d'entrée")
+            
         system, user = generator.build(**input_variables)
+        
+        # Vérifier si le block support est présent dans le prompt généré
+        if "IMPORTANT - SUPPORT DE TRAVAIL" in user:
+            logger.info("DEBUG PROMPT: Le bloc de support est présent dans le prompt généré")
+        else:
+            logger.info("DEBUG PROMPT: Le bloc de support est ABSENT du prompt généré")
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")

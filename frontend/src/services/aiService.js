@@ -80,13 +80,16 @@ const _suggestionsCache = {};
  * @param {Object} [config] - Paramètres de configuration pour les suggestions
  * @param {string} [config.niveau_classe] - Niveau de classe des élèves
  * @param {number} [config.nombre_ressources] - Nombre de ressources à suggérer
+ * @param {Array} [config.type_resources] - Types d'exercices sélectionnés explicitement
  * @returns {Promise<object>} - Objet contenant les suggestions.
  */
 const getSuggestions = async (sessionId, config = {}) => {
   // Clé de cache unique pour cette session et sa configuration
   const configKey = config.niveau_classe ? `_niveau=${config.niveau_classe}` : '';
   const countKey = config.nombre_ressources ? `_count=${config.nombre_ressources}` : '';
-  const cacheKey = `suggestions_${sessionId}${configKey}${countKey}`;
+  const typesKey = config.type_resources && config.type_resources.length > 0 ? 
+    `_types=${config.type_resources.map(t => `${t.type_key}_${t.subtype_key}`).join(',')}` : '';
+  const cacheKey = `suggestions_${sessionId}${configKey}${countKey}${typesKey}`;
   const cacheTime = 30 * 1000; // 30 secondes en millisecondes
   
   // Vérifier si des données en cache valides existent
@@ -102,10 +105,32 @@ const getSuggestions = async (sessionId, config = {}) => {
       throw new Error("Authentification requise. Veuillez vous reconnecter.");
     }
     
-    console.log(`[API] Appel API suggestions d'exercices pour session ${sessionId} avec config:`, config);
+    // Logs de débogage très détaillés
+    console.log(`%c[API DEBUG] Appel API suggestions d'exercices pour session ${sessionId}`, 'background: #ff9800; color: white; font-weight: bold; padding: 2px 5px;');
+    console.log('%cConfiguration envoyée:', 'font-weight: bold;', config);
+    
+    if (config.type_resources) {
+      console.log('%cType resources détails:', 'color: #ff5722; font-weight: bold;', {
+        estTableau: Array.isArray(config.type_resources),
+        longueur: config.type_resources.length,
+        valeurs: JSON.parse(JSON.stringify(config.type_resources)),
+        stringifié: JSON.stringify(config.type_resources)
+      });
+    } else {
+      console.log('%cType resources:', 'color: #ff5722;', 'Non défini');
+    }
+
+    // Format de l'en-tête pour l'API
+    const headers = { Authorization: `Bearer ${token}` };
+    console.log('%cEn-têtes:', 'font-weight: bold;', headers);
+
+    // Appel API avec les données en format JSON
     const response = await api.post(`/ai/sessions/${sessionId}/suggest-exercises`, config, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: headers,
     });
+    
+    // Log de la réponse
+    console.log('%cRéponse API:', 'color: #4caf50; font-weight: bold;', response.data);
     
     // Mise en cache des données
     _suggestionsCache[cacheKey] = {

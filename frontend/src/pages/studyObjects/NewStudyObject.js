@@ -7,10 +7,12 @@ import {
   Card,
   CardContent,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Chip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
+import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
 
 const NewStudyObject = () => {
   const [title, setTitle] = useState('');
@@ -18,6 +20,10 @@ const NewStudyObject = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  
+  // Gestion des ressources associées
+  const [associatedResources, setAssociatedResources] = useState([]);
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -27,10 +33,16 @@ const NewStudyObject = () => {
     setError(null);
     setSuccess(null);
     try {
+      // Préparation des identifiants des ressources associées
+      const resourceIds = associatedResources.map(resource => resource.id);
+      
       const data = {
         title,
         description,
+        resourceIds: resourceIds // Ajouter les identifiants des ressources associées
       };
+      
+      console.log('Création d\'objet d\'étude avec les ressources:', resourceIds);
       await studyObjectService.createStudyObject(data);
       setSuccess('Objet d\'étude créé avec succès !');
       setTimeout(() => navigate('/study-objects'), 1000);
@@ -39,6 +51,11 @@ const NewStudyObject = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Gérer la suppression d'une ressource associée
+  const handleRemoveResource = (rid) => {
+    setAssociatedResources(associatedResources.filter(r => r.id !== rid));
   };
 
   return (
@@ -66,39 +83,70 @@ const NewStudyObject = () => {
               multiline
               minRows={3}
             />
-            {error && (
-              <Alert severity="error" sx={{ my: 2 }} onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            )}
-            {success && (
-              <Alert severity="success" sx={{ my: 2 }}>
-                {success}
-              </Alert>
-            )}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                type="submit"
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} /> : null}
-              >
-                Créer
-              </Button>
+            
+            {/* Section des ressources associées */}
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                Ressources associées (œuvres)
+              </Typography>
               <Button
                 variant="outlined"
-                color="secondary"
-                sx={{ ml: 2 }}
+                size="small"
+                onClick={() => setResourceModalOpen(true)}
+                sx={{ mb: 1 }}
+              >
+                Associer une œuvre existante
+              </Button>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {associatedResources.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Aucune œuvre associée pour le moment.
+                  </Typography>
+                ) : (
+                  associatedResources.map(resource => (
+                    <Chip
+                      key={resource.id}
+                      label={resource.title}
+                      onDelete={() => handleRemoveResource(resource.id)}
+                      sx={{ m: 0.5 }}
+                    />
+                  ))
+                )}
+              </Box>
+            </Box>
+            
+            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+              <Button
+                variant="outlined"
                 onClick={() => navigate('/study-objects')}
                 disabled={loading}
               >
                 Annuler
               </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : null}
+              >
+                Créer
+              </Button>
             </Box>
           </form>
         </CardContent>
       </Card>
+      
+      {/* Modal de sélection de ressources */}
+      <ResourceSelectorModal
+        open={resourceModalOpen}
+        onClose={() => setResourceModalOpen(false)}
+        initialSelectedResources={associatedResources}
+        onSave={setAssociatedResources}
+        filterType="OEUVRE" // Filtre pour n'afficher que les ressources de type "œuvre"
+      />
     </Box>
   );
 };

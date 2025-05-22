@@ -15,26 +15,44 @@ export const mergeResource = async (resource) => {
 
   console.log(`[mergeResource] Début de fusion pour ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`);
   
-  const requestBody = {
+  // Utiliser FormData au lieu d'un objet JSON car le backend attend un multipart/form-data
+  const formData = new FormData();
+  formData.append('type_key', resource.suggestion.type_key);
+  formData.append('subtype_key', resource.suggestion.subtype_key);
+  formData.append('data_json', JSON.stringify(resource.data));
+  // Le model_path est optionnel et n'est pas utilisé ici car le backend sélectionne automatiquement le template
+  
+  console.log(`[mergeResource] Fusion de la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key} avec body:`, {
     type_key: resource.suggestion.type_key,
     subtype_key: resource.suggestion.subtype_key,
-    data_json: resource.data,
-    model_path: resource.suggestion.model_path
-  };
-
-  console.log(`[mergeResource] Fusion de la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key} avec body:`, JSON.stringify(requestBody, null, 2));
+    data_json: resource.data // Afficher ceci en JSON pour la lisibilité du log
+  });
 
   const response = await api.post(
     `/ai/merge-resource`, 
-    requestBody, 
-    { headers: { Authorization: `Bearer ${token}` } }
+    formData, 
+    { 
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      } 
+    }
   );
 
   console.log(`[mergeResource] Réponse pour ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}:`, response.data);
   
-  if (!response.data || !response.data.merged_html) {
+  if (!response.data || (!response.data.html_url && !response.data.merged_html)) {
     console.error(`[mergeResource] La réponse pour ${resource.suggestion.type_key}/${resource.suggestion.subtype_key} est vide ou invalide:`, response.data);
     throw new Error(`La réponse est vide ou invalide`);
+  }
+  
+  // Conserver html_path (chemin local) et html_url (URL d'accès) dans la réponse
+  console.log(`[mergeResource] Chemin HTML reçu: ${response.data.html_path}`);
+  console.log(`[mergeResource] URL HTML reçue: ${response.data.html_url}`);
+  
+  // Si la réponse utilise html_url (nouveau format) au lieu de merged_html (ancien format)
+  if (response.data.html_url && !response.data.merged_html) {
+    response.data.merged_html = response.data.html_url;
   }
 
   return response.data;
@@ -74,7 +92,9 @@ export const mergeAllResources = async (resources, onStatusUpdate, onPreviewUpda
       mergedResources[i] = {
         ...mergedResources[i],
         mergeStatus: 'success',
-        mergedHtml: result.merged_html
+        mergedHtml: result.merged_html,
+        html_url: result.html_url,
+        html_path: result.html_path // Conserver le chemin du fichier pour la sauvegarde
       };
       
       onPreviewUpdate && onPreviewUpdate(result.merged_html);
