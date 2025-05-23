@@ -1,11 +1,13 @@
 from pydantic import BaseModel, Field, field_validator, computed_field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, TYPE_CHECKING
 from sqlalchemy.orm import Session
 import logging
 from datetime import datetime
 from .session import SessionReadSimple
 from .common import ObjectiveIdentifier
-from schemas.study_object import StudyObjectReadShort
+
+if TYPE_CHECKING:
+    from schemas.study_object import StudyObjectReadShort
 
 logger = logging.getLogger(__name__)
 
@@ -119,5 +121,21 @@ class ResourceListResponse(BaseModel):
 
 # Appeler model_rebuild pour résoudre les références en avant (forward references)
 # après que tous les modèles ont été définis.
+
+class ResourceShort(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None # Optionnel, peut être utile
+
+    class Config:
+        from_attributes = True
+
+# Importer explicitement les types requis pour model_rebuild()
+if not TYPE_CHECKING:
+    from .study_object import StudyObjectReadShort
+    from .session import SessionReadSimple # Au cas où
+
 ResourceResponse.model_rebuild()
 ResourceRead.model_rebuild()
+ResourceShort.model_rebuild()
+

@@ -363,7 +363,7 @@ async def generate_sessions(
         
         # Récupérer les ressources associées aux objets d'étude de la séquence
         ressources_disponibles = []
-        if request.inclure_ressources and sequence and sequence.study_objects:
+        if sequence and hasattr(sequence, 'study_objects') and sequence.study_objects:
             # Pour chaque objet d'étude, récupérer ses ressources associées
             for study_obj in sequence.study_objects:
                 if hasattr(study_obj, 'resources') and study_obj.resources:

@@ -33,6 +33,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import DescriptionIcon from '@mui/icons-material/Description'; // Ajout pour l'icône des ressources listées
 import axios from "axios";
 import ObjectiveSelectorModal from '../../components/sequences/ObjectiveSelectorModal';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
@@ -46,7 +47,7 @@ const ProposeSeances = () => {
   const [autoNombreSeances, setAutoNombreSeances] = useState(false);
   const [classLevels, setClassLevels] = useState([]);
   const [niveau, setNiveau] = useState("");
-  const [inclureRessources, setInclureRessources] = useState(true);
+  const [studyObjectsWithResources, setStudyObjectsWithResources] = useState([]); // Stocke les objets d'étude avec leurs ressources
   const [instructions, setInstructions] = useState("");
   const [generating, setGenerating] = useState(false);
   const [seances, setSeances] = useState([]);
@@ -73,26 +74,36 @@ const ProposeSeances = () => {
   ];
 
   useEffect(() => {
-    // Récupérer le titre et les infos de la séquence
-    if (location.state && location.state.title) {
-      setSequenceTitle(location.state.title);
-    } else {
-      // Charger les données de la séquence depuis l'API
-      const fetchSequence = async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const response = await axios.get(`${API_BASE_URL}/api/v1/sequences/${id}`, {
-            headers: { Authorization: `Bearer ${token}` }
+    const fetchSequenceDetails = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_BASE_URL}/api/v1/sequences/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSequenceTitle(response.data.title);
+        // Nouvelle logique pour extraire les objets d'étude et leurs ressources
+        if (response.data.study_objects && Array.isArray(response.data.study_objects)) {
+          const detailedStudyObjects = response.data.study_objects.map(so => {
+            const SOTitle = so.title || `Objet d'étude ${so.id}`; // Titre de secours
+            const SOResources = (so.resources && Array.isArray(so.resources))
+              ? so.resources.map(res => ({ id: res.id, title: res.title || `Ressource ${res.id}` })).filter(res => res.id && res.title) // S'assurer que les ressources sont valides
+              : [];
+            return { id: so.id, title: SOTitle, resources: SOResources };
           });
-          setSequenceTitle(response.data.title);
-        } catch (err) {
-          setError("Erreur lors du chargement de la séquence");
-          console.error(err);
+          setStudyObjectsWithResources(detailedStudyObjects);
+          console.log("Données des objets d'étude avec ressources (ProposeSeances.js):", detailedStudyObjects); // Ligne de débogage
+        } else {
+          setStudyObjectsWithResources([]); // Initialiser comme tableau vide si aucun objet d'étude
+          console.log("Aucun objet d'étude trouvé dans la réponse API (ProposeSeances.js)."); // Ligne de débogage
         }
-      };
-      fetchSequence();
-    }
-  }, [id, location.state]);
+      } catch (err) {
+        setError("Erreur lors du chargement des détails de la séquence: " + (err.response?.data?.detail || err.message));
+        console.error(err);
+        setStudyObjectsWithResources([]); // Reset en cas d'erreur
+      }
+    };
+    fetchSequenceDetails();
+  }, [id, API_BASE_URL]); // API_BASE_URL ajouté aux dépendances, location.state n'est plus utilisé ici pour le titre.
 
   // Récupération des objectifs de la séquence et création d'une map id -> titre
   useEffect(() => {
@@ -231,18 +242,25 @@ const ProposeSeances = () => {
       const token = localStorage.getItem('token');
       
       // Préparer les données pour l'appel API
-      const requestData = {
-        sequence_id: parseInt(id),
-        nombre_seances: autoNombreSeances ? "auto" : nombreSeances,
-        inclure_ressources: inclureRessources,
-        niveau: niveau,
-        instructions_supplementaires: instructions
-      };
-      
+      const allResourceIds = new Set();
+    studyObjectsWithResources.forEach(so => {
+      so.resources.forEach(res => {
+        allResourceIds.add(res.id);
+      });
+    });
+    const resourceIds = Array.from(allResourceIds);
+      const payload = {
+      sequence_id: parseInt(id, 10),
+      nombre_seances: String(nombreSeances), // Convertir en chaîne et utiliser le bon nom de clé
+      instructions_supplementaires: instructions, // Utiliser le bon nom de clé
+      niveau: niveau,
+      // Le champ 'inclure_ressources' n'est pas envoyé, le backend utilisera sa valeur par défaut (False)
+    };
+    console.log("Payload corrigé envoyé à /api/v1/ai/generate-sessions:", payload); // Log pour vérification
       // Appel API pour générer les séances
       const response = await axios.post(
         `${API_BASE_URL}/api/v1/ai/generate-sessions`,
-        requestData,
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -437,15 +455,45 @@ const ProposeSeances = () => {
                 </Grid>
                 
                 <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={inclureRessources}
-                        onChange={(e) => setInclureRessources(e.target.checked)}
-                      />
-                    }
-                    label="Proposer des ressources"
-                  />
+                  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                    Objets d'étude et leurs ressources (utilisés pour la génération) :
+                  </Typography>
+                  {studyObjectsWithResources.length > 0 ? (
+                    <Paper elevation={1} sx={{ p: 1, maxHeight: 250, overflow: 'auto' }}>
+                      <List dense>
+                        {studyObjectsWithResources.map((studyObject) => (
+                          <React.Fragment key={studyObject.id}>
+                            <ListItem sx={{ pt: 1, pb: 0 }}>
+                              <ListItemText 
+                                primary={studyObject.title} 
+                                primaryTypographyProps={{ variant: 'subtitle2', fontWeight: 'bold' }} 
+                              />
+                            </ListItem>
+                            {studyObject.resources.length > 0 ? (
+                              <List dense disablePadding sx={{ pl: 2 }}>
+                                {studyObject.resources.map((resource) => (
+                                  <ListItem key={resource.id} disablePadding sx={{ pt: 0, pb: 0.5 }}>
+                                    <ListItemIcon sx={{ minWidth: '30px' }}>
+                                      <DescriptionIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={resource.title} primaryTypographyProps={{ variant: 'body2' }} />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            ) : (
+                              <ListItem sx={{ pl: 2, pt:0, pb: 0.5 }}>
+                                <ListItemText primary="Aucune ressource associée à cet objet d'étude." primaryTypographyProps={{ variant: 'caption', fontStyle: 'italic' }} />
+                              </ListItem>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </List>
+                    </Paper>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Aucun objet d'étude (avec ressources) trouvé pour cette séquence.
+                    </Typography>
+                  )}
                 </Grid>
                 
                 <Grid item xs={12}>

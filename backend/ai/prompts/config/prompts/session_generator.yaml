@@ -21,7 +21,7 @@ user_prompt_template: |
   {% endfor %}
   {% endif %}
   
-  {% if inclure_ressources %}
+  {% if ressources_disponibles and ressources_disponibles|length > 0 %}
   Voici les ressources disponibles que tu peux inclure dans les séances :
   {% for ressource in ressources_disponibles %}
   - {{ ressource.title }} (ID: {{ ressource.id }}, Type: {{ ressource.type }})
@@ -34,7 +34,7 @@ user_prompt_template: |
   {% endif %}
   
   Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date, 
-  des notes d'organisation, et une durée estimée en minutes.
+  des notes détaillant le contenu et l'organisation de la séance de manière fine, et une durée estimée en minutes.
   {% if nombre_seances == "auto" %}
   Tu es libre de déterminer le nombre optimal de séances nécessaires pour couvrir les objectifs pédagogiques.
   {% endif %}

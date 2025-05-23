@@ -40,6 +40,7 @@ async def merge_ai_resource_content(
     Returns:
         Un tuple (chemin_fichier, url) vers le fichier HTML généré
     """
+    logger.info(f"Début de merge_ai_resource_content. model_path reçu : {model_path}")
     logger.info(f"[Fusion] Lancement fusion pour user {user_id}, modèle {model_path}")
     try:
         load_dotenv()

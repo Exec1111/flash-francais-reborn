@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from typing import List, TYPE_CHECKING, Optional
-from schemas.objective import ObjectiveRead
-from schemas.session import SessionRead
-from schemas.study_object import StudyObjectReadShort
+from typing import List, TYPE_CHECKING, Optional # Assurez-vous que TYPE_CHECKING est importé
+from pydantic import BaseModel # Assurez-vous que BaseModel est importé
 
 # Pour les type hints uniquement, afin d'éviter les imports circulaires réels
 if TYPE_CHECKING:
     from schemas.objective import ObjectiveRead
     from schemas.session import SessionRead
+    from schemas.study_object import StudyObjectReadShort, StudyObjectWithResources # Déplacé ici
 
 class SequenceBase(BaseModel):
     title: str
@@ -40,8 +40,8 @@ class SequenceRead(BaseModel):
     progression_id: int
     objectives: List['ObjectiveRead'] = []
     sessions: List['SessionRead'] = []
-    study_object_ids: List[int] = []
-    study_objects: List[StudyObjectReadShort] = []
+    study_object_ids: List[int] = [] # Peut être redondant si StudyObjectWithResources les inclut, ou utile pour un accès rapide
+    study_objects: List['StudyObjectWithResources'] = []
 
     class Config:
         from_attributes = True
@@ -57,12 +57,19 @@ class SequenceRead(BaseModel):
             objectives=[ObjectiveRead.from_orm(obj) for obj in getattr(sequence_orm, 'objectives', [])],
             sessions=[SessionRead.from_orm(sess) for sess in getattr(sequence_orm, 'sessions', [])],
             study_object_ids=[obj.id for obj in getattr(sequence_orm, 'study_objects', [])],
-            study_objects=[StudyObjectReadShort.from_orm(obj) for obj in getattr(sequence_orm, 'study_objects', [])],
+            study_objects=[StudyObjectWithResources.from_orm(obj) for obj in getattr(sequence_orm, 'study_objects', [])],
         )
 
-# Importer ici juste avant le rebuild pour résoudre les références
-from schemas.objective import ObjectiveRead
-from schemas.session import SessionRead
+# Les imports directs pour model_rebuild ne sont plus nécessaires si tout est en forward ref
+# from schemas.objective import ObjectiveRead
+# from schemas.session import SessionRead
+# from schemas.study_object import StudyObjectWithResources # Non plus nécessaire ici
+
+# Importer explicitement les types requis pour model_rebuild()
+if not TYPE_CHECKING:
+    from .study_object import StudyObjectWithResources, StudyObjectReadShort
+    from .objective import ObjectiveRead
+    from .session import SessionRead
 
 # Résoudre les références forward
 SequenceRead.model_rebuild()
