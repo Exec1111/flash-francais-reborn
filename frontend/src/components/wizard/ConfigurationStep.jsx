@@ -56,27 +56,29 @@ const ConfigurationStep = ({
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        if (response.data && response.data.types) {
-          const resourceTypes = [];
-          
-          // Transformer les données en format utilisable pour notre UI
-          // Types est un dictionnaire avec clés = type_key et valeurs = {subtypes: [...]}
-          Object.entries(response.data.types).forEach(([typeKey, typeInfo]) => {
-            if (typeInfo.subtypes && typeInfo.subtypes.length > 0) {
-              typeInfo.subtypes.forEach(subtypeKey => {
-                resourceTypes.push({
-                  type_key: typeKey,
-                  type_name: typeKey, // Utiliser la clé comme nom par défaut
-                  subtype_key: subtypeKey,
-                  subtype_name: subtypeKey, // Utiliser la clé comme nom par défaut
-                  description: ''
+        if (response.data && Array.isArray(response.data.types)) { 
+          const flattenedResourceTypes = [];
+          response.data.types.forEach(typeObject => { 
+            if (typeObject.subtypes && typeObject.subtypes.length > 0) {
+              typeObject.subtypes.forEach(subtypeObject => { 
+                flattenedResourceTypes.push({
+                  type_id: typeObject.id,
+                  type_key: typeObject.key,
+                  type_name: typeObject.value, 
+                  subtype_id: subtypeObject.id,
+                  subtype_key: subtypeObject.key,
+                  subtype_name: subtypeObject.value, 
+                  // description: subtypeObject.description || typeObject.description || '' 
                 });
               });
+            } else {
+              // Optionnel: Gérer les types qui n'ont pas de sous-types mais que vous voudriez quand même lister.
+              // Pour la sélection manuelle actuelle, on se concentre sur les paires type/sous-type.
             }
           });
           
-          console.log('Types de ressources disponibles:', resourceTypes);
-          setAvailableResourceTypes(resourceTypes);
+          console.log('Types de ressources disponibles (transformés):', flattenedResourceTypes);
+          setAvailableResourceTypes(flattenedResourceTypes);
         }
       } catch (err) {
         console.error("Erreur lors du chargement des types de ressources:", err);

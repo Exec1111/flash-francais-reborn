@@ -59,7 +59,7 @@ async def create_resource_route(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     type_id: int = Form(...),
-    sub_type_id: int = Form(...),
+    sub_type_id: Optional[int] = Form(None),
     source_type: Optional[str] = Form(None), # 'file' ou 'ai', par défaut 'ai'
     session_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs
     objective_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objectifs

@@ -1,12 +1,13 @@
 /**
  * Hook principal pour la gestion du wizard de génération de ressources
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSuggestions } from './useSuggestions';
 import { useGeneration } from './useGeneration';
 import { useEditing } from './useEditing';
 import { useMerging } from './useMerging';
 import { useSaving } from './useSaving';
+import { resourceTypeService } from '../../../services/resourceTypeService'; // Importer le service
 
 /**
  * Hook pour gérer l'ensemble du wizard de génération de ressources
@@ -31,6 +32,15 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
   const editing = useEditing();
   const merging = useMerging(activeStep);
   const saving = useSaving(sessionId, onResourcesGenerated, onClose);
+
+  // Charger les mappings de types de ressources au montage du hook
+  useEffect(() => {
+    resourceTypeService.loadAndCacheResourceTypeMappings().catch(error => {
+      // Gérer l'erreur de chargement si nécessaire, par exemple, afficher une notification
+      console.error("Erreur critique lors du chargement initial des types de ressources:", error);
+      // Vous pourriez vouloir informer l'utilisateur ici ou empêcher l'utilisation du wizard
+    });
+  }, []); // Le tableau de dépendances vide assure que cela ne s'exécute qu'une fois
 
   /**
    * Gérer la soumission de la configuration initiale

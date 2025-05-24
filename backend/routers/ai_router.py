@@ -11,11 +11,11 @@ from config import get_settings
 settings = get_settings()
 
 from backend.ai.schemas import ChatInput, ChatOutput
-from backend.ai.schemas import AIResourceTypesResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
+from backend.ai.schemas import AIResourceTypesListResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
 from backend.ai import ai_resource_service
 from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.ai.services.registry import ResourceGenerationError
+from backend.ai.services.registry import ResourceGenerationError, TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_DIR
 from backend.database import get_db
 from backend.dependencies import get_current_active_user
 from backend.models import User as UserModel
@@ -71,17 +71,17 @@ async def handle_chat_message(input_data: ChatInput):
 
 @router.get(
     "/resource-types",
-    response_model=AIResourceTypesResponse,
+    response_model=AIResourceTypesListResponse,
     summary="Liste les types de ressources AI disponibles",
     description="Retourne les types et sous-types de ressources qui peuvent être générés par IA."
 )
-async def get_ai_resource_types():
+async def get_ai_resource_types(db: Session = Depends(get_db)):
     """
     Endpoint pour lister les types de ressources qui peuvent être générés par IA.
     """
     logger.info("Récupération des types de ressources IA disponibles")
     try:
-        types = ai_resource_service.get_available_ai_resource_types()
+        types = ai_resource_service.get_available_ai_resource_types(db=db)
         return {"types": types}
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des types de ressources IA: {e}", exc_info=True)
@@ -287,27 +287,24 @@ async def merge_resource(
             if not os.path.exists(model_path):
                 raise HTTPException(status_code=404, detail=f"Modèle {model_name} introuvable")
         else:
-            # Sélection du modèle HTML selon type/sous-type
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if type_key.lower() == "oeuvre" and subtype_key.lower() == "extrait":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "oeuvre_models")
-            elif type_key.lower() == "exercice" and subtype_key.lower() == "qcm":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "qcm_models")
-            elif type_key.lower() == "oeuvre" and subtype_key.lower() == "oeuvrecomp":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "oeuvre_models")
-            elif type_key.lower() == "exercice" and subtype_key.lower() == "vocabulaire":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "vocabulaire_models")
-            elif type_key.lower() == "exercice" and subtype_key.lower() == "champlex":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "champlex_models")
-            elif type_key.lower() == "exercice" and subtype_key.lower() == "champlex2":
-                model_dir = os.path.join(BASE_DIR, "ai", "template", "champlex_models")
-            else:
-                logger.warning(f"Aucun modèle HTML disponible pour type={type_key}, sous-type={subtype_key}.")
-                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
-            model_path = os.path.join(model_dir, f"default_{type_key.lower()}_{subtype_key.lower()}.html")
+            # Sélection du modèle HTML par défaut via TEMPLATE_REGISTRY
+            normalized_type_key = type_key.lower()
+            normalized_subtype_key = subtype_key.lower()
+            template_key = (normalized_type_key, normalized_subtype_key)
+
+            default_model_filename = TEMPLATE_REGISTRY.get(template_key)
+            
+            if not default_model_filename:
+                logger.warning(f"Aucun modèle HTML par défaut trouvé dans TEMPLATE_REGISTRY pour type={type_key}, sous-type={subtype_key}.")
+                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable dans le registre.")
+            
+            model_path = os.path.join(DEFAULT_TEMPLATE_DIR, default_model_filename)
+            logger.info(f"Utilisation du modèle HTML par défaut: {model_path}")
+
             if not os.path.exists(model_path):
-                logger.warning(f"Fichier modèle HTML introuvable : {model_path}")
-                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable")
+                logger.error(f"Fichier modèle HTML par défaut configuré mais introuvable sur le disque : {model_path}")
+                # Cette erreur indique un problème de configuration ou de déploiement, car le fichier listé dans le registre n'existe pas.
+                raise HTTPException(status_code=500, detail=f"Erreur interne: Fichier modèle {default_model_filename} introuvable pour {type_key}/{subtype_key}.")
 
         # Appel service de fusion (à implémenter)
         html_path, html_url = await ai_resource_service.merge_ai_resource_content(

@@ -3,21 +3,24 @@
  */
 import api from '../../../services/api';
 import { formatErrorMessage } from '../utils/formatters';
+import { resourceTypeService } from '../../../services/resourceTypeService';
 
 /**
  * Sauvegarde une ressource pédagogique
  * @param {Object} resource - La ressource à sauvegarder
+ * @param {string} htmlContent - Le contenu HTML de la ressource
  * @param {string|number} sessionId - ID de la session
+ * @param {string|number} userId - ID de l'utilisateur
  * @returns {Promise<Object>} - Résultat de la sauvegarde
  */
-export const saveResource = async (resource, sessionId) => {
+export const saveResource = async (resource, htmlContent, sessionId, userId) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error("Token d'authentification manquant");
 
   console.log(`[saveResource] Sauvegarde de la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`);
   
   // Récupérer l'URL HTML générée lors de la fusion
-  const htmlContent = resource.mergedHtml || resource.html_url;
+  // const htmlContent = resource.mergedHtml || resource.html_url;
   
   if (!htmlContent) {
     throw new Error(`Aucun contenu HTML disponible pour la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`); 
@@ -25,37 +28,20 @@ export const saveResource = async (resource, sessionId) => {
   
   console.log(`[saveResource] URL HTML à enregistrer: ${htmlContent}`);
   
-  // Conversion des types et sous-types en ID pour le backend
-  // Comme dans ProposeWorks.js
-  let typeId = 4; // Valeur par défaut pour oeuvre
-  let subTypeId = 7; // Valeur par défaut pour extrait
-  
-  // Mappings spécifiques selon le type/sous-type
-  if (resource.suggestion.type_key === 'exercice') {
-    typeId = 1;
-    
-    // Sous-types d'exercice
-    if (resource.suggestion.subtype_key === 'vocabulaire') {
-      subTypeId = 1;
-    } else if (resource.suggestion.subtype_key === 'champlex') {
-      subTypeId = 3;
-    } else if (resource.suggestion.subtype_key === 'champlex2') {
-      subTypeId = 4;
-    } else if (resource.suggestion.subtype_key === 'qcm') {
-      subTypeId = 5;
-    }
-  } else if (resource.suggestion.type_key === 'oeuvre') {
-    typeId = 4;
-    
-    // Sous-types d'oeuvre
-    if (resource.suggestion.subtype_key === 'extrait') {
-      subTypeId = 7;
-    } else if (resource.suggestion.subtype_key === 'oeuvrecomp') {
-      subTypeId = 8;
-    }
+  // Charger les mappings de types et sous-types
+  // TODO: Optimisation - Appeler loadAndCacheResourceTypeMappings une seule fois lors de l'initialisation du Wizard ou de l'application.
+  await resourceTypeService.loadAndCacheResourceTypeMappings();
+
+  const { type_key, subtype_key } = resource.suggestion;
+  const { typeId, subTypeId } = resourceTypeService.findTypeIdByKeys(type_key, subtype_key);
+
+  if (typeId === null) { // subTypeId peut être null si le type n'a pas de sous-type ou si non trouvé, mais typeId est essentiel.
+    console.error(`[saveResource] IDs de type/sous-type non trouvés pour type: ${type_key}, sous-type: ${subtype_key}. Abandon de la sauvegarde.`);
+    alert(`Erreur critique : Les identifiants pour le type de ressource '${type_key}' (et potentiellement le sous-type '${subtype_key}') n'ont pas pu être déterminés. La sauvegarde ne peut pas continuer. Veuillez vérifier la configuration des types de ressources ou contacter le support.`);
+    return null; // Arrêter l'exécution pour éviter de sauvegarder des données incorrectes
   }
-  
-  console.log(`[saveResource] Type mapping: ${resource.suggestion.type_key} -> ${typeId}, ${resource.suggestion.subtype_key} -> ${subTypeId}`);
+
+  console.log(`[saveResource] Mapping dynamique des IDs: Type '${type_key}' -> ID ${typeId}, Sous-type '${subtype_key || "N/A"}' -> ID ${subTypeId || 'N/A'}`);
   
   // Le problème est que nous utilisons FormData mais l'endpoint attend du JSON
   // Essayons d'envoyer les données directement comme des champs dans l'URL en utilisant URLSearchParams
@@ -63,9 +49,12 @@ export const saveResource = async (resource, sessionId) => {
   params.append('title', resource.suggestion.title || `${resource.suggestion.type_key} - ${resource.suggestion.subtype_key}`);
   params.append('description', resource.data ? JSON.stringify(resource.data) : '');
   params.append('type_id', typeId);
-  params.append('sub_type_id', subTypeId);
+  if (subTypeId !== null && subTypeId !== undefined) {
+    params.append('sub_type_id', subTypeId);
+  }
   params.append('html_path', htmlContent);
   params.append('source_type', 'ai');
+  params.append('session_id', sessionId);
   params.append('session_ids_json', `[${sessionId}]`);
   params.append('objective_ids_json', '[]');
   params.append('study_object_ids_json', '[]');
@@ -86,7 +75,7 @@ export const saveResource = async (resource, sessionId) => {
 
   // Envoi des données avec content-type application/x-www-form-urlencoded
   const response = await api.post(
-    `/resources`, 
+    `/resources/`, // Ajout du slash final
     params, 
     { 
       headers: { 
@@ -140,7 +129,12 @@ export const saveAllResources = async (resources, sessionId, onStatusUpdate, onC
         continue; // Passer à la ressource suivante au lieu de planter complètement
       }
       
-      const savedResource = await saveResource(resource, sessionId);
+      const htmlPath = resource.html_path || resource.mergedHtml || resource.html_url; // Prioriser html_path, puis mergedHtml, puis html_url
+      if (!htmlPath) {
+        console.error(`[saveAllResources] Chemin HTML manquant pour la ressource:`, resource);
+        continue; // Passer à la ressource suivante
+      }
+      const savedResource = await saveResource(resource, htmlPath, sessionId);
       createdResources.push(savedResource);
     } catch (err) {
       console.error(`[saveAllResources] Erreur lors de la sauvegarde de ${resource?.suggestion?.type_key || 'inconnu'}/${resource?.suggestion?.subtype_key || 'inconnu'}:`, err);

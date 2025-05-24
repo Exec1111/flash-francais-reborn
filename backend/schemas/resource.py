@@ -33,7 +33,7 @@ class ResourceBase(BaseModel):
     title: str
     description: Optional[str] = None
     type_id: int
-    sub_type_id: int
+    sub_type_id: Optional[int] = None
     source_type: str  # 'file' ou 'ai'
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None

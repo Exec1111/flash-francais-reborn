@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .fiche {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+        .lesson-number { /* Renommé pour plus de généricité, anciennement lesson_topic_category */
+            background-color: #8e44ad; /* Violet */
+            color: white;
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        h1 { /* Titre principal de la leçon */
+            color: #2c3e50; /* Bleu foncé/gris */
+            margin-top: 0;
+            border-bottom: 2px solid #8e44ad; /* Violet */
+            padding-bottom: 10px;
+        }
+        h2 { /* Titres de section */
+            color: #8e44ad; /* Violet */
+            font-size: 1.3em;
+            margin-top: 25px;
+        }
+        .subtitle {
+            font-style: italic;
+            color: #7f8c8d; /* Gris clair */
+            margin-bottom: 20px;
+        }
+        .content-section {
+            margin-bottom: 20px;
+        }
+        .content-section p, .content-section li {
+            color: #34495e; /* Gris foncé */
+        }
+        .example {
+            background-color: #eaf2f8; /* Bleu très clair (anciennement #f0f8ff) */
+            padding: 15px;
+            border-left: 4px solid #8e44ad; /* Violet */
+            margin: 20px 0;
+        }
+        .example h3 {
+            color: #8e44ad; /* Violet */
+            margin-top: 0;
+        }
+        .attention {
+            background-color: #fdedec; /* Rouge très clair (anciennement #fff0f0) */
+            padding: 15px;
+            border-left: 4px solid #e74c3c; /* Rouge */
+            margin: 20px 0;
+        }
+        .attention h3 {
+            color: #e74c3c; /* Rouge */
+            margin-top: 0;
+        }
+        .remember {
+            background-color: #e8f8f5; /* Vert très clair (anciennement #f0fff0) */
+            padding: 15px;
+            border-left: 4px solid #27ae60; /* Vert */
+            margin: 20px 0;
+        }
+        .remember h3 {
+            color: #27ae60; /* Vert */
+            margin-top: 0;
+        }
+        table { /* Si des tableaux sont nécessaires, bien que non explicitement dans le schéma actuel */
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #8e44ad; /* Violet */
+        }
+    </style>
+</head>
+<body>
+    <div class="fiche">
+        {% if lesson_topic_category %}
+        <div class="lesson-number">{{ lesson_topic_category }}</div>
+        {% endif %}
+        <h1>{{ title }}</h1>
+        {% if subtitle %}
+        <div class="subtitle">{{ subtitle }}</div>
+        {% endif %}
+
+        {% for section in sections %}
+        <div class="content-section">
+            <h2>{{ section.heading }}</h2>
+            {% if section.content_type == 'paragraph' %}
+                {% for paragraph in section.paragraphs %}
+            <p>
+                {% set ns = namespace(text=paragraph) %}
+                {% for keyword in highlight_keywords %}
+                    {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                {% endfor %}
+                {{ ns.text|safe }}
+            </p>
+                {% endfor %}
+            {% elif section.content_type == 'list' %}
+            <ul>
+                {% for item in section.list_items %}
+                <li>
+                    {% set ns = namespace(text=item) %}
+                    {% for keyword in highlight_keywords %}
+                        {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                    {% endfor %}
+                    {{ ns.text|safe }}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if examples_section and examples_section.examples %}
+        <div class="example">
+            <h3>{{ examples_section.heading }}</h3>
+            {% for ex in examples_section.examples %}
+            <p>
+                {% set ns = namespace(text=ex.description) %}
+                {% for keyword in highlight_keywords %}
+                    {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                {% endfor %}
+                {{ ns.text|safe }}
+            </p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if attention_section and attention_section.points %}
+        <div class="attention">
+            <h3>{{ attention_section.heading }}</h3>
+            <ul>
+                {% for point in attention_section.points %}
+                <li>
+                    {% set ns = namespace(text=point) %}
+                    {% for keyword in highlight_keywords %}
+                        {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                    {% endfor %}
+                    {{ ns.text|safe }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if summary_section and summary_section.points %}
+        <div class="remember">
+            <h3>{{ summary_section.heading }}</h3>
+            <ul>
+                {% for point in summary_section.points %}
+                <li>
+                    {% set ns = namespace(text=point) %}
+                    {% for keyword in highlight_keywords %}
+                        {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                    {% endfor %}
+                    {{ ns.text|safe }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

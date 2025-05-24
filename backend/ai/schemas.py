@@ -34,19 +34,42 @@ class ChatOutput(BaseModel):
 
 # Nouveaux schémas pour la génération de ressources IA
 
-class ResourceTypeInfo(BaseModel):
-    """Information sur un type de ressource générable par IA."""
-    subtypes: List[str] = Field(
-        ..., 
-        description="Liste des sous-types disponibles pour ce type de ressource."
-    )
+# Anciens schémas (commentés pour référence)
+# class ResourceTypeInfo(BaseModel):
+#     """Information sur un type de ressource générable par IA."""
+#     subtypes: List[str] = Field(
+#         ..., 
+#         description="Liste des sous-types disponibles pour ce type de ressource."
+#     )
+#
+# class AIResourceTypesResponse(BaseModel):
+#     """Réponse listant les types de ressources IA disponibles."""
+#     types: Dict[str, ResourceTypeInfo] = Field(
+#         ...,
+#         description="Dictionnaire des types de ressources disponibles avec leurs sous-types."
+#     )
 
-class AIResourceTypesResponse(BaseModel):
-    """Réponse listant les types de ressources IA disponibles."""
-    types: Dict[str, ResourceTypeInfo] = Field(
-        ...,
-        description="Dictionnaire des types de ressources disponibles avec leurs sous-types."
-    )
+class AISubTypeSchema(BaseModel):
+    id: int
+    key: str  # ex: "LECONCOMPLETE1", "QCM"
+    value: str # ex: "Leçon Complète v1", "Questionnaire à Choix Multiples"
+    # description: Optional[str] = None # Optionnel
+
+    class Config:
+        from_attributes = True
+
+class AITypeSchema(BaseModel):
+    id: int
+    key: str  # ex: "LECON", "EXERCICE"
+    value: str # ex: "Leçon", "Exercice"
+    # description: Optional[str] = None # Optionnel
+    subtypes: List[AISubTypeSchema] = []
+
+    class Config:
+        from_attributes = True
+
+class AIResourceTypesListResponse(BaseModel): # Nouveau nom pour éviter confusion
+    types: List[AITypeSchema]
 
 class QCMVariables(BaseModel):
     """Variables spécifiques pour générer un QCM."""

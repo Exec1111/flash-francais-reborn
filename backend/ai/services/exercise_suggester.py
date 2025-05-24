@@ -56,11 +56,12 @@ async def suggest_exercise_types_for_session(
         if type_resources:
             # Vérifier si ce type/sous-type est dans la liste des types demandés
             for type_resource in type_resources:
-                if type_resource.get("type_key") == type_key and type_resource.get("subtype_key") == subtype_key:
+                if (type_resource.get("type_key", "").lower() == type_key.lower() and
+                    type_resource.get("subtype_key", "").lower() == subtype_key.lower()):
                     include_resource = True
                     break
         # Sinon utiliser la liste blanche par défaut
-        elif type_key in EXERCISE_TYPES:
+        elif type_key.lower() in EXERCISE_TYPES:
             include_resource = True
             
         # Si cette ressource ne doit pas être incluse, passer à la suivante
