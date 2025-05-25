@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schéma de validation pour un jeu de mot-croisé",
+  "description": "Définit la structure attendue pour les données d'un mot-croisé éducatif. Ce schéma valide la structure de base et les types, mais certaines validations complexes (ex: cohérence entre grilleSolution et mots) nécessiteraient une logique applicative supplémentaire.",
+  "type": "object",
+  "properties": {
+    "titre": {
+        "type": "string",
+        "description": "Titre du mot-croisé. Doit être pertinent par rapport au thème."
+      },
+      "langue": {
+        "type": "string",
+        "description": "Code langue ISO 639-1 (ex: fr, en). Optionnel mais recommandé.",
+        "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+      },
+      "dimensions": {
+        "type": "object",
+        "description": "Dimensions de la grille.",
+        "properties": {
+          "lignes": {
+            "type": "integer",
+            "description": "Nombre total de lignes dans la grille.",
+            "minimum": 1
+          },
+          "colonnes": {
+            "type": "integer",
+            "description": "Nombre total de colonnes dans la grille.",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "lignes",
+          "colonnes"
+        ],
+        "additionalProperties": false
+      },
+      "grilleSolution": {
+        "type": "array",
+        "description": "Représentation 2D de la grille solution. Chaque élément est une ligne (un tableau de caractères/chaînes).",
+        "items": {
+          "type": "array",
+          "description": "Une ligne de la grille.",
+          "items": {
+            "type": "string",
+            "description": "Une case de la grille : une lettre majuscule ou un point ('.') pour une case noire.",
+            "pattern": "^([A-Z]|\\.)$"
+          }
+        }
+      },
+      "mots": {
+        "type": "array",
+        "description": "Liste des mots avec leurs définitions et emplacements.",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/motDefinition"
+        }
+      }
+    },
+    "required": [
+      "titre",
+      "dimensions",
+      "grilleSolution",
+      "mots"
+    ],
+    "additionalProperties": false,
+
+    "$defs": {
+      "motDefinition": {
+        "type": "object",
+        "description": "Définit la structure d'un mot dans le mot-croisé.",
+        "properties": {
+          "numero": {
+            "type": "integer",
+            "description": "Numéro du mot affiché sur la grille.",
+            "minimum": 1
+          },
+          "direction": {
+            "type": "string",
+            "description": "Direction du mot.",
+            "enum": [
+              "horizontal",
+              "vertical"
+            ]
+          },
+          "ligneDepart": {
+            "type": "integer",
+            "description": "Index de la ligne (base 0) où la première lettre du mot commence.",
+            "minimum": 0
+          },
+          "colonneDepart": {
+            "type": "integer",
+            "description": "Index de la colonne (base 0) où la première lettre du mot commence.",
+            "minimum": 0
+          },
+          "mot": {
+            "type": "string",
+            "description": "La chaîne de caractères du mot solution (en majuscules).",
+            "minLength": 1,
+            "pattern": "^[A-Z]+$"
+          },
+          "definition": {
+            "type": "string",
+            "description": "La définition ou l'indice pour ce mot.",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "numero",
+          "direction",
+          "ligneDepart",
+          "colonneDepart",
+          "mot",
+          "definition"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }

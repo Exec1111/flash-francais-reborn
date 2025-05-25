@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu du Pendu</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Align to top to see all content */
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 20px; /* Add some padding at the top */
+            background-color: #f0f0f0;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px 30px 30px 30px; /* Adjusted padding */
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-top: 0; /* Adjusted margin */
+            margin-bottom: 15px;
+        }
+
+        .dessin-pendu-container {
+            width: 180px; /* Slightly smaller */
+            height: 220px; /* Slightly smaller */
+            margin: 15px auto;
+            position: relative;
+        }
+
+        .dessin-pendu-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .pendu-partie {
+            stroke: #333;
+            stroke-width: 3; /* Slightly thinner */
+            fill: none;
+            stroke-linecap: round;
+            display: none;
+        }
+
+        #mot-a-deviner {
+            font-size: 1.8em; /* Slightly smaller */
+            letter-spacing: 0.4em;
+            margin: 15px 0;
+            color: #3498db;
+            min-height: 1em;
+        }
+        
+        #compteur-mots {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        #indice-conteneur {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            min-height: 20px;
+        }
+
+        #indice-texte {
+            font-style: italic;
+            color: #555;
+            margin: 0;
+        }
+
+        .controles-indice-mot {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 15px 0;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            gap: 10px; /* Add gap between buttons */
+        }
+
+        .controles-indice-mot button {
+            padding: 10px 15px;
+            font-size: 0.9em;
+            background-color: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controles-indice-mot button:hover {
+            background-color: #16a085;
+        }
+        
+        .controles-indice-mot button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #clavier {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px; /* Slightly smaller gap */
+        }
+
+        #clavier button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px; /* Slightly smaller padding */
+            font-size: 0.9em; /* Slightly smaller font */
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            min-width: 35px;
+        }
+
+        #clavier button:hover {
+            background-color: #2980b9;
+        }
+
+        #clavier button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #clavier button.correct {
+            background-color: #2ecc71;
+        }
+        #clavier button.incorrect {
+            background-color: #e74c3c;
+        }
+
+        .message {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            min-height: 1.5em;
+        }
+
+        .message.victoire {
+            color: #2ecc71;
+        }
+
+        .message.defaite {
+            color: #e74c3c;
+        }
+
+        #bouton-rejouer-serie { /* Renamed for clarity */
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: none; /* Caché par défaut, affiché à la fin de la série */
+        }
+
+        #bouton-rejouer-serie:hover {
+            background-color: #d35400;
+        }
+
+        #infos {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="titre-exercice">Jeu du Pendu</h1>
+
+        <div id="compteur-mots"></div>
+
+        <div class="dessin-pendu-container">
+            <svg viewBox="0 0 200 250">
+                <line class="pendu-partie" id="poteau-base" x1="10" y1="230" x2="130" y2="230" />
+                <line class="pendu-partie" id="poteau-vertical" x1="70" y1="230" x2="70" y2="20" />
+                <line class="pendu-partie" id="poteau-horizontal" x1="70" y1="20" x2="150" y2="20" />
+                <line class="pendu-partie" id="corde" x1="150" y1="20" x2="150" y2="50" />
+                <circle class="pendu-partie" id="tete" cx="150" cy="70" r="20" />
+                <line class="pendu-partie" id="corps" x1="150" y1="90" x2="150" y2="150" />
+                <line class="pendu-partie" id="bras-gauche" x1="150" y1="110" x2="120" y2="130" />
+                <line class="pendu-partie" id="bras-droit" x1="150" y1="110" x2="180" y2="130" />
+                <line class="pendu-partie" id="jambe-gauche" x1="150" y1="150" x2="130" y2="190" />
+                <line class="pendu-partie" id="jambe-droite" x1="150" y1="150" x2="170" y2="190" />
+            </svg>
+        </div>
+
+        <div id="mot-a-deviner"></div>
+        
+        <div id="indice-conteneur" style="display: none;">
+            <p id="indice-texte"></p>
+        </div>
+
+        <div class="controles-indice-mot">
+            <button id="bouton-indice">Afficher l'indice</button>
+            <button id="bouton-mot-suivant" style="display: none;">Mot suivant</button>
+        </div>
+
+        <div id="infos">
+            Erreurs restantes : <span id="erreurs-restantes"></span>
+        </div>
+        <div class="message" id="message"></div>
+        <div id="clavier"></div>
+        <button id="bouton-rejouer-serie">Rejouer la série</button>
+    </div>
+
+    <script>
+        // Supposons que les données du jeu sont injectées ici par le backend
+        // sous forme d'un objet JSON valide.
+        // Exemple de structure attendue :
+        // const donneesPendu = {
+        //   "titre": "Pendu : Les Animaux",
+        //   "niveau": "6ème",
+        //   "theme": "Animaux",
+        //   "liste_mots": [
+        //     { "mot_a_deviner": "ELEPHANT", "indice": "Grand mammifère avec une trompe" },
+        //     { "mot_a_deviner": "TIGRE", "indice": "Félin rayé d'Asie" },
+        //     { "mot_a_deviner": "GIRAFE", "indice": "Animal au long cou" }
+        //   ]
+        // };
+        // Pour le test en local, décommentez et adaptez la ligne ci-dessous :
+        // const donneesPendu = {"titre": "Pendu Test", "liste_mots": [{"mot_a_deviner": "TEST", "indice": "Essai"}, {"mot_a_deviner": "CODE", "indice": "Instructions pour ordinateur"}, {"mot_a_deviner": "CASCADE", "indice": "Assistant IA"}]};
+
+        // Si '{{ jsonData | safe }}' est la manière dont les données sont injectées :
+        const donneesPendu = {{ jsonData | default({}) | tojson }};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const motADevinerEl = document.getElementById('mot-a-deviner');
+            const clavierEl = document.getElementById('clavier');
+            const messageEl = document.getElementById('message');
+            const erreursRestantesEl = document.getElementById('erreurs-restantes');
+            const boutonRejouerSerie = document.getElementById('bouton-rejouer-serie');
+            const titreExerciceEl = document.getElementById('titre-exercice');
+            
+            const compteurMotsEl = document.getElementById('compteur-mots');
+            const indiceConteneurEl = document.getElementById('indice-conteneur');
+            const indiceTexteEl = document.getElementById('indice-texte');
+            const boutonIndice = document.getElementById('bouton-indice');
+            const boutonMotSuivant = document.getElementById('bouton-mot-suivant');
+
+            const partiesPendu = Array.from(document.querySelectorAll('.pendu-partie'));
+            const maxErreurs = partiesPendu.length;
+
+            let listeMotsJeu = [];
+            let indexMotCourant = 0;
+            let motActuel = '';
+            let indiceActuel = '';
+            let motAffiche = [];
+            let erreurs = 0;
+            let lettresProposees = [];
+            let jeuTerminePourMotCourant = false;
+            let indiceVisible = false;
+
+            function initialiserSerie() {
+                if (!donneesPendu || !donneesPendu.liste_mots || donneesPendu.liste_mots.length === 0) {
+                    messageEl.textContent = "Erreur : Données du jeu non disponibles.";
+                    console.error("Données du jeu (donneesPendu) non valides ou vides:", donneesPendu);
+                    // Masquer les éléments de jeu non pertinents
+                    [motADevinerEl, clavierEl, erreursRestantesEl.parentElement, compteurMotsEl, indiceConteneurEl, boutonIndice, boutonMotSuivant].forEach(el => el.style.display = 'none');
+                    return;
+                }
+                
+                titreExerciceEl.textContent = donneesPendu.titre || "Jeu du Pendu";
+                listeMotsJeu = donneesPendu.liste_mots;
+            }
+
+            function chargerMot(index) {
+                if (index >= listeMotsJeu.length) {
+                    // Fin de la série
+                    messageEl.textContent = "Série de mots terminée !";
+                    messageEl.className = 'message victoire';
+                    boutonRejouerSerie.style.display = 'inline-block';
+                    boutonMotSuivant.style.display = 'none';
+                    boutonIndice.style.display = 'none'; // Cacher le bouton d'indice à la fin de la série
+                    motADevinerEl.textContent = "";
+                    indiceConteneurEl.style.display = 'none';
+                    clavierEl.innerHTML = ''; // Vider le clavier
+                    return;
+                }
+
+                const itemMot = listeMotsJeu[index];
+                motActuel = itemMot.mot_a_deviner.toUpperCase();
+                indiceActuel = itemMot.indice;
+
+                motAffiche = Array(motActuel.length).fill('_');
+                erreurs = 0;
+                lettresProposees = [];
+                jeuTerminePourMotCourant = false;
+                
+                // Réinitialisation de l'indice pour le nouveau mot
+                indiceVisible = false; // Important
+                indiceTexteEl.textContent = indiceActuel;
+                indiceConteneurEl.style.display = 'none'; // Caché par défaut
+                boutonIndice.textContent = "Afficher l'indice";
+                boutonIndice.disabled = false; // S'assurer qu'il est activé
+                boutonIndice.style.display = 'inline-block'; // S'assurer qu'il est visible
+
+                mettreAJourAffichageMot();
+                mettreAJourErreursRestantes();
+                creerClavier(); // Recrée le clavier pour le nouveau mot
+                reinitialiserPenduVisuel();
+                
+                messageEl.textContent = '';
+                messageEl.className = 'message';
+                
+                compteurMotsEl.textContent = `Mot ${index + 1} sur ${listeMotsJeu.length}`;
+
+                if (listeMotsJeu.length > 1 && index < listeMotsJeu.length -1) {
+                    boutonMotSuivant.style.display = 'inline-block';
+                    boutonMotSuivant.disabled = true; // Désactivé jusqu'à ce que le mot soit trouvé ou perdu
+                } else {
+                    boutonMotSuivant.style.display = 'none';
+                }
+            }
+            
+            function reinitialiserPenduVisuel() {
+                partiesPendu.forEach(partie => {
+                    if (partie) partie.style.display = 'none';
+                });
+            }
+
+            function mettreAJourAffichageMot() {
+                motADevinerEl.textContent = motAffiche.join('');
+            }
+
+            function mettreAJourErreursRestantes() {
+                erreursRestantesEl.textContent = maxErreurs - erreurs;
+            }
+
+            function creerClavier() {
+                clavierEl.innerHTML = '';
+                const lettres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                for (let lettre of lettres) {
+                    const bouton = document.createElement('button');
+                    bouton.textContent = lettre;
+                    bouton.addEventListener('click', () => proposerLettre(lettre, bouton));
+                    clavierEl.appendChild(bouton);
+                }
+            }
+
+            function proposerLettre(lettre, bouton) {
+                if (jeuTerminePourMotCourant || lettresProposees.includes(lettre)) {
+                    return;
+                }
+
+                lettresProposees.push(lettre);
+                bouton.disabled = true;
+
+                if (motActuel.includes(lettre)) {
+                    bouton.classList.add('correct');
+                    for (let i = 0; i < motActuel.length; i++) {
+                        if (motActuel[i] === lettre) {
+                            motAffiche[i] = lettre;
+                        }
+                    }
+                    mettreAJourAffichageMot();
+                    verifierVictoireMot();
+                } else {
+                    bouton.classList.add('incorrect');
+                    erreurs++;
+                    mettreAJourPenduVisuel();
+                    mettreAJourErreursRestantes();
+                    verifierDefaiteMot();
+                }
+            }
+
+            function mettreAJourPenduVisuel() {
+                for (let i = 0; i < erreurs; i++) {
+                    if (partiesPendu[i]) {
+                         partiesPendu[i].style.display = 'block';
+                    }
+                }
+            }
+
+            function verifierVictoireMot() {
+                if (!motAffiche.includes('_')) {
+                    messageEl.textContent = "Bien joué ! Vous avez trouvé le mot !";
+                    messageEl.className = 'message victoire';
+                    terminerMotCourant(true);
+                }
+            }
+
+            function verifierDefaiteMot() {
+                if (erreurs >= maxErreurs) {
+                    messageEl.textContent = `Dommage ! Le mot était : ${motActuel}`;
+                    messageEl.className = 'message defaite';
+                    motADevinerEl.textContent = motActuel;
+                    terminerMotCourant(false);
+                }
+            }
+            
+            function terminerMotCourant(gagne) {
+                jeuTerminePourMotCourant = true;
+                Array.from(clavierEl.children).forEach(b => { b.disabled = true; });
+                
+                if (indexMotCourant < listeMotsJeu.length - 1) {
+                    boutonMotSuivant.disabled = false; // Activer pour passer au suivant
+                } else {
+                    // C'est le dernier mot, fin de la série
+                    boutonRejouerSerie.style.display = 'inline-block';
+                    boutonMotSuivant.style.display = 'none';
+                }
+                 // Révéler l'indice si ce n'est pas déjà fait et que le mot n'a pas été gagné
+                if (!gagne && !indiceVisible) {
+                    indiceVisible = true;
+                    indiceConteneurEl.style.display = 'block';
+                    boutonIndice.textContent = "Masquer l'indice";
+                } else if (gagne) {
+                     boutonIndice.disabled = true; // Désactiver si gagné
+                }
+            }
+
+            boutonIndice.addEventListener('click', () => {
+                if (jeuTerminePourMotCourant && !motAffiche.includes('_')) { // Si mot gagné, ne rien faire
+                    return;
+                }
+                indiceVisible = !indiceVisible;
+                indiceConteneurEl.style.display = indiceVisible ? 'block' : 'none';
+                boutonIndice.textContent = indiceVisible ? "Masquer l'indice" : "Afficher l'indice";
+            });
+
+            boutonMotSuivant.addEventListener('click', () => {
+                indexMotCourant++;
+                chargerMot(indexMotCourant);
+            });
+
+            boutonRejouerSerie.addEventListener('click', initialiserSerie);
+
+            initialiserSerie();
+        });
+    </script>
+</body>
+</html>

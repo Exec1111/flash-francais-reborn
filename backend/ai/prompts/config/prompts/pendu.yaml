@@ -1,0 +1,61 @@
+description_courte: "Génère les données pour un jeu du Pendu éducatif avec une liste de mots, au format JSON."
+
+system_prompt: |
+  Tu es un assistant IA spécialisé dans la création de jeux éducatifs en français.
+  Ta tâche est de générer les données nécessaires pour un jeu du Pendu, comprenant une liste de mots à deviner, chacun avec son propre indice.
+  La sortie DOIT être un objet JSON unique et valide respectant scrupuleusement le schéma spécifié.
+  Chaque mot à deviner doit être pertinent pour le thème et le niveau donnés.
+  Chaque indice doit être clair et aider à trouver le mot correspondant sans le révéler directement.
+
+user_prompt_template: |
+  Génère un jeu du Pendu en français avec plusieurs mots.
+  Thème : {{ theme }}
+  Niveau de l'apprenant : {{ niveau }}
+  Nombre de mots à générer : {{ nombre_mots | default(3) }}
+  {% if instructions_personnalisees %}
+  Instructions supplémentaires :
+  {{ instructions_personnalisees }}
+  {% endif %}
+
+parameters:
+  - name: theme
+    type: str
+    description: "Thème sur lequel les mots du Pendu doivent porter (ex: Les animaux de la ferme, Les capitales d'Europe, Vocabulaire scientifique)."
+  - name: niveau
+    type: str
+    enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé"]
+    description: "Niveau de difficulté pour l'apprenant. Cela peut influencer la longueur et la complexité des mots."
+  - name: nombre_mots
+    type: int
+    description: "Nombre de paires mot/indice à générer (entre 1 et 5)."
+    default: 3
+    minimum: 1
+    maximum: 5
+  - name: instructions_personnalisees
+    type: str
+    description: "Instructions spécifiques pour la génération du jeu (optionnel)."
+    default: ""
+
+constraints:
+  # Format et Structure de la Sortie
+  - "La sortie doit être un objet JSON unique, valide et strictement conforme au schéma de réponse (`response_schema`)."
+  - "Tous les champs requis par le schéma (`titre`, `niveau`, `theme`, `liste_mots`) doivent être présents."
+  - "La `liste_mots` doit contenir un nombre d'éléments correspondant au paramètre `nombre_mots` fourni (entre 1 et 5)."
+
+  # Règles pour chaque élément de 'liste_mots'
+  - "Pour chaque élément dans `liste_mots` :"
+  - "  Le `mot_a_deviner` doit être un mot français unique, valide et existant."
+  - "  Le `mot_a_deviner` doit être entièrement en LETTRES MAJUSCULES."
+  - "  Le `mot_a_deviner` ne doit contenir NI ACCENTS, NI ESPACES, NI CARACTÈRES SPÉCIAUX (cédilles, tirets, apostrophes, etc.). Uniquement les lettres de A à Z."
+  - "  La longueur du `mot_a_deviner` doit être appropriée pour le `niveau` spécifié (par exemple, 4-7 lettres pour les niveaux plus faciles, 8-12+ pour les plus difficiles)."
+  - "  L'`indice` doit être une phrase courte et claire, en français, qui aide à deviner le `mot_a_deviner` correspondant sans le donner explicitement."
+  - "  L'`indice` doit être adapté au `niveau` de l'apprenant."
+
+  # Règles pour 'titre'
+  - "Le `titre` doit être concis et indiquer qu'il s'agit d'un jeu du Pendu, en lien avec le `theme` si possible (ex: 'Pendu : Animaux Marins')."
+
+  # Objectifs Généraux
+  - "Le contenu généré doit être éducatif et adapté au public scolaire francophone."
+  - "Respecter scrupuleusement les `instructions_personnalisees` si elles sont fournies."
+
+response_schema: "pendu.schema.json"

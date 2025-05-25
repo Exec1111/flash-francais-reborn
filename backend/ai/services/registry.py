@@ -14,6 +14,8 @@ PROMPT_REGISTRY = {
     ("exercice", "vocabulaire"): "vocabulaire",
     ("exercice", "champlex"): "champlex",
     ("exercice", "champlex2"): "champlex2",
+    ("exercice", "mots-croises"): "mots_croises",
+    ("exercice", "pendu"): "pendu",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
@@ -36,7 +38,9 @@ TEMPLATE_REGISTRY = {
     ("oeuvre", "oeuvrecomp"): "default_oeuvre_oeuvrecomp.html",
     ("exercice", "vocabulaire"): "default_exercice_vocabulaire.html",
     ("exercice", "champlex"): "default_exercice_champlex.html",
+    ("exercice", "pendu"): "default_exercice_pendu.html",
     ("exercice", "champlex2"): "default_exercice_champlex2.html", 
+    ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
     ("lecon", "leconcomplete1"): "default_lecon_complete1.html",
     # Ajoutez d'autres mappings ici si nécessaire
 }

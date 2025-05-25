@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mot-Croisé Éducatif</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            color: #333;
+            padding-top: 20px;
+            box-sizing: border-box; /* Important pour le padding */
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 95%; /* Un peu plus de marge sur les côtés */
+            max-width: 1000px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #6c757d;
+            padding-bottom: 10px;
+        }
+
+        #crossword-title {
+            color: #007bff;
+            margin: 0;
+        }
+
+        .crossword-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .grid-container {
+            display: grid;
+            border: 2px solid #333;
+            width: fit-content;
+            margin: 0 auto; /* Centre la grille */
+            /* grid-template-columns et grid-template-rows sont définis par JS */
+        }
+
+        .grid-cell {
+            width: 35px;
+            height: 35px;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .grid-cell input {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            font-size: 1.2em;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-transform: uppercase;
+            background-color: #fff;
+            caret-color: #007bff;
+            box-sizing: border-box; /* S'assurer que le padding/border ne dépasse pas */
+        }
+
+        .grid-cell input:focus {
+            outline: 2px solid #007bff;
+            background-color: #eef8ff;
+        }
+
+        .grid-cell.black-cell {
+            background-color: #333;
+            border-color: #333;
+        }
+
+        .grid-cell .word-number {
+            position: absolute;
+            top: 1px;
+            left: 2px;
+            font-size: 0.6em;
+            color: #555;
+            pointer-events: none;
+        }
+
+        .definitions-area {
+            display: flex;
+            gap: 20px;
+            flex-grow: 1;
+            min-width: 300px;
+        }
+
+        .definitions-column {
+            flex: 1;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .definitions-column h2 {
+            font-size: 1.2em;
+            color: #007bff;
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .definitions-column ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .definitions-column li {
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .definitions-column li strong {
+            color: #333;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        footer button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        footer button:hover {
+            background-color: #0056b3;
+        }
+
+        #check-button.correct {
+            background-color: #28a745;
+        }
+        #check-button.correct:hover {
+            background-color: #1e7e34;
+        }
+
+        #check-button.incorrect {
+            background-color: #dc3545;
+        }
+        #check-button.incorrect:hover {
+            background-color: #b02a37;
+        }
+
+        .correct-cell input {
+            background-color: #d4edda !important;
+            color: #155724;
+        }
+
+        .incorrect-cell input {
+            background-color: #f8d7da !important;
+            color: #721c24;
+        }
+
+        #message-area {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .crossword-area {
+                flex-direction: column;
+                align-items: center;
+            }
+            .grid-container {
+                margin-bottom: 20px;
+                 /* Ajustement pour les petites grilles sur mobile */
+                max-width: calc(100vw - 40px); /* 100% de la largeur de la vue moins les paddings du container */
+                overflow-x: auto; /* Permet le défilement horizontal si la grille est trop large */
+            }
+            .grid-cell {
+                /* La taille s'adaptera via le grid, mais on peut définir un min/max */
+                min-width: 28px; 
+                min-height: 28px;
+            }
+            .grid-cell input {
+                font-size: 0.9em;
+            }
+            .definitions-area {
+                width: 100%;
+                flex-direction: column;
+            }
+            .definitions-column {
+                margin-bottom: 10px;
+            }
+             footer button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+        }
+         @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            .grid-cell {
+                min-width: 25px;
+                min-height: 25px;
+            }
+             .grid-cell input {
+                font-size: 0.8em;
+            }
+            .definitions-column li {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="crossword-title">Titre du Mot-Croisé</h1>
+        </header>
+
+        <main class="crossword-area">
+            <div id="grid-container" class="grid-container">
+                <!-- La grille sera générée ici par JavaScript -->
+            </div>
+
+            <div class="definitions-area">
+                <div class="definitions-column">
+                    <h2>Horizontal</h2>
+                    <ul id="horizontal-definitions">
+                        <!-- Les définitions horizontales seront ajoutées ici -->
+                    </ul>
+                </div>
+                <div class="definitions-column">
+                    <h2>Vertical</h2>
+                    <ul id="vertical-definitions">
+                        <!-- Les définitions verticales seront ajoutées ici -->
+                    </ul>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <button id="check-button">Corriger</button>
+            <button id="reset-button">Réinitialiser</button>
+            <button id="solution-button">Solution</button>
+            <p id="message-area"></p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DONNÉES DU MOT-CROISÉ (À INJECTER PAR LE LLM) ---
+            // LE LLM REMPLACERA LA LIGNE SUIVANTE AVEC L'OBJET JSON COMPLET
+            const crosswordData = {
+                "titre": "La Préhistoire (Exemple Fusionné)",
+                "langue": "fr",
+                "dimensions": { "lignes": 10, "colonnes": 10 },
+                "grilleSolution": [
+                    [".",".","B",".",".",".",".",".",".","."],
+                    [".",".","I",".","G",".","F",".",".","."],
+                    [".",".","F",".","R",".","E",".",".","."],
+                    [".","M","A","M","M","O","U","T","H","."],
+                    [".",".","C","H","U","T","T","E",".","."],
+                    [".",".","E",".","T",".",".",".",".","."],
+                    [".",".",".",".","T",".",".",".",".","."],
+                    [".",".","S","I","L","E","X",".",".","."],
+                    [".",".","O",".",".",".",".",".",".","."],
+                    [".",".","S",".",".",".",".",".",".","."]
+                ],
+                "mots": [
+                    { "numero": 1, "direction": "vertical", "ligneDepart": 0, "colonneDepart": 2, "mot": "BIFACE", "definition": "Outil en pierre taillé sur les deux faces, typique de la préhistoire." },
+                    { "numero": 2, "direction": "horizontal", "ligneDepart": 3, "colonneDepart": 1, "mot": "MAMMOUTH", "definition": "Grand animal à fourrure et longues défenses, chassé par les hommes préhistoriques." },
+                    { "numero": 3, "direction": "vertical", "ligneDepart": 1, "colonneDepart": 4, "mot": "GROTTE", "definition": "Abri naturel dans la roche, souvent décoré de peintures préhistoriques." },
+                    { "numero": 4, "direction": "vertical", "ligneDepart": 1, "colonneDepart": 6, "mot": "FEU", "definition": "Découverte essentielle qui a permis de se chauffer, cuire les aliments et se protéger." },
+                    { "numero": 5, "direction": "horizontal", "ligneDepart": 4, "colonneDepart": 3, "mot": "HUTTE", "definition": "Habitation simple et primitive, construite avec des branchages ou des peaux." },
+                    { "numero": 6, "direction": "horizontal", "ligneDepart": 7, "colonneDepart": 2, "mot": "SILEX", "definition": "Roche très dure utilisée pour fabriquer des outils tranchants et des pointes de flèches." },
+                    { "numero": 7, "direction": "vertical", "ligneDepart": 8, "colonneDepart": 2, "mot": "OS", "definition": "Partie dure du squelette des animaux, parfois utilisée pour faire des outils ou des bijoux." }
+                ]
+            };
+            // --- FIN DES DONNÉES À INJECTER ---
+
+            const gridContainer = document.getElementById('grid-container');
+            const horizontalDefinitionsList = document.getElementById('horizontal-definitions');
+            const verticalDefinitionsList = document.getElementById('vertical-definitions');
+            const checkButton = document.getElementById('check-button');
+            const resetButton = document.getElementById('reset-button');
+            const titleElement = document.getElementById('crossword-title');
+            const messageArea = document.getElementById('message-area');
+
+            let R = 0;
+            let C = 0;
+            let cellElements = []; // Pour stocker les références aux inputs pour une navigation plus facile
+
+            function initializeCrossword(data) {
+                R = data.dimensions.lignes;
+                C = data.dimensions.colonnes;
+                cellElements = Array(R).fill(null).map(() => Array(C).fill(null));
+
+                titleElement.textContent = data.titre || "Mot-Croisé";
+
+                gridContainer.style.gridTemplateColumns = `repeat(${C}, minmax(25px, 1fr))`; // Taille minimale pour les cellules
+                gridContainer.style.gridTemplateRows = `repeat(${R}, minmax(25px, 1fr))`;
+                gridContainer.innerHTML = ''; 
+                horizontalDefinitionsList.innerHTML = '';
+                verticalDefinitionsList.innerHTML = '';
+
+
+                for (let r = 0; r < R; r++) {
+                    for (let c = 0; c < C; c++) {
+                        const cellDiv = document.createElement('div');
+                        cellDiv.classList.add('grid-cell');
+                        cellDiv.dataset.row = r;
+                        cellDiv.dataset.col = c;
+
+                        if (data.grilleSolution[r][c] === '.') {
+                            cellDiv.classList.add('black-cell');
+                        } else {
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.maxLength = 1;
+                            input.dataset.row = r;
+                            input.dataset.col = c;
+                            input.autocomplete = "off"; // Empêcher l'autocomplétion du navigateur
+                            input.addEventListener('input', handleInput);
+                            input.addEventListener('keydown', handleKeyDown);
+                            input.addEventListener('focus', (e) => e.target.select()); // Sélectionner le contenu au focus
+                            cellDiv.appendChild(input);
+                            cellElements[r][c] = input;
+                        }
+                        gridContainer.appendChild(cellDiv);
+                    }
+                }
+
+                data.mots.forEach(word => {
+                    const cellWithNumber = gridContainer.querySelector(`.grid-cell[data-row="${word.ligneDepart}"][data-col="${word.colonneDepart}"]`);
+                    if (cellWithNumber && !cellWithNumber.querySelector('.word-number')) {
+                        const numberSpan = document.createElement('span');
+                        numberSpan.classList.add('word-number');
+                        numberSpan.textContent = word.numero;
+                        cellWithNumber.insertBefore(numberSpan, cellWithNumber.firstChild);
+                    }
+
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<strong>${word.numero}.</strong> ${word.definition}`;
+                    if (word.direction === 'horizontal' || word.direction === 'across') {
+                        horizontalDefinitionsList.appendChild(listItem);
+                    } else {
+                        verticalDefinitionsList.appendChild(listItem);
+                    }
+                });
+                 // Ajuster la taille des cellules si la grille est grande pour tenir sur l'écran
+                const maxGridWidth = Math.min(gridContainer.parentElement.offsetWidth - 40, 500); // 500px max ou largeur parent
+                const cellSize = Math.floor(maxGridWidth / C) - 2; // -2 pour les bordures
+                const minCellSize = 25; // Taille minimale de cellule
+                const actualCellSize = Math.max(minCellSize, cellSize);
+
+                Array.from(gridContainer.children).forEach(cellDiv => {
+                    cellDiv.style.width = `${actualCellSize}px`;
+                    cellDiv.style.height = `${actualCellSize}px`;
+                    const input = cellDiv.querySelector('input');
+                    if(input) {
+                        input.style.fontSize = `${Math.max(0.7, actualCellSize / 30)}em`; // Ajuster la taille de la police
+                    }
+                });
+
+            }
+
+            function handleInput(e) {
+                const input = e.target;
+                input.value = input.value.toUpperCase();
+                const r = parseInt(input.dataset.row);
+                const c = parseInt(input.dataset.col);
+
+                // Auto-focus next cell (simple right then down logic)
+                if (input.value.length === 1) {
+                    let nextR = r;
+                    let nextC = c + 1;
+                    if (nextC >= C) { // Fin de ligne
+                        nextC = 0;
+                        nextR = r + 1;
+                        if (nextR >= R) { // Fin de grille
+                           // Optionnel: ne rien faire ou focus sur le bouton vérifier
+                           checkButton.focus();
+                           return;
+                        }
+                    }
+                    // Trouver la prochaine cellule *modifiable*
+                    while(nextR < R) {
+                        while(nextC < C) {
+                            if (cellElements[nextR][nextC]) {
+                                cellElements[nextR][nextC].focus();
+                                return;
+                            }
+                            nextC++;
+                        }
+                        nextC = 0;
+                        nextR++;
+                    }
+                }
+            }
+
+            function handleKeyDown(e) {
+                const input = e.target;
+                const r = parseInt(input.dataset.row);
+                const c = parseInt(input.dataset.col);
+                let nextInput = null;
+
+                switch (e.key) {
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        for (let i = r - 1; i >= 0; i--) if (cellElements[i][c]) { nextInput = cellElements[i][c]; break; }
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        for (let i = r + 1; i < R; i++) if (cellElements[i][c]) { nextInput = cellElements[i][c]; break; }
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        for (let i = c - 1; i >= 0; i--) if (cellElements[r][i]) { nextInput = cellElements[r][i]; break; }
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        for (let i = c + 1; i < C; i++) if (cellElements[r][i]) { nextInput = cellElements[r][i]; break; }
+                        break;
+                    case 'Backspace':
+                        if (input.value === '') {
+                            e.preventDefault(); // Empêche la navigation arrière du navigateur
+                            // Chercher la case précédente à gauche, puis en haut à droite si début de ligne
+                            let prevR = r;
+                            let prevC = c - 1;
+                            if (prevC < 0) {
+                                prevR = r - 1;
+                                prevC = C - 1; 
+                            }
+                            while(prevR >= 0) {
+                                while(prevC >= 0) {
+                                    if (cellElements[prevR][prevC]) {
+                                        nextInput = cellElements[prevR][prevC];
+                                        nextInput.focus(); // Mettre le focus pour que la suppression s'applique là si l'utilisateur retape backspace
+                                        return; // On ne sélectionne pas, on veut que le backspace potentiel s'applique
+                                    }
+                                    prevC--;
+                                }
+                                prevC = C - 1;
+                                prevR--;
+                            }
+                        }
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        checkAnswers();
+                        break;
+                }
+                if (nextInput) {
+                    nextInput.focus();
+                    // nextInput.select(); // Le select est géré par le onfocus maintenant
+                }
+            }
+
+            function checkAnswers() {
+                let allCorrect = true;
+                let hasUserInput = false;
+                messageArea.textContent = '';
+                checkButton.className = '';
+                for (let r = 0; r < R; r++) {
+                    for (let c = 0; c < C; c++) {
+                        const cellSolution = crosswordData.grilleSolution[r][c];
+                        if (cellSolution === '.') continue;
+
+                        const inputElement = cellElements[r][c];
+                        const cellDiv = inputElement.parentElement;
+                        cellDiv.classList.remove('correct-cell', 'incorrect-cell');
+
+                        if (inputElement) {
+                            const userAnswer = inputElement.value.toUpperCase();
+                            if (userAnswer !== "") {
+                                hasUserInput = true;
+                            }
+
+                            if (userAnswer === cellSolution) {
+                                cellDiv.classList.add('correct-cell');
+                            } else if (userAnswer !== "") {
+                                cellDiv.classList.add('incorrect-cell');
+                                allCorrect = false;
+                            } else {
+                                allCorrect = false;
+                            }
+                        }
+                    }
+                }
+
+                if (!hasUserInput && R*C > 0) { // Vérifier R*C > 0 pour éviter le message si la grille est vide
+                    messageArea.textContent = "Veuillez remplir quelques cases avant de corriger.";
+                    return;
+                }
+
+                if (allCorrect) {
+                    messageArea.textContent = "Félicitations ! Tout est correct !";
+                    checkButton.classList.add('correct');
+                } else {
+                    messageArea.textContent = "Certaines réponses sont incorrectes ou manquantes. Vérifiez les cases en rouge.";
+                    checkButton.classList.add('incorrect');
+                }
+            }
+
+            function resetGrid() {
+                messageArea.textContent = '';
+                if (checkButton) {
+                    checkButton.className = '';
+                    checkButton.disabled = false;
+                }
+                const solutionButtonElem = document.getElementById('solution-button');
+                if (solutionButtonElem) {
+                    solutionButtonElem.disabled = false;
+                }
+                
+                initializeCrossword(crosswordData); 
+
+                // Mettre le focus sur le premier input s'il existe
+                for (let r = 0; r < R; r++) {
+                    for (let c = 0; c < C; c++) {
+                        if (cellElements[r][c]) {
+                            cellElements[r][c].focus();
+                            return; 
+                        }
+                    }
+                }
+            }
+
+            function showSolution() {
+                if (!crosswordData || !crosswordData.grilleSolution) {
+                    console.error("Données de la grille solution non disponibles.");
+                    return;
+                }
+
+                messageArea.textContent = ''; 
+                if (checkButton) {
+                    checkButton.className = '';   
+                    checkButton.disabled = false; 
+                }
+                const solutionButtonElem = document.getElementById('solution-button');
+                if (solutionButtonElem) {
+                    solutionButtonElem.disabled = false;
+                }
+
+                for (let r = 0; r < R; r++) {
+                    for (let c = 0; c < C; c++) {
+                        const cellSolution = crosswordData.grilleSolution[r][c];
+                        const inputElement = cellElements[r][c];
+
+                        if (inputElement) { 
+                            inputElement.value = cellSolution;
+                            const cellDiv = inputElement.parentElement;
+                            cellDiv.classList.remove('correct-cell', 'incorrect-cell');
+                            inputElement.disabled = true; 
+                        }
+                    }
+                }
+                messageArea.textContent = "Solution affichée.";
+                if (solutionButtonElem) solutionButtonElem.disabled = true;
+                if (checkButton) checkButton.disabled = true; 
+            } // Fin de showSolution
+
+            // Attacher les écouteurs d'événements
+            const checkBtn = document.getElementById('check-button');
+            if (checkBtn) {
+                checkBtn.addEventListener('click', checkAnswers);
+            }
+
+            const resetBtn = document.getElementById('reset-button');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetGrid);
+            }
+
+            const solutionBtn = document.getElementById('solution-button');
+            if (solutionBtn) {
+                solutionBtn.addEventListener('click', showSolution);
+            }
+
+            // Initialiser le mot-croisé
+            initializeCrossword(crosswordData);
+        }); // Fermeture de DOMContentLoaded
+    </script>
+</body>
+</html>

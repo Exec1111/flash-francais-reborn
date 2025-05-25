@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schéma de validation pour un jeu du Pendu",
+  "description": "Définit la structure attendue pour les données d'un jeu du Pendu.",
+  "type": "object",
+  "properties": {
+    "titre": {
+      "type": "string",
+      "description": "Titre de l'exercice du Pendu."
+    },
+    "niveau": {
+      "type": "string",
+      "description": "Niveau de difficulté pour l'apprenant.",
+      "enum": ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé"]
+    },
+    "theme": {
+      "type": "string",
+      "description": "Thème général du mot à deviner (ex: Animaux, Fruits, Histoire)."
+    },
+    "liste_mots": {
+      "type": "array",
+      "description": "Liste des paires mot à deviner et indice correspondant.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mot_a_deviner": {
+            "type": "string",
+            "description": "Le mot que l'utilisateur doit deviner. Doit être en MAJUSCULES et sans accents ni caractères spéciaux pour simplifier le jeu.",
+            "pattern": "^[A-Z]+$"
+          },
+          "indice": {
+            "type": "string",
+            "description": "Un indice ou une définition pour aider à deviner le mot."
+          }
+        },
+        "required": ["mot_a_deviner", "indice"]
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "langue": {
+      "type": "string",
+      "description": "Code langue ISO 639-1 (ex: fr).",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    }
+  },
+  "required": [
+    "titre",
+    "niveau",
+    "theme",
+    "liste_mots"
+  ],
+  "additionalProperties": false
+}

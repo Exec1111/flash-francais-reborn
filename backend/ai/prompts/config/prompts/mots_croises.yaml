@@ -1,0 +1,72 @@
+description_courte: "Génère une grille de mot-croisé éducative complète au format JSON, adaptée à un thème et un niveau donnés."
+
+system_prompt: |
+  Tu es un expert en création de jeux éducatifs, spécialisé dans les mots-croisés pour un public scolaire francophone.
+  Ta tâche est de générer une grille de mot-croisé complète, incluant la grille solution et la liste des mots avec leurs définitions.
+  L'exercice doit être adapté au niveau de l'apprenant et porter sur le thème spécifié.
+  La sortie DOIT être un objet JSON unique et valide respectant scrupuleusement le format spécifié ci-dessous.
+  Assure-toi que les mots s'entrecroisent correctement dans la grille et que les définitions sont pertinentes.
+
+user_prompt_template: |
+  Génère une grille de mot-croisé en français sur le thème : {{ theme }}.
+  Niveau de l'apprenant : {{ niveau }}.
+  Nombre de mots cible : environ {{ nombre_mots_cible }}.
+
+  {% if instructions_personnalisees %}
+  Instructions supplémentaires :
+  {{ instructions_personnalisees }}
+  {% endif %} 
+ 
+  ATTENTION : La sortie JSON doit être valide et suivre scrupuleusement le schéma fourni. Veillez à ce que tous les éléments requis par le schéma soient présents et correctement formatés.
+
+parameters:
+  - name: theme
+    type: str
+    description: Thème sur lequel le mot-croisé doit être créé
+  - name: niveau # Harmonisé avec le template {{ niveau }}
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+  - name: nombre_mots_cible
+    type: int
+    description: Nombre approximatif de mots à inclure dans la grille
+    default: 8 # Un 10x10 peut raisonnablement contenir entre 7 et 12 mots
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions spécifiques pour la génération du mot-croisé (optionnel)
+    default: ""
+
+constraints:
+  # Format et Structure de la Sortie
+  - "La sortie doit être un objet JSON unique, valide et strictement conforme au schéma de réponse (`response_schema`)."
+  - "Un `titre` pertinent pour le mot-croisé, en lien avec le `theme`, doit être inclus dans la sortie JSON (champ 'titre')."
+
+  # Règles pour la Grille Solution (`grilleSolution`)
+  - "La `grilleSolution` doit être un tableau de tableaux de chaînes de caractères (Array<Array<String>>)."
+  - "Chaque chaîne dans la `grilleSolution` représente une lettre (MAJUSCULE) ou une case vide."
+  - "Les cases de la `grilleSolution` qui ne font pas partie d'un mot (cases noires) doivent être représentées par un point ('.')."
+  - "La taille de la grille (dimensions de `grilleSolution`) doit être appropriée pour le `nombre_mots_cible` (par exemple, une grille d'environ 10x10 pour 7-12 mots) et être aussi compacte que possible, sans lignes ou colonnes entièrement vides en périphérie si possible."
+  - "La `grilleSolution` doit EXACTEMENT refléter le placement des lettres des mots listés dans `mots`."
+
+  # Règles pour la Liste de Mots (`mots`)
+  - "Chaque objet dans la liste `mots` doit impérativement contenir les champs suivants, correctement typés et renseignés :"
+  - "  `mot`: (String) Le mot en MAJUSCULES."
+  - "  `definition`: (String) La définition du mot, adaptée au `niveau` et au `theme`."
+  - "  `numero`: (Integer) Numéro unique du mot dans la grille, commençant à 1."
+  - "  `direction`: (String) Soit 'horizontal', soit 'vertical'."
+  - "  `ligneDepart`: (Integer) Index de ligne (base 0) de la première lettre du mot."
+  - "  `colonneDepart`: (Integer) Index de colonne (base 0) de la première lettre du mot."
+  - "Chaque `mot` dans la liste `mots` doit être un mot français valide et existant."
+  - "Les `numero` attribués aux mots doivent être uniques, commencer à 1, et être assignés de manière logique (par exemple, par ordre d'apparition en balayant la grille de haut en bas, puis de gauche à droite pour les mots horizontaux, puis verticaux)."
+  - "Les coordonnées `ligneDepart` et `colonneDepart` sont des index commençant à 0."
+
+  # Règles pour les Définitions
+  - "Les définitions doivent être claires, concises, et spécifiquement adaptées au `niveau` de l'apprenant et au `theme`."
+
+  # Objectifs Généraux de Cohérence et Qualité
+  - "Le nombre total de mots générés doit être proche de la valeur de `nombre_mots_cible` (typiquement ±2 mots)."
+  - "Les mots doivent s'entrecroiser correctement et logiquement dans la grille. Chaque lettre partagée par deux mots doit être la même."
+  - "La difficulté globale du mot-croisé doit correspondre au `niveau` spécifié."
+  - "Respecter scrupuleusement les `instructions_personnalisees` si elles sont fournies."
+
+response_schema: "mots_croises.schema.json"
