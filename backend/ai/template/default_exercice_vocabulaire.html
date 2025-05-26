@@ -488,6 +488,16 @@
                      event.dataTransfer.dropEffect = 'move';
                      // Optionnel: ajouter un feedback visuel à la zone de drop
                      // zone.classList.add('drag-over');
+
+                     // Logique pour le défilement automatique
+                     const scrollSensitivity = 50; // Pixels du bord pour déclencher le scroll
+                     const scrollSpeed = 10;       // Vitesse de défilement en pixels
+
+                     if (event.clientY < scrollSensitivity) {
+                         window.scrollBy(0, -scrollSpeed);
+                     } else if (event.clientY > window.innerHeight - scrollSensitivity) {
+                         window.scrollBy(0, scrollSpeed);
+                     }
                  });
 
                  // Événement quand l'élément draggable quitte la zone
