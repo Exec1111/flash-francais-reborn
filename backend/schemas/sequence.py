@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from schemas.objective import ObjectiveRead
     from schemas.session import SessionRead
     from schemas.study_object import StudyObjectReadShort, StudyObjectWithResources # Déplacé ici
+    from schemas.resource import ResourceRead  # Ajout pour SequenceWithObjects
 
 class SequenceBase(BaseModel):
     title: str
@@ -70,6 +71,20 @@ if not TYPE_CHECKING:
     from .study_object import StudyObjectWithResources, StudyObjectReadShort
     from .objective import ObjectiveRead
     from .session import SessionRead
+    from .resource import ResourceRead  # Ajout pour SequenceWithObjects
+
+# Schéma pour récupérer une séquence avec tous ses objets pour la génération de résumé
+class SequenceWithObjects(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    level: Optional[str] = None
+    objectives: List['ObjectiveRead'] = []
+    resources: List['ResourceRead'] = []
+    
+    class Config:
+        from_attributes = True
 
 # Résoudre les références forward
 SequenceRead.model_rebuild()
+SequenceWithObjects.model_rebuild()

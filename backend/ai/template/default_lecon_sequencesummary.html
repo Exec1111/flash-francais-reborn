@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titre }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #007bff;
+            margin-top: 30px;
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+        }
+        
+        ul {
+            padding-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 10px;
+        }
+        
+        .question {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .question li {
+            font-style: italic;
+        }
+        
+        .content-section {
+            margin-bottom: 30px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #6c757d;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ titre }}</h1>
+    
+    <div class="content-section">
+        {{ contenu_html | safe }}
+    </div>
+    
+    <div class="footer">
+        <p>Ce résumé a été généré automatiquement pour la séquence pédagogique.</p>
+    </div>
+</body>
+</html>
+            text-align: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #cee;
+        }
+
+        .drop-area {
+            border: 2px dashed #a0a0a0;
+            min-height: 100px;
+            padding: 10px;
+            flex-grow: 1; /* Permet à la zone de drop de prendre l'espace restant */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start; /* Aligne les mots en haut */
+            background-color: #f8f8f8;
+            border-radius: 4-px;
+            transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+
+        .drop-area.drag-over {
+            border-color: #28a745; /* Vert quand on survole */
+            background-color: #d4edda;
+        }
+
+        /* Styles spécifiques pour les mots une fois placés (leur couleur est gérée par le feedback) */
+        .drop-area .mot-draggable {
+           margin: 3px;
+           /* La couleur de fond sera gérée par correctly/incorrectly-placed */
+           background-color: #6c757d; /* Couleur neutre par défaut si pas vérifié */
+        }
+
+
+        /* Feedback visuel après vérification */
+        .mot-draggable.correctly-placed {
+           background-color: #28a745 !important; /* Vert pour correct, !important pour override */
+        }
+
+        .mot-draggable.incorrectly-placed {
+           background-color: #dc3545 !important; /* Rouge pour incorrect, !important pour override */
+        }
+
+
+        .buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+
+        button#check-button {
+            background-color: #28a745;
+            color: white;
+        }
+
+        button#check-button:hover {
+            background-color: #218838;
+        }
+
+        button#reset-button {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        button#reset-button:hover {
+            background-color: #e0a800;
+        }
+
+        #feedback {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            min-height: 1.5em; /* Pour éviter que la mise en page ne bouge */
+            transition: background-color 0.3s ease;
+        }
+
+        #feedback.correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+         #feedback.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+         #feedback:empty { /* Cache le feedback quand il est vide */
+             display: none;
+         }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Exercice sur les champs lexicaux</h1>
+        <p>Glissez et déposez chaque mot dans la zone du champ lexical correspondant. Cliquez sur "Vérifier" pour voir vos réponses, puis déplacez les mots incorrects si nécessaire.</p>
+
+        <div id="mots-a-placer">
+            <!-- Les mots à glisser seront insérés ici par JavaScript -->
+        </div>
+
+        <div id="champs-cible">
+            <!-- Les zones de dépôt seront insérées ici par JavaScript -->
+        </div>
+
+        <div class="buttons">
+            <button id="check-button">Vérifier les réponses</button>
+            <button id="reset-button">Recommencer</button>
+        </div>
+
+        <div id="feedback">
+            <!-- Le feedback s'affichera ici -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- DÉBUT DES DONNÉES DE L'EXERCICE ---
+        // Les IA génératives sont invitées à remplacer le contenu de la variable
+        // 'configChampsLexicaux' ci-dessous, en conservant la structure JSON.
+        //
+        // Format : Tableau d'objets. Chaque objet a :
+        //   - name: String (Le nom du champ lexical, ex: "la peur")
+        //   - words: Array<String> (La liste EXACTE des mots pour ce champ)
+        //
+
+        const donnees = {
+            "champs": [
+                {
+                    name: "la peur",
+                    words: ["frisson", "trembler", "effroi"]
+                },
+                {
+                    name: "l'amour",
+                    words: ["tendresse", "affection", "passion", "cœur", "flamme", "baiser", "romantique", "attachement"]
+                },
+                {
+                    name: "le chagrin",
+                    words: ["tristesse", "larmes", "douleur", "sanglots", "peine", "désespoir", "mélancolie", "souffrance"]
+                }
+            ]
+        };
+
+        // Extraction du tableau de champs lexicaux depuis la structure JSON
+        const configChampsLexicaux = Array.isArray(donnees) ? donnees : 
+                                   (donnees && donnees.champs ? donnees.champs : []);
+
+        // --- FIN DES DONNÉES DE L'EXERCICE ---
+
+
+        // --- Fonctions Utilitaires ---
+
+        // Mélange un tableau (Algorithme de Fisher-Yates)
+        function shuffleArray(array) {
+            const shuffled = [...array]; // Copie le tableau
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // Échange les éléments
+            }
+            return shuffled;
+        }
+
+        // Récupère tous les mots de la configuration et les mélange
+        function getAllShuffledWords(config) {
+            let allWords = [];
+            config.forEach(champ => {
+                // Pour chaque mot de la liste EXACTE du champ
+                champ.words.forEach(word => {
+                    // On stocke le mot et le champ correct associé
+                    allWords.push({ word: word, correctField: champ.name });
+                });
+            });
+            // On mélange TOUS les mots de TOUS les champs ensemble
+            return shuffleArray(allWords);
+        }
+
+        // --- Initialisation de l'exercice ---
+
+        function initializeExercise() {
+            const motsAPlacerDiv = document.getElementById('mots-a-placer');
+            const champsCibleDiv = document.getElementById('champs-cible');
+            const feedbackDiv = document.getElementById('feedback');
+
+            // Nettoyer les zones existantes
+            motsAPlacerDiv.innerHTML = '';
+            champsCibleDiv.innerHTML = '';
+            feedbackDiv.innerHTML = '';
+            feedbackDiv.className = ''; // Réinitialise les classes de feedback
+
+             // Vérifie si la configuration des champs est valide
+             if (!Array.isArray(configChampsLexicaux) || configChampsLexicaux.length === 0) {
+                 feedbackDiv.textContent = "Erreur de configuration : Aucune donnée d'exercice trouvée.";
+                 feedbackDiv.classList.add('error');
+                 return; // Arrête l'initialisation si les données sont absentes ou mal formées
+             }
+
+
+            // Créer et placer les mots à glisser (ils seront tous dans mots-a-placer au début)
+            const shuffledWords = getAllShuffledWords(configChampsLexicaux);
+
+            if (shuffledWords.length === 0) {
+                 feedbackDiv.textContent = "Erreur de configuration : Aucuns mots n'ont été définis pour l'exercice.";
+                 feedbackDiv.classList.add('error');
+                 return; // Arrête l'initialisation s'il n'y a pas de mots
+            }
+
+            shuffledWords.forEach((item, index) => {
+                const motSpan = document.createElement('span');
+                motSpan.classList.add('mot-draggable');
+                motSpan.setAttribute('draggable', true); // Les mots sont toujours draggable
+                motSpan.id = 'mot-' + index; // ID unique pour chaque mot
+                motSpan.textContent = item.word;
+                motSpan.dataset.correctField = item.correctField; // Stocke le champ correct
+                motsAPlacerDiv.appendChild(motSpan);
+            });
+
+            // Créer et placer les zones cibles pour chaque champ lexical
+            configChampsLexicaux.forEach(champ => {
+                 // Optionnel : Ignorer les champs sans mots si la configuration le permet
+                 // if (!champ.words || champ.words.length === 0) {
+                 //     console.warn(`Champ "${champ.name}" ignoré car il n'a pas de mots.`);
+                 //     return; // Passer à l'objet suivant dans le forEach
+                 // }
+
+                const champDiv = document.createElement('div');
+                champDiv.classList.add('champ-cible');
+
+                const title = document.createElement('h3');
+                title.textContent = champ.name.charAt(0).toUpperCase() + champ.name.slice(1); // Capitalise la première lettre
+
+                const dropArea = document.createElement('div');
+                dropArea.classList.add('drop-area');
+                dropArea.dataset.fieldName = champ.name; // Stocke le nom du champ sur la drop-area
+
+                champDiv.appendChild(title);
+                champDiv.appendChild(dropArea);
+                champsCibleDiv.appendChild(champDiv);
+            });
+        }
+
+        // --- Gestion des événements Drag and Drop (inchangé par rapport à la version précédente) ---
+
+        let draggedElement = null; // Pour stocker l'élément en cours de glissement
+
+        // Gestion du début du glissement (sur les mots) - Délégation sur le document
+        document.addEventListener('dragstart', function(event) {
+            // Vérifie si l'élément glissé est un mot draggable
+            if (event.target.classList.contains('mot-draggable')) {
+                draggedElement = event.target;
+                // Stocke l'ID de l'élément glissé
+                event.dataTransfer.setData('text/plain', event.target.id);
+
+                // Optionnel : Ajoute une classe pendant le drag pour styliser ou masquer
+                 setTimeout(() => {
+                     event.target.style.opacity = '0.5'; // Rendre l'élément un peu transparent
+                 }, 0);
+
+                 // Nettoie les classes de feedback quand on recommence à glisser un mot
+                 draggedElement.classList.remove('correctly-placed', 'incorrectly-placed');
+
+                 // Nettoie le feedback général si on bouge après la vérification
+                 document.getElementById('feedback').innerHTML = '';
+                 document.getElementById('feedback').className = '';
+            } else {
+                 // Empêche le drag si ce n'est pas un mot draggable
+                event.preventDefault();
+            }
+        });
+
+        // Gestion de la fin du glissement (sur les mots) - Délégation sur le document
+        document.addEventListener('dragend', function(event) {
+             if (draggedElement) {
+                // Rétablit l'opacité et retire la classe de drag si ajoutée
+                draggedElement.style.opacity = '1';
+                // draggedElement.classList.remove('is-dragging'); // Si une classe is-dragging était utilisée
+                draggedElement = null; // Réinitialise l'élément glissé
+            }
+        });
+
+
+        // Gestion du survol d'une zone de dépôt possible - Délégation sur le document
+        document.addEventListener('dragover', function(event) {
+            // Trouve la zone de drop la plus proche qui pourrait recevoir l'élément
+            const targetDropArea = event.target.closest('.drop-area, #mots-a-placer');
+
+            if (targetDropArea) {
+                event.preventDefault(); // Permet le drop
+                // Ajoute une classe pour le style sur la zone survolée
+                targetDropArea.classList.add('drag-over');
+            }
+        });
+
+        // Gestion du départ du survol d'une zone de dépôt - Délégation sur le document
+         document.addEventListener('dragleave', function(event) {
+            // Trouve la zone de drop qui a été quittée
+            const targetDropArea = event.target.closest('.drop-area, #mots-a-placer');
+
+             // Vérifie si l'événement est bien lié à la sortie de la zone de drop et pas seulement d'un élément interne
+            // event.relatedTarget est l'élément vers lequel le curseur se déplace
+            if (targetDropArea && !targetDropArea.contains(event.relatedTarget)) {
+                 targetDropArea.classList.remove('drag-over'); // Retire la classe de style
+            }
+        });
+
+
+        // Gestion du dépôt (sur les zones de drop-area ou #mots-a-placer) - Délégation sur le document
+        document.addEventListener('drop', function(event) {
+            // Trouve la zone de drop la plus proche qui a reçu le drop
+            const targetDropArea = event.target.closest('.drop-area, #mots-a-placer');
+
+            if (targetDropArea) {
+                event.preventDefault(); // Empêche le comportement par défaut
+
+                targetDropArea.classList.remove('drag-over'); // Retire la classe de style
+
+                const data = event.dataTransfer.getData('text/plain'); // Récupère l'ID du mot
+                const draggedElement = document.getElementById(data); // Récupère l'élément mot
+
+                if (draggedElement && draggedElement.classList.contains('mot-draggable')) {
+                     // Déplace l'élément dans la zone de dépôt cible
+                    targetDropArea.appendChild(draggedElement);
+
+                    // Quand un mot est déplacé, retire ses classes de feedback précédentes
+                    draggedElement.classList.remove('correctly-placed', 'incorrectly-placed');
+
+                    // Nettoie le feedback général si on bouge après la vérification
+                    document.getElementById('feedback').innerHTML = '';
+                    document.getElementById('feedback').className = '';
+                }
+
+            }
+        });
+
+
+        // --- Gestion des boutons (inchangé) ---
+
+        // Bouton Vérifier
+        document.getElementById('check-button').addEventListener('click', function() {
+            const feedbackDiv = document.getElementById('feedback');
+            feedbackDiv.innerHTML = ''; // Nettoie le feedback précédent
+            feedbackDiv.className = ''; // Nettoie les classes de style du feedback
+
+            const mots = document.querySelectorAll('.mot-draggable');
+            let correctCount = 0;
+            let placedCount = 0;
+
+            mots.forEach(mot => {
+                // Retire les classes de feedback précédentes avant de vérifier à nouveau
+                mot.classList.remove('correctly-placed', 'incorrectly-placed');
+
+                // Vérifie si le mot est dans une zone de drop (.drop-area), c'est-à-dire s'il a été placé
+                // On ne vérifie pas les mots restés dans #mots-a-placer
+                const currentDropArea = mot.closest('.drop-area');
+
+                if (currentDropArea) {
+                    placedCount++;
+                    const correctField = mot.dataset.correctField; // Le champ où il devrait aller
+                    const targetField = currentDropArea.dataset.fieldName; // Le champ où il a été déposé
+
+                    if (correctField === targetField) {
+                        mot.classList.add('correctly-placed');
+                        correctCount++;
+                    } else {
+                        mot.classList.add('incorrectly-placed');
+                    }
+                }
+            });
+
+            // Afficher le résumé du feedback
+            const totalMots = mots.length;
+            const motsRestants = totalMots - placedCount;
+
+             if (totalMots === 0) {
+                feedbackDiv.textContent = "Aucun mot à placer dans cet exercice.";
+                feedbackDiv.classList.add('error'); // Ou une classe neutre
+                return;
+             }
+
+
+            if (correctCount === totalMots) {
+                 feedbackDiv.textContent = `Bravo ! Tous les ${totalMots} mots sont correctement placés !`;
+                 feedbackDiv.classList.add('correct');
+             } else if (placedCount === totalMots) {
+                 feedbackDiv.textContent = `Tu as placé tous les mots (${totalMots} mots). ${correctCount} sont corrects. Réessaie !`;
+                 feedbackDiv.classList.add('error');
+             } else {
+                 feedbackDiv.textContent = `Tu as placé ${placedCount} mot(s) sur ${totalMots}. Il y a ${correctCount} mot(s) correctement placé(s). ${motsRestants} mot(s) restent à placer. Continue !`;
+                 feedbackDiv.classList.add('error'); // Ou une classe neutre si vous préférez
+             }
+
+        });
+
+        // Bouton Recommencer
+        document.getElementById('reset-button').addEventListener('click', function() {
+            initializeExercise(); // Réinitialise l'exercice
+        });
+
+        // --- Exécuter l'initialisation au chargement de la page ---
+        document.addEventListener('DOMContentLoaded', initializeExercise);
+
+    </script>
+
+</body>
+</html>

@@ -18,12 +18,14 @@ import {
   Edit as EditIcon, 
   Delete as DeleteIcon,
   Add as AddIcon,
-  AssignmentTurnedIn as ObjectiveIcon
+  AssignmentTurnedIn as ObjectiveIcon,
+  Summarize as SummarizeIcon
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
 import studyObjectService from '../../services/studyObjectService';
 import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
+import SequenceSummaryResourceGenerator from './SequenceSummaryResourceGenerator';
 
 /**
  * Composant affichant les détails d'une séquence et permettant
@@ -38,6 +40,7 @@ const SequenceDetails = () => {
   const [error, setError] = useState('');
   const [studyObjectDetailsLoading, setStudyObjectDetailsLoading] = useState(false);
   const [studyObjectHasResources, setStudyObjectHasResources] = useState(false);
+  const [summaryGeneratorOpen, setSummaryGeneratorOpen] = useState(false);
 
   // Charger les détails de la séquence
   useEffect(() => {
@@ -141,6 +144,16 @@ const SequenceDetails = () => {
                 }
               >
                 Proposer des séances
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<SummarizeIcon />}
+                onClick={() => navigate(`/sequences/${id}/generate-summary`)}
+                sx={{ mr: 2 }}
+                title="Générer un résumé de cette séquence comme ressource pédagogique"
+              >
+                Générer un résumé
               </Button>
               <Button
                 variant="contained"
@@ -252,6 +265,8 @@ const SequenceDetails = () => {
           </Box>
         </CardContent>
       </Card>
+      
+      {/* Le composant pour générer un résumé de séquence a été déplacé vers une page dédiée */}
     </Container>
   );
 };

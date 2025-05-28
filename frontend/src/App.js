@@ -40,6 +40,8 @@ import SequenceDetailPage from './pages/sequences/SequenceDetailPage';
 import ManageSequenceObjectivesPage from './pages/sequences/ManageSequenceObjectivesPage';
 import NewSequence from './pages/sequences/NewSequence';
 import SequenceEdit from './pages/sequences/SequenceEdit'; 
+// Le composant ProposeSeances a été temporairement retiré pour résoudre un problème d'importation
+import SequenceSummaryResourcePage from './pages/sequences/SequenceSummaryResourcePage';
 import NewSession from './pages/sessions/NewSession';
 import SessionEdit from './pages/sessions/SessionEdit';
 import SessionDetailPage from './pages/sessions/SessionDetailPage';
@@ -57,7 +59,6 @@ import NewStudyObject from './pages/studyObjects/NewStudyObject';
 import EditStudyObject from './pages/studyObjects/EditStudyObject';
 import StudyObjectDetail from './pages/studyObjects/StudyObjectDetail';
 import ProposeWorks from './pages/studyObjects/ProposeWorks';
-import ProposeSeances from './pages/studyObjects/ProposeSeances';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -353,7 +354,9 @@ function App() {
         <Route path="edit/:id" element={<SequenceEdit />} />
         <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
         <Route path=":id" element={<SequenceDetailPage />} /> {/* Doit être APRÈS /:id/objectives/manage */}
-        <Route path=":id/propose-seances" element={<ProposeSeances />} />
+        {/* Temporairement désactivé en raison de problèmes d'importation */}
+        <Route path=":id/propose-seances" element={<Navigate to="/dashboard" replace />} />
+        <Route path=":id/generate-summary" element={<SequenceSummaryResourcePage />} />
       </Route>
 
       <Route

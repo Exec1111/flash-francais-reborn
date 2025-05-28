@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
 
 from database import get_db
 import crud
-from schemas.sequence import SequenceCreate, SequenceRead, SequenceUpdate
+from schemas.sequence import SequenceCreate, SequenceRead, SequenceUpdate, SequenceWithObjects
 from models.user import User
 from models.sequence import Sequence  # Import direct du modèle Sequence
 from security import get_current_active_user, get_current_user
@@ -174,6 +174,28 @@ def update_sequence_route(
     #     raise HTTPException(status_code=404, detail="Sequence not found")
     return db_sequence_updated
 
+@sequence_router.get("/{sequence_id}/with-objects", response_model=SequenceWithObjects)
+async def get_sequence_with_objects_endpoint(
+    sequence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Récupère une séquence avec tous ses objets associés (objectifs, ressources, etc.)
+    pour générer un résumé complet.
+    """
+    # Récupérer la séquence avec ses objets associés
+    sequence_data = await crud.sequence.get_sequence_with_objects(db, sequence_id)
+    if not sequence_data:
+        raise HTTPException(status_code=404, detail="Séquence non trouvée")
+    
+    # Vérifier les permissions (si la séquence appartient à l'utilisateur ou s'il est admin)
+    sequence = db.query(Sequence).filter(Sequence.id == sequence_id).first()
+    if not crud.sequence.is_owner_or_admin(db, current_user, sequence):
+        raise HTTPException(status_code=403, detail="Accès non autorisé à cette séquence")
+    
+    return sequence_data
+
 @sequence_router.delete("/{sequence_id}", status_code=204)
 def delete_sequence_route(
     sequence_id: int, 
@@ -192,3 +214,45 @@ def delete_sequence_route(
     #     # Cette vérification est maintenant redondante car faite au début
     #     raise HTTPException(status_code=404, detail="Sequence not found")
     return # Retourne None pour 204
+
+
+@sequence_router.get("/{sequence_id}/sessions", response_model=List[Dict[str, Any]])
+def get_sequence_sessions_route(
+    sequence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Récupère toutes les séances associées à une séquence spécifique.
+    
+    Args:
+        sequence_id (int): ID de la séquence
+        db (Session): La session de base de données
+        current_user (User): L'utilisateur connecté
+    
+    Returns:
+        List[Dict[str, Any]]: Liste des séances associées à la séquence
+    """
+    # Récupérer la séquence avec ses séances
+    db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
+    
+    # Vérifier si la séquence existe
+    if db_sequence is None:
+        raise HTTPException(status_code=404, detail="Séquence non trouvée")
+    
+    # Vérifier si l'utilisateur a accès à cette séquence
+    if not crud.sequence.is_owner_or_admin(db, current_user, db_sequence):
+        raise HTTPException(status_code=403, detail="Accès non autorisé à cette séquence")
+    
+    # Récupérer les séances et les convertir en dictionnaires
+    sessions = [{
+        "id": session.id,
+        "title": session.title,
+        "description": session.description,
+        "order": session.order,
+        "duration": session.duration,
+        "date": session.date.isoformat() if session.date else None,
+        "notes": session.notes
+    } for session in db_sequence.sessions]
+    
+    return sessions

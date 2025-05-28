@@ -33,7 +33,7 @@ import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
 import fusionService from '../../services/fusionService';
 import studyObjectService from '../../services/studyObjectService';
-import DynamicAIForm from '../DynamicAIForm';
+import DynamicAIForm from '../DynamicAIForm/index';  // Import mis à jour pour utiliser la version refactorisée
 import api from '../../services/api';
 
 /**
@@ -47,7 +47,13 @@ const ResourceForm = ({
   initialData = null,
   isEdit = false,
   onSuccess,
-  resourceId
+  resourceId,
+  disableSourceSelection = false,
+  prefilledAiData = null,
+  // Nouvelles options pour masquer certains champs
+  hideTypeSelection = false,
+  hideStudyObjectSelection = false,
+  forcedType = null
 }) => {
   // --- Utiliser useNavigate pour la redirection ---
   const navigate = useNavigate(); 
@@ -86,7 +92,17 @@ const ResourceForm = ({
     if (isEdit) {
       console.log('[DEBUG ResourceForm] initialData transmis au formulaire :', initialData);
     }
-  }, [isEdit, initialData]);
+
+    // Si un type forcé est fourni, le définir
+    if (forcedType && forcedType.typeId && forcedType.subtypeId) {
+      console.log('[DEBUG ResourceForm] Type forcé détecté:', forcedType);
+      setFormData(prev => ({
+        ...prev,
+        resource_type_id: forcedType.typeId,
+        resource_sub_type_id: forcedType.subtypeId
+      }));
+    }
+  }, [isEdit, initialData, forcedType]);
 
   // Initialisation du formulaire avec les données existantes
   useEffect(() => {
@@ -349,8 +365,26 @@ const ResourceForm = ({
   const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
 
-  // Afficher le formulaire IA si on est en mode IA et que les deux menus sont sélectionnés
-  const showAIGenerationForm = sourceType === 'ai' && selectedType && selectedSubType;
+  // Détermine si les types sont disponibles soit par sélection soit par forçage
+  const hasSelectedType = selectedType || (hideTypeSelection && forcedType);
+  const hasSelectedSubType = selectedSubType || (hideTypeSelection && forcedType);
+  
+  // Afficher le formulaire IA si on est en mode IA et que les types sont définis (soit par sélection, soit par forçage)
+  const showAIGenerationForm = sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
+  
+  // Debug pour aider à comprendre pourquoi le formulaire pourrait ne pas s'afficher
+  console.log('[DEBUG ResourceForm] État du formulaire IA:', {
+    sourceType,
+    hasSelectedType,
+    hasSelectedSubType,
+    formData: {
+      resource_type_id: formData.resource_type_id,
+      resource_sub_type_id: formData.resource_sub_type_id
+    },
+    forcedType,
+    hideTypeSelection,
+    showAIGenerationForm
+  });
 
   // Boutons d'action partagés (affichés uniquement si la source n'est pas de type IA)
   const actionButtons = sourceType === 'ai' ? null : (
@@ -393,87 +427,103 @@ const ResourceForm = ({
           />
         </Grid>
 
-        {/* Sélecteur des objets d'étude */}
-        <Grid item xs={12}>
-          <Autocomplete
-            multiple
-            id="study-object-autocomplete"
-            options={allStudyObjects}
-            getOptionLabel={(option) => option.title || ''}
-            value={selectedStudyObjects}
-            onChange={(_event, newValue) => setSelectedStudyObjects(newValue)}
-            filterSelectedOptions
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            disabled={submitting}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                label="Objets d'étude associés"
-                placeholder="Ajouter un objet d'étude"
-                fullWidth
-              />
-            )}
-          />
-        </Grid>
+        {/* Sélecteur des objets d'étude - caché si hideStudyObjectSelection=true */}
+        {!hideStudyObjectSelection && (
+          <Grid item xs={12}>
+            <Autocomplete
+              multiple
+              id="study-object-autocomplete"
+              options={allStudyObjects}
+              getOptionLabel={(option) => option.title || ''}
+              value={selectedStudyObjects}
+              onChange={(_event, newValue) => setSelectedStudyObjects(newValue)}
+              filterSelectedOptions
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              disabled={submitting}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  label="Objets d'étude associés"
+                  placeholder="Ajouter un objet d'étude"
+                  fullWidth
+                />
+              )}
+            />
+          </Grid>
+        )}
 
-        {/* Sélecteur Type / Sous-type */}
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth required>
-            <InputLabel id="type-label">Type</InputLabel>
-            <Select
-              labelId="type-label"
-              name="resource_type_id"
-              value={formData.resource_type_id || ''}
-              onChange={handleInputChange}
-              label="Type"
-              disabled={loadingTypes || resourceTypes.length === 0 || submitting}
-            >
-              {resourceTypes.map((type) => (
-                <MenuItem key={type.id} value={String(type.id)}>
-                  {type.value}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth required>
-            <InputLabel id="subtype-label">Sous-type</InputLabel>
-            <Select
-              labelId="subtype-label"
-              name="resource_sub_type_id"
-              value={formData.resource_sub_type_id || ''}
-              onChange={handleInputChange}
-              label="Sous-type"
-              disabled={!formData.resource_type_id || resourceSubTypes.length === 0 || submitting}
-            >
-              {resourceSubTypes.map((subType) => (
-                <MenuItem key={subType.id} value={String(subType.id)}>
-                  {subType.value}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
+        {/* Sélecteur Type / Sous-type - caché si hideTypeSelection=true */}
+        {!hideTypeSelection ? (
+          <>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="type-label">Type</InputLabel>
+                <Select
+                  labelId="type-label"
+                  name="resource_type_id"
+                  value={formData.resource_type_id || ''}
+                  onChange={handleInputChange}
+                  label="Type"
+                  disabled={loadingTypes || resourceTypes.length === 0 || submitting}
+                >
+                  {resourceTypes.map((type) => (
+                    <MenuItem key={type.id} value={String(type.id)}>
+                      {type.value}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="subtype-label">Sous-type</InputLabel>
+                <Select
+                  labelId="subtype-label"
+                  name="resource_sub_type_id"
+                  value={formData.resource_sub_type_id || ''}
+                  onChange={handleInputChange}
+                  label="Sous-type"
+                  disabled={formData.resource_type_id === '' || submitting}
+                >
+                  {resourceSubTypes.map((subType) => (
+                    <MenuItem key={subType.id} value={String(subType.id)}>
+                      {subType.value}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </>
+        ) : forcedType && (
+          <Grid item xs={12}>
+            <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+              <Typography variant="subtitle1">Type de ressource : <strong>{forcedType.typeName || 'Leçon'}</strong></Typography>
+              <Typography variant="subtitle1">Sous-type : <strong>{forcedType.subtypeName || 'Résumé de séquence'}</strong></Typography>
+            </Box>
+          </Grid>
+        )}
 
-        {/* Sélecteur Source Type */}
-        <Grid item xs={12}>
-          <FormControl component="fieldset" disabled={submitting}>
-            <FormLabel component="legend">Source de la ressource</FormLabel>
-            <RadioGroup
-              row
-              aria-label="source-type"
-              name="source_type"
-              value={sourceType}
-              onChange={handleSourceTypeChange}
-            >
-              <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
-              <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
-            </RadioGroup>
-          </FormControl>
-        </Grid>
+        {/* Sélecteur Source Type - affiché seulement si disableSourceSelection est false */}
+        {!disableSourceSelection && (
+          <Grid item xs={12}>
+            <FormControl component="fieldset" disabled={submitting}>
+              <FormLabel component="legend">Source de la ressource</FormLabel>
+              <RadioGroup
+                row
+                aria-label="source-type"
+                name="source_type"
+                value={sourceType}
+                onChange={handleSourceTypeChange}
+              >
+                <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
+                <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
+                <FormControlLabel value="url" control={<Radio />} label="URL externe" />
+              </RadioGroup>
+            </FormControl>
+          </Grid>
+        )}
 
         {/* Affichage du lien vers le document lié à la ressource en mode édition */}
         {isEdit && initialData?.source_type === 'ai' && initialData?.file_path && (
@@ -540,11 +590,18 @@ const ResourceForm = ({
               <Card>
                 <CardHeader title="Générateur de ressource basé sur l'IA" />
                 <CardContent>
+                  {/* Code de débogage avant le rendu du composant */}
+                  {console.log('[DEBUG] Clés transmises au DynamicAIForm:', {
+                    typeKey: selectedType?.key || (forcedType ? 'LECON' : ''),
+                    subtypeKey: selectedSubType?.key || (forcedType ? 'SEQUENCE_SUMMARY' : ''),
+                    typeId: selectedType?.id || forcedType?.typeId,
+                    subtypeId: selectedSubType?.id || forcedType?.subtypeId
+                  })}
                   <DynamicAIForm
-                    typeKey={selectedType?.key || ''}
-                    subtypeKey={selectedSubType?.key || ''}
-                    typeId={selectedType?.id}
-                    subtypeId={selectedSubType?.id}
+                    typeKey={selectedType?.key || (forcedType ? 'LECON' : '')}
+                    subtypeKey={selectedSubType?.key || (forcedType ? 'SEQUENCE_SUMMARY' : '')}
+                    typeId={selectedType?.id || forcedType?.typeId}
+                    subtypeId={selectedSubType?.id || forcedType?.subtypeId}
                     onSubmit={handleSubmit}
                     onSuccess={(generatedContent) => {
                       setSuccess('Ressource générée avec succès!');
@@ -557,6 +614,8 @@ const ResourceForm = ({
                       }
                     }}
                     selectedStudyObjects={selectedStudyObjects}
+                    prefilledData={prefilledAiData}
+                    readOnlyMode={false} // Toujours autoriser l'édition des champs
                   />
                 </CardContent>
               </Card>

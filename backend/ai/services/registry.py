@@ -21,6 +21,7 @@ PROMPT_REGISTRY = {
     ("seance", "generator"): "session_generator",
     ("meta", "exercise_suggester"): "session_exercise_suggester",
     ("lecon", "leconcomplete1"): "lecon_complete1",
+    ("lecon", "sequence_summary"): "sequence_summary",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 
@@ -42,6 +43,7 @@ TEMPLATE_REGISTRY = {
     ("exercice", "champlex2"): "default_exercice_champlex2.html", 
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
     ("lecon", "leconcomplete1"): "default_lecon_complete1.html",
+    ("lecon", "sequence_summary"): "default_lecon_sequencesummary.html",
     # Ajoutez d'autres mappings ici si nécessaire
 }
 

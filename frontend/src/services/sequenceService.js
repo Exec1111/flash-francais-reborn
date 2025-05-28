@@ -50,6 +50,20 @@ const sequenceService = {
       throw error.response?.data || { detail: "Erreur lors de la récupération des séquences pour cette progression" };
     }
   },
+  
+  /**
+   * Récupère une séquence avec tous ses objets associés pour la génération de résumé
+   * @param {number} sequenceId - ID de la séquence
+   * @returns {Promise} - Promesse avec les données complètes de la séquence
+   */
+  getSequenceWithObjects: async (sequenceId) => {
+    try {
+      const response = await api.get(`${SEQUENCES_ENDPOINT}/${sequenceId}/with-objects`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la récupération des données complètes de la séquence" };
+    }
+  },
 
   /**
    * Récupère une séquence par son ID
@@ -151,6 +165,20 @@ const sequenceService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors du retrait de l'objet d'étude de la séquence" };
+    }
+  },
+
+  /**
+   * Récupère les séances associées à une séquence
+   * @param {number} sequenceId - ID de la séquence
+   * @returns {Promise} - Promesse avec la liste des séances
+   */
+  getSequenceSessions: async (sequenceId) => {
+    try {
+      const response = await api.get(`${SEQUENCES_ENDPOINT}/${sequenceId}/sessions`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la récupération des séances de la séquence" };
     }
   }
 };

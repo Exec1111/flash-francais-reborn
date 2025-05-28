@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schéma de validation pour un résumé de séquence",
+  "description": "Définit la structure attendue pour un résumé de séquence pédagogique.",
+  "type": "object",
+  "properties": {
+    "titre": {
+      "type": "string",
+      "description": "Titre du résumé de la séquence."
+    },
+    "contenu_html": {
+      "type": "string",
+      "description": "Contenu HTML du résumé de la séquence, incluant introduction, synthèse des objectifs, conclusion et questions de réflexion."
+    }
+  },
+  "required": ["titre", "contenu_html"]
+}

@@ -1,0 +1,125 @@
+title: Génération d'un résumé de séquence pédagogique
+description: Génère une ressource complète de révision résumant l'intégralité d'une séquence pédagogique à partir de ses séances et ressources associées
+
+system_prompt: |
+  Tu es un assistant pédagogique expert en didactique du français langue étrangère.
+  Ta tâche est de générer un document de révision complet qui synthétise l'intégralité d'une séquence pédagogique.
+  Ce document doit permettre aux apprenants de réviser tous les éléments importants en vue d'une évaluation finale.
+  Utilise un style clair, structuré et adapté au contexte éducatif.
+
+user_prompt_template: |
+  # Instructions pour la génération d'un résumé complet de séquence pédagogique
+  
+  ## Données de la séquence
+  Titre: {{ titre_sequence }}
+  Description: {{ description | default('Pas de description fournie') }}
+  
+  ## Objectifs d'apprentissage
+  {% for objectif in objectifs %}
+  - {{ objectif.description }}
+  {% endfor %}
+  
+  {% if study_objects is defined and study_objects|length > 0 %}
+  ## Objets d'étude associés
+  {% for objet in study_objects %}
+  - {{ objet.title }}: {{ objet.description }}
+  {% endfor %}
+  {% endif %}
+  
+  {% if sessions is defined and sessions|length > 0 %}
+  ## Séances de la séquence
+  {% for seance in sessions %}
+  ### Séance {{ loop.index }}: {{ seance.title }}
+  - Description: {{ seance.description | default('Pas de description') }}
+  - Notes: {{ seance.notes | default('Pas de notes') }}
+  {% if seance.resources is defined and seance.resources|length > 0 %}
+  - Ressources associées:
+    {% for ressource in seance.resources %}
+    * {{ ressource.title }} ({{ ressource.type | default('Non spécifié') }})
+    {% endfor %}
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+  
+  ## Ressources globales de la séquence
+  {% for ressource in ressources %}
+  ### Ressource: {{ ressource.title }}
+  - Type: {{ ressource.type_name | default('Non spécifié') }} / {{ ressource.sub_type_name | default('Non spécifié') }}
+  - Description: {{ ressource.description | default('Pas de description') }}
+  - Contenu: {{ ressource.content | default('Pas de contenu') }}
+  {% endfor %}
+  
+  ## Tâche
+  À partir de toutes ces informations, crée un document de révision complet qui:
+  
+  1. Commence par une introduction présentant la séquence et ses objectifs généraux
+  
+  2. Pour chaque séance:
+     - Résume les points clés abordés
+     - Synthétise le vocabulaire et les notions grammaticales essentielles
+     - Intègre les éléments pertinents des ressources associées
+     - Propose des exemples concrets pour illustrer les concepts
+  
+  3. Inclut des sections spécifiques pour:
+     - Les notions grammaticales (avec règles claires et exemples)
+     - Le vocabulaire thématique (organisé par champs lexicaux)
+     - Les éléments culturels abordés
+  
+  4. Propose pour chaque section des points "À retenir" qui résument l'essentiel
+  
+  5. Inclut des questions de compréhension et de réflexion pour aider à la révision
+  
+  6. Termine par une conclusion synthétisant les acquis attendus à la fin de la séquence
+  
+  Format ton résumé en HTML structuré, avec des titres (<h1>, <h2>), paragraphes (<p>), listes (<ul>, <li>) et autres éléments appropriés pour faciliter la lecture et la révision.
+
+variables:
+  - name: titre_sequence
+    type: string
+    description: Titre de la séquence pédagogique
+    required: true
+  
+  - name: description
+    type: string
+    description: Description de la séquence pédagogique
+    required: false
+    
+  - name: objectifs
+    type: array
+    description: Liste des objectifs pédagogiques de la séquence
+    required: true
+    
+  - name: study_objects
+    type: array
+    description: Liste des objets d'étude associés à la séquence
+    required: false
+  
+  - name: sessions
+    type: array
+    description: Liste des séances associées à la séquence
+    required: false
+    
+  - name: ressources
+    type: array
+    description: Liste détaillée des ressources associées à la séquence avec leur contenu
+    required: true
+
+parameters:
+  - name: elements_specifiques
+    type: string
+    description: "Eléments spécifiques à mettre en valeur dans le résumé (optionnel)"
+    default: ""
+    
+  - name: style_pedagogique
+    type: string
+    enum: ["Synthétique", "Détaillé", "Visuel"]
+    description: "Style pédagogique du résumé"
+    default: "Synthétique"
+    
+  - name: niveau_difficulte
+    type: string
+    enum: ["Facile", "Moyen", "Difficile"]
+    description: "Niveau de difficulté du contenu"
+    default: "Moyen"
+
+response_schema: "sequence_summary.schema.json"

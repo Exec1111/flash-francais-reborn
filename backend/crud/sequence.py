@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import selectinload # Import for eager loading
-from models import Sequence, Session as SessionModel, Objective, StudyObject # Import Sequence, Session, Objective et StudyObject
+from sqlalchemy.orm import selectinload, joinedload # Import for eager loading
+from models import Sequence, Session as SessionModel, Objective, StudyObject, Resource, ResourceType # Import des modèles
+from models.user import User
 from schemas.sequence import SequenceCreate, SequenceUpdate # Import schemas
 from crud.objective import get_objective # Import pour récupérer les objectifs
 from sqlalchemy import func
-from typing import List
+from typing import List, Dict, Any, Optional
 
 def get_sequence(db: Session, sequence_id: int):
     """Récupère une séquence par son ID, en chargeant les objectifs ET les study_objects associés."""
@@ -166,3 +167,68 @@ def remove_study_object_from_sequence(db: Session, sequence_id: int, study_objec
         db_sequence.study_objects.remove(db_study_object)
         db.commit()
     return db_sequence
+
+
+async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, Any]:
+    """
+    Récupère une séquence avec tous ses objets associés (objectifs, ressources, etc.)
+    pour générer un résumé complet.
+    
+    Args:
+        db (Session): La session de base de données
+        sequence_id (int): ID de la séquence
+        
+    Returns:
+        Dict[str, Any]: Un dictionnaire contenant toutes les données de la séquence et ses objets associés
+    """
+    # Récupérer la séquence avec ses objectifs
+    sequence = db.query(Sequence).options(
+        selectinload(Sequence.objectives),
+        selectinload(Sequence.study_objects)
+    ).filter(Sequence.id == sequence_id).first()
+    
+    if not sequence:
+        return None
+    
+    # Récupérer les ressources associées aux objets d'étude de la séquence
+    study_object_ids = [obj.id for obj in sequence.study_objects]
+    
+    # Récupérer les ressources avec leur type
+    resources = db.query(Resource).join(
+        Resource.study_objects
+    ).filter(
+        StudyObject.id.in_(study_object_ids)
+    ).options(
+        joinedload(Resource.type),
+        joinedload(Resource.sub_type)
+    ).all()
+    
+    # Construire l'objet de réponse
+    result = {
+        "id": sequence.id,
+        "title": sequence.title,
+        "description": sequence.description,
+        "level": getattr(sequence, "level", "B1"),  # Valeur par défaut si le niveau n'est pas défini
+        "objectives": sequence.objectives,
+        "resources": resources
+    }
+    
+    return result
+
+
+def is_owner_or_admin(db: Session, user: User, sequence: Sequence) -> bool:
+    """
+    Vérifie si l'utilisateur est propriétaire de la séquence ou s'il est administrateur.
+    
+    Args:
+        db (Session): La session de base de données
+        user (User): L'utilisateur à vérifier
+        sequence (Sequence): La séquence concernée
+        
+    Returns:
+        bool: True si l'utilisateur est propriétaire ou admin, False sinon
+    """
+    if user.role == "admin":
+        return True
+    
+    return sequence.user_id == user.id

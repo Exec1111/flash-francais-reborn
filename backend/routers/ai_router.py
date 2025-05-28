@@ -191,9 +191,24 @@ async def get_resource_type_schema(
     logger.info(f"Récupération du schéma pour {type_key}/{subtype_key} demandée par l'utilisateur {current_user.email}")
     
     # Vérifier que le type et sous-type existent
+    logger.info(f"Recherche du prompt pour les clés : {type_key.lower()}/{subtype_key.lower()}")
+    logger.info(f"Clés disponibles dans PROMPT_REGISTRY : {list(ai_resource_service.PROMPT_REGISTRY.keys())}")
     prompt_name = ai_resource_service.PROMPT_REGISTRY.get((type_key.lower(), subtype_key.lower()))
     if not prompt_name:
-        raise HTTPException(status_code=404, detail=f"Type de ressource '{type_key}/{subtype_key}' non trouvé")
+        # Tentative avec d'autres variations de la clé
+        if subtype_key.lower().replace('-', '_') != subtype_key.lower():
+            prompt_name = ai_resource_service.PROMPT_REGISTRY.get((type_key.lower(), subtype_key.lower().replace('-', '_')))
+            logger.info(f"Tentative avec tiret remplacé par underscore : {subtype_key.lower().replace('-', '_')}")
+        elif subtype_key.lower().replace('_', '-') != subtype_key.lower():
+            prompt_name = ai_resource_service.PROMPT_REGISTRY.get((type_key.lower(), subtype_key.lower().replace('_', '-')))
+            logger.info(f"Tentative avec underscore remplacé par tiret : {subtype_key.lower().replace('_', '-')}")
+            
+        if not prompt_name:
+            raise HTTPException(status_code=404, detail=f"Type de ressource '{type_key}/{subtype_key}' non trouvé")
+        else:
+            logger.info(f"Prompt trouvé après normalisation : {prompt_name}")
+    else:
+        logger.info(f"Prompt trouvé directement : {prompt_name}")
     try:
         # Utiliser le générateur config-driven
         generator = PromptGenerator(prompt_name)
