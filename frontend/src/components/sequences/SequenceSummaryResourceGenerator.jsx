@@ -246,7 +246,13 @@ const SequenceSummaryResourceGenerator = ({
   const transformSequenceDataForAi = () => {
     if (!sequenceData) return null;
     
+    // Log des données pour débogage
+    console.log('[DEBUG] Données de la séquence à transformer:', sequenceData.id, sequenceData.title);
+    
     return {
+      // Ajouter l'ID de séquence pour permettre de récupérer les séances
+      sequence_id: sequenceData.id,
+      sequenceId: sequenceData.id, // Ajouter les deux formats pour sécurité
       titre_sequence: sequenceData.title,
       niveau: sequenceData.level || 'B1', // Valeur par défaut si non définie
       objectifs: sequenceData.objectives.map(obj => ({

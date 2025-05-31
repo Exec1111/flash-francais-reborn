@@ -31,6 +31,13 @@ user_prompt_template: |
   - un résumé complet de l'œuvre d'environ 1000 mots
 
   Tu veilleras à respecter les instructions personnalisées.
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
 
 parameters:
   - name: oeuvre_specifique

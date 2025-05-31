@@ -16,6 +16,13 @@ user_prompt_template: |
   Instructions supplémentaires :
   {{ instructions_personnalisees }}
   {% endif %} 
+
+  {% if constraints %}
+  ## Contraintes techniques à respecter scrupuleusement
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
  
   ATTENTION : La sortie JSON doit être valide et suivre scrupuleusement le schéma fourni. Veillez à ce que tous les éléments requis par le schéma soient présents et correctement formatés.
 

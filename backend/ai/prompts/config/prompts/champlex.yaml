@@ -41,6 +41,13 @@ user_prompt_template: |
   
   Génère les données au format requis pour l'exercice : un objet avec une propriété "champs" qui contient un tableau d'objets, chacun ayant un "name" (nom du champ lexical) et "words" (la liste des mots appartenant au champ lexical).
   
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+  
   Format attendu :
   {
     "champs": [

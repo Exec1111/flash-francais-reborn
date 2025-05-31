@@ -31,6 +31,13 @@ user_prompt_template: |
   {{ instructions_supplementaires }}
   {% endif %}
 
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+  
   Génère les données au format suivant :
   {
     "champ": "nom du champ lexical",

@@ -20,6 +20,13 @@ user_prompt_template: |
   - Une explication du lien entre le thème et l'extrait choisi
   - L'extrait (500 mots maximum environ, tu peux en ajouter un peu si c'est nécessaire à la bonne compréhension de l'extrait)
   - Tu respecteras les éventuelles instructions personnalisées
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
 
 parameters:
   - name: niveau_classe

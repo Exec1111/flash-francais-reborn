@@ -5,72 +5,312 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ titre }}</title>
     <style>
+        :root {
+            --primary-color: #1565c0;
+            --secondary-color: #0d47a1;
+            --accent-color: #2196f3;
+            --light-accent: #bbdefb;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --text-color: #333;
+            --light-gray: #f5f5f5;
+            --border-color: #e0e0e0;
+        }
+        
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 800px;
+            color: var(--text-color);
+            max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #fff;
+        }
+        
+        .document-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-accent);
         }
         
         h1 {
-            color: #0056b3;
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #0056b3;
-            padding-bottom: 10px;
-        }
-        
-        h2 {
-            color: #007bff;
-            margin-top: 30px;
-            border-left: 4px solid #007bff;
-            padding-left: 10px;
-        }
-        
-        ul {
-            padding-left: 20px;
-        }
-        
-        li {
+            color: var(--primary-color);
             margin-bottom: 10px;
+            font-size: 2.2em;
         }
         
-        .question {
-            background-color: #f8f9fa;
-            border-left: 4px solid #28a745;
+        .description {
+            margin: 15px 0 30px;
+            font-style: italic;
+            color: #555;
+            text-align: center;
+        }
+        
+        /* Tableau de questions */
+        .questions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .questions-table th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
             padding: 15px;
+            font-weight: 600;
+        }
+        
+        .questions-table tr:nth-child(even) {
+            background-color: #f8f8f8;
+        }
+        
+        .questions-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .questions-table td {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+        
+        .question-cell {
+            width: 60%;
+        }
+        
+        .answer-cell {
+            width: 40%;
+            min-height: 100px;
+            background-color: #fff;
+            border: 1px dashed #ccc;
+        }
+        
+        .question-text {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .question-source {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        
+        .difficulty {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 10px;
+        }
+        
+        .difficulty.facile {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .difficulty.moyen {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .difficulty.difficile {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        /* Boutons */
+        .show-answer-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .show-answer-btn:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        /* Réponses cachées */
+        .answer-content {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-left: 4px solid var(--accent-color);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        /* Boutons de contrôle */
+        .controls {
+            display: flex;
+            justify-content: space-between;
             margin: 20px 0;
         }
         
-        .question li {
-            font-style: italic;
+        .control-btn {
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s;
         }
         
-        .content-section {
-            margin-bottom: 30px;
+        .control-btn:hover {
+            background-color: var(--primary-color);
+        }
+        
+        .print-btn {
+            background-color: var(--success-color);
+        }
+        
+        .print-btn:hover {
+            background-color: #388e3c;
+        }
+        
+        .show-all-btn {
+            background-color: var(--warning-color);
+        }
+        
+        .show-all-btn:hover {
+            background-color: #f57c00;
         }
         
         .footer {
             margin-top: 40px;
             text-align: center;
             font-size: 0.9em;
-            color: #6c757d;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            color: #777;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Styles pour l'impression */
+        @media print {
+            body {
+                font-size: 12pt;
+            }
+            
+            .controls, .show-answer-btn, .answer-content {
+                display: none !important;
+            }
+            
+            .questions-table {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+            
+            .questions-table th {
+                background-color: #eee !important;
+                color: #000 !important;
+            }
+            
+            .answer-cell {
+                height: 150px;
+                border: 1px solid #000 !important;
+            }
+            
+            .difficulty {
+                border: 1px solid #999;
+            }
+            
+            tr {
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
+
 <body>
-    <h1>{{ titre }}</h1>
-    
-    <div class="content-section">
-        {{ contenu_html | safe }}
+    <!-- Entête du document avec le titre principal -->
+    <div class="document-header">
+        <h1>{{ titre }}</h1>
+        <p class="description">{{ description | safe }}</p>
     </div>
     
+    <!-- Contrôles -->
+    <div class="controls">
+        <button class="control-btn print-btn" onclick="window.print();">Imprimer la fiche</button>
+        <button class="control-btn show-all-btn" onclick="toggleAllAnswers();">Afficher toutes les réponses</button>
+    </div>
+    
+    <!-- Tableau des questions -->
+    <table class="questions-table">
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Votre réponse</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for q in questions %}
+            <tr>
+                <td class="question-cell">
+                    <span class="difficulty {{ q.niveau_difficulte }}">{{ q.niveau_difficulte|title }}</span>
+                    <div class="question-text">{{ q.question | safe }}</div>
+                    <div class="question-source">
+                        <strong>Ressource:</strong> {{ q.ressource }}
+                        {% if q.seance %}<br><strong>Séance:</strong> {{ q.seance }}{% endif %}
+                    </div>
+                    <button class="show-answer-btn" onclick="toggleAnswer('answer-{{ loop.index }}');">Voir la réponse</button>
+                    <div id="answer-{{ loop.index }}" class="answer-content">{{ q.reponse | safe }}</div>
+                </td>
+                <td class="answer-cell">
+                    <!-- Espace pour écrire la réponse -->
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Pied de page -->
     <div class="footer">
-        <p>Ce résumé a été généré automatiquement pour la séquence pédagogique.</p>
+        <p>Cette fiche de révision a été générée pour faciliter la préparation à l'évaluation.</p>
     </div>
+    
+    <!-- Script JavaScript pour gérer l'affichage des réponses -->
+    <script>
+        // Fonction pour afficher/masquer une réponse spécifique
+        function toggleAnswer(answerId) {
+            const answerElement = document.getElementById(answerId);
+            if (answerElement.style.display === 'block') {
+                answerElement.style.display = 'none';
+            } else {
+                answerElement.style.display = 'block';
+            }
+        }
+        
+        // Variable pour suivre l'état d'affichage de toutes les réponses
+        let allAnswersVisible = false;
+        
+        // Fonction pour afficher/masquer toutes les réponses
+        function toggleAllAnswers() {
+            const allAnswers = document.querySelectorAll('.answer-content');
+            const showAllBtn = document.querySelector('.show-all-btn');
+            
+            allAnswersVisible = !allAnswersVisible;
+            
+            allAnswers.forEach(answer => {
+                answer.style.display = allAnswersVisible ? 'block' : 'none';
+            });
+            
+            showAllBtn.textContent = allAnswersVisible ? 'Masquer toutes les réponses' : 'Afficher toutes les réponses';
+        }
+    </script>
 </body>
 </html>
             text-align: center;

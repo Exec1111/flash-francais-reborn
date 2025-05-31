@@ -1,14 +1,15 @@
-title: Génération d'un résumé de séquence pédagogique
-description: Génère une ressource complète de révision résumant l'intégralité d'une séquence pédagogique à partir de ses séances et ressources associées
+title: Génération d'une fiche de questions de révision
+description: Génère une fiche de questions de révision pour une séquence pédagogique avec des questions ciblées sur chaque ressource
 
 system_prompt: |
-  Tu es un assistant pédagogique expert en didactique du français langue étrangère.
-  Ta tâche est de générer un document de révision complet qui synthétise l'intégralité d'une séquence pédagogique.
-  Ce document doit permettre aux apprenants de réviser tous les éléments importants en vue d'une évaluation finale.
-  Utilise un style clair, structuré et adapté au contexte éducatif.
+  Tu es un assistant pédagogique expert en didactique du français.
+  Ta tâche est de générer une fiche de questions de révision (entre 10 et 20 questions) basée sur le contenu d'une séquence pédagogique.
+  Pour chaque question, tu dois préciser la ressource spécifique dans laquelle l'élève peut trouver la réponse.
+  Les questions doivent être variées en termes de difficulté et couvrir les points essentiels de la séquence.
+  Fournis également les réponses attendues pour chaque question.
 
 user_prompt_template: |
-  # Instructions pour la génération d'un résumé complet de séquence pédagogique
+  # Instructions pour la génération d'une fiche de questions de révision
   
   ## Données de la séquence
   Titre: {{ titre_sequence }}
@@ -35,7 +36,10 @@ user_prompt_template: |
   {% if seance.resources is defined and seance.resources|length > 0 %}
   - Ressources associées:
     {% for ressource in seance.resources %}
-    * {{ ressource.title }} ({{ ressource.type | default('Non spécifié') }})
+    - Type: {{ ressource.type_name | default('Non spécifié') }} / {{ ressource.sub_type_name | default('Non spécifié') }}
+    - Titre: {{ ressource.title | default('Pas de titre') }}
+    - Description: {{ ressource.description | default('Pas de description') }}
+    - Contenu: {{ ressource.content | default('Pas de contenu') }}
     {% endfor %}
   {% endif %}
   {% endfor %}
@@ -44,35 +48,33 @@ user_prompt_template: |
   ## Ressources globales de la séquence
   {% for ressource in ressources %}
   ### Ressource: {{ ressource.title }}
-  - Type: {{ ressource.type_name | default('Non spécifié') }} / {{ ressource.sub_type_name | default('Non spécifié') }}
-  - Description: {{ ressource.description | default('Pas de description') }}
-  - Contenu: {{ ressource.content | default('Pas de contenu') }}
+    - Type: {{ ressource.type_name | default('Non spécifié') }} / {{ ressource.sub_type_name | default('Non spécifié') }}
+    - Titre: {{ ressource.title | default('Pas de titre') }}
+    - Description: {{ ressource.description | default('Pas de description') }}
+    - Contenu: {{ ressource.content | default('Pas de contenu') }}
   {% endfor %}
   
   ## Tâche
-  À partir de toutes ces informations, crée un document de révision complet qui:
+  À partir de toutes ces informations, crée une fiche de questions de révision qui respecte les contraintes suivantes:
   
-  1. Commence par une introduction présentant la séquence et ses objectifs généraux
+  1. Génère entre 10 et 20 questions qui couvrent les points essentiels de la séquence
   
-  2. Pour chaque séance:
-     - Résume les points clés abordés
-     - Synthétise le vocabulaire et les notions grammaticales essentielles
-     - Intègre les éléments pertinents des ressources associées
-     - Propose des exemples concrets pour illustrer les concepts
+  2. Pour chaque question:
+     - Indique clairement la ressource spécifique où l'élève peut trouver la réponse
+     - Précise la séance associée si possible
+     - Propose une réponse attendue complète et précise
+     - Attribue un niveau de difficulté (facile, moyen, difficile)
   
-  3. Inclut des sections spécifiques pour:
-     - Les notions grammaticales (avec règles claires et exemples)
-     - Le vocabulaire thématique (organisé par champs lexicaux)
-     - Les éléments culturels abordés
+  3. Assure-toi que les questions:
+     - Sont variées en format (ouvertes, à choix multiples, vrai/faux, complétion, etc.)
+     - Couvrent différents niveaux de la taxonomie de Bloom (connaissance, compréhension, application, analyse)
+     - Sont réparties de manière équilibrée entre les différentes séances et ressources
+     - Sont formulées clairement et sans ambiguïté
   
-  4. Propose pour chaque section des points "À retenir" qui résument l'essentiel
+  4. Donne un titre pertinent à cette fiche de révision qui reflète le contenu de la séquence
   
-  5. Inclut des questions de compréhension et de réflexion pour aider à la révision
+  5. Ajoute une brève description du contenu de la fiche de révision
   
-  6. Termine par une conclusion synthétisant les acquis attendus à la fin de la séquence
-  
-  Format ton résumé en HTML structuré, avec des titres (<h1>, <h2>), paragraphes (<p>), listes (<ul>, <li>) et autres éléments appropriés pour faciliter la lecture et la révision.
-
 variables:
   - name: titre_sequence
     type: string
@@ -115,11 +117,5 @@ parameters:
     enum: ["Synthétique", "Détaillé", "Visuel"]
     description: "Style pédagogique du résumé"
     default: "Synthétique"
-    
-  - name: niveau_difficulte
-    type: string
-    enum: ["Facile", "Moyen", "Difficile"]
-    description: "Niveau de difficulté du contenu"
-    default: "Moyen"
 
 response_schema: "sequence_summary.schema.json"

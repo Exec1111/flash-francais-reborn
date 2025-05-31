@@ -20,6 +20,14 @@ user_prompt_template: |
   Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+  
   Pour chaque mot, fournis une définition courte et adaptée au niveau des apprenants. La sortie doit être une liste d'objets avec les champs "mot" et "definition".
 
 parameters:

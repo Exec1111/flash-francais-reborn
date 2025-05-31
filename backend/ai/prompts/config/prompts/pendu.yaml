@@ -16,6 +16,13 @@ user_prompt_template: |
   Instructions supplémentaires :
   {{ instructions_personnalisees }}
   {% endif %}
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
 
 parameters:
   - name: theme

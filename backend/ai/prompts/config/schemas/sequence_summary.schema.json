@@ -1,17 +1,48 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Schéma de validation pour un résumé de séquence",
-  "description": "Définit la structure attendue pour un résumé de séquence pédagogique.",
+  "title": "Schéma de validation pour une fiche de révision de séquence",
+  "description": "Définit la structure attendue pour une fiche de questions de révision pour une séquence pédagogique.",
   "type": "object",
   "properties": {
     "titre": {
       "type": "string",
-      "description": "Titre du résumé de la séquence."
+      "description": "Titre de la fiche de révision."
     },
-    "contenu_html": {
+    "description": {
       "type": "string",
-      "description": "Contenu HTML du résumé de la séquence, incluant introduction, synthèse des objectifs, conclusion et questions de réflexion."
+      "description": "Description brève du contenu de la fiche de révision."
+    },
+    "questions": {
+      "type": "array",
+      "description": "Liste des questions de révision (10-20 questions).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "Texte de la question."
+          },
+          "ressource": {
+            "type": "string",
+            "description": "Nom de la ressource où trouver la réponse."
+          },
+          "seance": {
+            "type": "string",
+            "description": "Nom de la séance associée à cette question."
+          },
+          "reponse": {
+            "type": "string",
+            "description": "Réponse attendue à la question."
+          },
+          "niveau_difficulte": {
+            "type": "string",
+            "enum": ["facile", "moyen", "difficile"],
+            "description": "Niveau de difficulté de la question."
+          }
+        },
+        "required": ["question", "ressource", "reponse"]
+      }
     }
   },
-  "required": ["titre", "contenu_html"]
+  "required": ["titre", "questions"]
 }

@@ -17,6 +17,13 @@ user_prompt_template: |
   Génère une fiche de leçon complète sur le sujet suivant : "{{ sujet_lecon }}".
   La leçon doit être structurée avec un titre, un sous-titre, plusieurs sections de contenu principal, une section d'exemples (si applicable), une section de points d'attention (si applicable), et une section de résumé "À retenir".
   N'oublie pas d'identifier les mots-clés importants.
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
 
 # Paramètres attendus par le template du prompt utilisateur.
 parameters:
