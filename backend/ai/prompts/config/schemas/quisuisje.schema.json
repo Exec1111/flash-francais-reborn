@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schéma pour le jeu Qui suis-je ?",
+    "description": "Définit la structure attendue pour la liste des mots et de leurs indices pour le jeu Qui suis-je.",
+    "type": "object",
+    "properties": {
+        "vocabulaire": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "word": {
+                        "type": "string",
+                        "description": "Le mot à deviner (la réponse)."
+                    },
+                    "indices": {
+                        "type": "array",
+                        "description": "Liste d'indices pour deviner le mot, du plus difficile au plus facile.",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "word",
+                    "indices"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": ["vocabulaire"]
+}

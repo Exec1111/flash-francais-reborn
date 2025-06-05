@@ -1,20 +1,18 @@
 system_prompt: |
-  Tu es un expert en pédagogie du français.
-  Ta tâche est de générer un exercice de vocabulaire adapté au niveau des apprenants.
-  Pour chaque mot, fournis une définition simple, claire et adaptée au niveau indiqué.
-  Si une liste de mots est fournie, utilise-la exclusivement. Sinon, génère une liste pertinente à partir du thème proposé.
+  Ta tâche est de proposer un petit jeu éducatif en fournissant des indices pour deviner un concept, un lieu, un personnage ou un mot de vocabulaire
 
-description_courte: "Génère des exercices pour identifier et utiliser du vocabulaire spécifique à un thème."
+description_courte: "Génère un jeu éducatif permettant de découvrir un concept, un lieu, un personnage ou un mot de vocabulaire en s'amusant"
 
 user_prompt_template: |
-  Je souhaite créer un exercice de vocabulaire pour des apprenants de niveau {{ niveau }}.
+  Je souhaite créer un jeu éducatif pour des apprenants de niveau {{ niveau }}.
+   Nombre d'indice à fournir par mots : {{ nb_indice }}
   {% if liste_mots %}
   Voici la liste des mots à utiliser :
   {% for mot in liste_mots %}
   - {{ mot }}
   {% endfor %}
   {% elif theme %}
-  Le thème du vocabulaire est : {{ theme }}
+  Le thème des mots, personnages ou concept est : {{ theme }}
   {% endif %}
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
@@ -28,7 +26,7 @@ user_prompt_template: |
   {% endfor %}
   {% endif %}
   
-  Pour chaque mot, fournis une définition courte et adaptée au niveau des apprenants. La sortie doit être une liste d'objets avec les champs "mot" et "definition".
+  Pour chaque mot, fournit autant d'indice que demandé. Les indices doivent permettre de deviner le mot, le personnage ou le concept.
 
 parameters:
   - name: theme
@@ -43,6 +41,10 @@ parameters:
     type: list
     description: Liste de mots à utiliser pour l'exercice (optionnel, prioritaire si fourni)
     default: []
+  - name: nb_indice
+    type: int
+    description: Nombre d'indices à fournir pour chaque mot
+    default: 5
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
@@ -50,9 +52,10 @@ parameters:
 
 constraints:
   - Si une liste de mots est fournie, elle seule doit être utilisée.
+  - Respecte le nombre d'indices demandés
   - Sinon, les mots doivent être générés à partir du thème proposé et adaptés au niveau {{ niveau }}.
-  - Les définitions doivent être courtes, claires et adaptées au niveau des apprenants.
+  - Les indices doivent être courts, clairs et adaptés au niveau des apprenants.
   - Respecter les éventuelles instructions personnalisées fournies.
   - La liste sera composée de 5 a 10 mots.
 
-response_schema: "vocabulaire.schema.json"
+response_schema: "quisuisje.schema.json"

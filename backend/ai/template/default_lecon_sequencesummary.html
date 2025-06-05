@@ -199,6 +199,11 @@
             border-top: 1px solid var(--border-color);
         }
         
+        /* Masquer la colonne de réponse en affichage normal */
+        .response-column {
+            display: none;
+        }
+        
         /* Styles pour l'impression */
         @media print {
             body {
@@ -207,6 +212,10 @@
             
             .controls, .show-answer-btn, .answer-content {
                 display: none !important;
+            }
+            
+            .response-column {
+                display: table-cell !important;
             }
             
             .questions-table {
@@ -245,7 +254,6 @@
     <!-- Contrôles -->
     <div class="controls">
         <button class="control-btn print-btn" onclick="window.print();">Imprimer la fiche</button>
-        <button class="control-btn show-all-btn" onclick="toggleAllAnswers();">Afficher toutes les réponses</button>
     </div>
     
     <!-- Tableau des questions -->
@@ -253,7 +261,7 @@
         <thead>
             <tr>
                 <th>Question</th>
-                <th>Votre réponse</th>
+                <th class="response-column">Votre réponse</th>
             </tr>
         </thead>
         <tbody>
@@ -269,7 +277,7 @@
                     <button class="show-answer-btn" onclick="toggleAnswer('answer-{{ loop.index }}');">Voir la réponse</button>
                     <div id="answer-{{ loop.index }}" class="answer-content">{{ q.reponse | safe }}</div>
                 </td>
-                <td class="answer-cell">
+                <td class="answer-cell response-column">
                     <!-- Espace pour écrire la réponse -->
                 </td>
             </tr>
@@ -294,22 +302,7 @@
             }
         }
         
-        // Variable pour suivre l'état d'affichage de toutes les réponses
-        let allAnswersVisible = false;
-        
-        // Fonction pour afficher/masquer toutes les réponses
-        function toggleAllAnswers() {
-            const allAnswers = document.querySelectorAll('.answer-content');
-            const showAllBtn = document.querySelector('.show-all-btn');
-            
-            allAnswersVisible = !allAnswersVisible;
-            
-            allAnswers.forEach(answer => {
-                answer.style.display = allAnswersVisible ? 'block' : 'none';
-            });
-            
-            showAllBtn.textContent = allAnswersVisible ? 'Masquer toutes les réponses' : 'Afficher toutes les réponses';
-        }
+
     </script>
 </body>
 </html>

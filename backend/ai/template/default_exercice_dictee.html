@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dictée - Exercice éducatif</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #6b8cae;
+            --accent: #e27d60;
+            --light: #f5f7fa;
+            --dark: #2c3e50;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --highlighted: #ffeb3b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--light);
+            line-height: 1.6;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            padding: 30px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 25px 0 15px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 10px;
+        }
+
+        .dictee-titre {
+            font-style: italic;
+            color: var(--secondary);
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .dictee-texte {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            text-align: justify;
+            font-size: 1.1rem;
+        }
+
+        .mot-cle {
+            background-color: var(--highlighted);
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+
+        .explications {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .explication-item {
+            margin-bottom: 25px;
+        }
+
+        .explication-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .point-grammatical {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .explication-texte {
+            margin-bottom: 10px;
+        }
+
+        .exemples {
+            padding-left: 20px;
+            font-style: italic;
+        }
+
+        .exemple {
+            margin-bottom: 5px;
+        }
+
+        .exemple:before {
+            content: "• ";
+            color: var(--accent);
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            .dictee-texte {
+                background: none;
+                border: 1px solid #ddd;
+            }
+            
+            .explications {
+                background: none;
+                border-left: 2px solid #666;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dictée</h1>
+        </header>
+
+        <!-- START_DICTEE_DATA -->
+        <script>
+            const dicteeData = {
+                "dictee": {
+                    "titre": "Le titre de la dictée",
+                    "texte": "Texte de la dictée avec les mots-clés mis en évidence.",
+                    "mots_cles": ["mot1", "mot2", "mot3"],
+                    "explications": [
+                        {
+                            "point": "Point grammatical 1",
+                            "explication": "Explication du point grammatical 1",
+                            "exemples": ["Exemple 1", "Exemple 2"]
+                        },
+                        {
+                            "point": "Point grammatical 2",
+                            "explication": "Explication du point grammatical 2",
+                            "exemples": ["Exemple 3", "Exemple 4"]
+                        }
+                    ]
+                }
+            };
+        </script>
+        <!-- END_DICTEE_DATA -->
+
+        <div class="dictee-titre" id="dictee-titre"></div>
+        <div class="dictee-texte" id="dictee-texte"></div>
+
+        <h2>Explications grammaticales et orthographiques</h2>
+        <div class="explications" id="explications"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Récupérer les éléments DOM
+            const titreElement = document.getElementById('dictee-titre');
+            const texteElement = document.getElementById('dictee-texte');
+            const explicationsElement = document.getElementById('explications');
+            
+            // Extraire les données
+            const { titre, texte, mots_cles, explications } = dicteeData.dictee;
+            
+            // Afficher le titre
+            titreElement.textContent = titre;
+            
+            // Mettre en évidence les mots-clés dans le texte
+            let texteAvecMotsCles = texte;
+            mots_cles.forEach(mot => {
+                // Création d'une expression régulière pour trouver le mot (sensible à la casse)
+                // Il faut s'assurer de ne pas remplacer les mots à l'intérieur d'autres mots
+                const regex = new RegExp(`\\b${mot}\\b`, 'gi');
+                texteAvecMotsCles = texteAvecMotsCles.replace(regex, `<span class="mot-cle">$&</span>`);
+            });
+            
+            // Afficher le texte avec les mots-clés mis en évidence
+            texteElement.innerHTML = texteAvecMotsCles;
+            
+            // Générer les explications
+            explications.forEach(explication => {
+                const explicationItem = document.createElement('div');
+                explicationItem.className = 'explication-item';
+                
+                const pointElement = document.createElement('div');
+                pointElement.className = 'point-grammatical';
+                pointElement.textContent = explication.point;
+                
+                const texteElement = document.createElement('div');
+                texteElement.className = 'explication-texte';
+                texteElement.textContent = explication.explication;
+                
+                explicationItem.appendChild(pointElement);
+                explicationItem.appendChild(texteElement);
+                
+                // Ajouter les exemples s'ils existent
+                if (explication.exemples && explication.exemples.length > 0) {
+                    const exemplesContainer = document.createElement('div');
+                    exemplesContainer.className = 'exemples';
+                    
+                    explication.exemples.forEach(exemple => {
+                        const exempleElement = document.createElement('div');
+                        exempleElement.className = 'exemple';
+                        exempleElement.textContent = exemple;
+                        exemplesContainer.appendChild(exempleElement);
+                    });
+                    
+                    explicationItem.appendChild(exemplesContainer);
+                }
+                
+                explicationsElement.appendChild(explicationItem);
+            });
+        });
+    </script>
+</body>
+</html>

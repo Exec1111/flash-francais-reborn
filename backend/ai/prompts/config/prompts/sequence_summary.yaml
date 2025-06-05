@@ -75,6 +75,11 @@ user_prompt_template: |
   
   5. Ajoute une brève description du contenu de la fiche de révision
   
+  {% if elements_specifiques %}
+  ## Instructions personnalisées :
+  {{ elements_specifiques }}
+  {% endif %}
+  
 variables:
   - name: titre_sequence
     type: string

@@ -13,7 +13,7 @@ user_prompt_template: |
   Niveau de l'apprenant : {{ niveau }}
   Nombre de mots à générer : {{ nombre_mots | default(3) }}
   {% if instructions_personnalisees %}
-  Instructions supplémentaires :
+  ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
   

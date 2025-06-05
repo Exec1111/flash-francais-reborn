@@ -11,11 +11,13 @@ import os
 # Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
+    ("exercice", "dictee"): "dictee",
     ("exercice", "vocabulaire"): "vocabulaire",
     ("exercice", "champlex"): "champlex",
     ("exercice", "champlex2"): "champlex2",
     ("exercice", "mots-croises"): "mots_croises",
     ("exercice", "pendu"): "pendu",
+    ("exercice", "quisuisje"): "quisuisje",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
@@ -36,9 +38,11 @@ DEFAULT_TEMPLATE_DIR = os.path.join(BASE_PROJECT_DIR, "backend", "ai", "template
 TEMPLATE_REGISTRY = {
     ("oeuvre", "extrait"): "default_oeuvre_extrait.html",
     ("exercice", "qcm"): "default_exercice_qcm.html",
+    ("exercice", "dictee"): "default_exercice_dictee.html",
     ("oeuvre", "oeuvrecomp"): "default_oeuvre_oeuvrecomp.html",
     ("exercice", "vocabulaire"): "default_exercice_vocabulaire.html",
     ("exercice", "champlex"): "default_exercice_champlex.html",
+    ("exercice", "quisuisje"): "default_exercice_quisuisje.html",
     ("exercice", "pendu"): "default_exercice_pendu.html",
     ("exercice", "champlex2"): "default_exercice_champlex2.html", 
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 

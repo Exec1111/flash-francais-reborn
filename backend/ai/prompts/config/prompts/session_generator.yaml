@@ -28,9 +28,9 @@ user_prompt_template: |
   {% endfor %}
   {% endif %}
   
-  {% if instructions_supplementaires %}
-  Instructions supplémentaires :
-  {{ instructions_supplementaires }}
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
   {% endif %}
   
   Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date, 
@@ -85,9 +85,9 @@ parameters:
           type: integer
         title: 
           type: string
-  - name: instructions_supplementaires
+  - name: instructions_personnalisees
     type: str
-    description: Instructions supplémentaires pour la génération des séances
+    description: Instructions personnalisées pour la génération des séances
     default: ""
 
 constraints:

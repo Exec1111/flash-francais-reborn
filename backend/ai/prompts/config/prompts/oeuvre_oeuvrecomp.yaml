@@ -9,16 +9,20 @@ user_prompt_template: |
   Prépare-moi une fiche sur l'œuvre littéraire spécifique suivante :
 
   Œuvre : {{ oeuvre_specifique }}
+  
   {% if instructions_personnalisees and instructions_personnalisees != "" %}
-  Instructions personnalisées : {{ instructions_personnalisees }}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
   {% endif %}
   {% else %}
   Trouve-moi une œuvre de littérature française ou étrangère en lien avec le thème suivant à étudier avec mes élèves.
 
   Classe : {{ niveau_classe }}
   Thème : {{ theme }}
+  
   {% if instructions_personnalisees and instructions_personnalisees != "" %}
-  Instructions personnalisées : {{ instructions_personnalisees }}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
   {% endif %}
   {% endif %}
 
@@ -30,7 +34,7 @@ user_prompt_template: |
   - une liste des thèmes abordés par l'oeuvre
   - un résumé complet de l'œuvre d'environ 1000 mots
 
-  Tu veilleras à respecter les instructions personnalisées.
+
   
   {% if constraints %}
   ## Contraintes techniques à respecter obligatoirement :

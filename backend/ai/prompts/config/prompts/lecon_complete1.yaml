@@ -18,6 +18,11 @@ user_prompt_template: |
   La leçon doit être structurée avec un titre, un sous-titre, plusieurs sections de contenu principal, une section d'exemples (si applicable), une section de points d'attention (si applicable), et une section de résumé "À retenir".
   N'oublie pas d'identifier les mots-clés importants.
   
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
   {% if constraints %}
   ## Contraintes techniques à respecter obligatoirement :
   {% for constraint in constraints %}

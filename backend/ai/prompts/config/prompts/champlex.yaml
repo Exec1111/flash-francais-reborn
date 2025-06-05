@@ -34,9 +34,9 @@ user_prompt_template: |
   Chaque champ lexical ne doit pas dépasser {{ max_mots_par_champ }} mots.
   {% endif %}
   
-  {% if instructions_supplementaires %}
-  Instructions supplémentaires :
-  {{ instructions_supplementaires }}
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
   {% endif %}
   
   Génère les données au format requis pour l'exercice : un objet avec une propriété "champs" qui contient un tableau d'objets, chacun ayant un "name" (nom du champ lexical) et "words" (la liste des mots appartenant au champ lexical).

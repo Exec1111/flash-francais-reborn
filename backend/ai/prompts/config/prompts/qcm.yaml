@@ -7,11 +7,17 @@ system_prompt: |
   Pour chaque question, tu dois indiquer quelle option est la réponse correcte et fournir une brève explication.
 
 user_prompt_template: |
-  Crée un QCM en français sur le thème : {{ theme }}.
-  Niveau de l'apprenant : {{ niveau }}.
-  Nombre de questions : {{ nombre_questions }}.
-  Nombre d'options par question : {{ nb_options }}.
-  Contraintes :
+  Crée un QCM en français sur le thème : {{ theme }}.
+  Niveau de l'apprenant : {{ niveau }}.
+  Nombre de questions : {{ nombre_questions }}.
+  Nombre d'options par question : {{ nb_options }}.
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  Contraintes :
   {% for c in constraints %}
   - {{ c }}
   {% endfor %}

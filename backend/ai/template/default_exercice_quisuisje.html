@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qui suis-je ? - Jeu éducatif</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #6b8cae;
+            --success: #4caf50;
+            --error: #f44336;
+            --warning: #ff9800;
+            --light: #f5f7fa;
+            --dark: #2c3e50;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--light);
+            line-height: 1.6;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 2.2em;
+        }
+
+        .intro-text {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--dark);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            background-color: var(--light);
+            border-radius: 8px;
+        }
+
+        .score-info {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .score-value {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            margin: 10px 0 20px;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        .game-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .game-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .hints-container {
+            margin: 25px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .hint {
+            font-size: 1.3rem;
+            text-align: center;
+            margin: 12px 0;
+            font-style: italic;
+            line-height: 1.6;
+            color: var(--dark);
+            padding: 8px 5px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .hint:last-child {
+            border-bottom: none;
+        }
+
+        .hint-badge {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            font-weight: bold;
+            margin-right: 10px;
+            font-style: normal;
+        }
+
+        .hint-number {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin: 25px 0 15px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            transition: all 0.3s;
+            background-color: white;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-hint {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .btn-hint:hover {
+            background: #e9ecef;
+            color: var(--primary);
+        }
+        
+        .btn-submit {
+            background: var(--primary);
+        }
+        
+        .hint-points {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--warning);
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .feedback {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            display: none;
+            text-align: center;
+            font-weight: bold;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .feedback.correct {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .feedback.incorrect {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+        
+        .points-earned {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 3px 8px;
+            background: var(--primary);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .game-over {
+            text-align: center;
+            display: none;
+            padding: 20px 0;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .game-over h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .score-display {
+            font-size: 1.3rem;
+            margin: 25px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4ecfb 100%);
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        .score-highlight {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        
+        .word-summary {
+            margin: 30px 0;
+            text-align: left;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .word-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .word-item-header {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .word-text {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .word-points {
+            font-weight: bold;
+            color: var(--success);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Qui suis-je ?</h1>
+        
+        <p class="intro-text">Devine chaque mot à partir des indices fournis. Moins tu utilises d'indices, plus tu gagnes de points !</p>
+        
+        <div class="game-info">
+            <div>Question: <span id="current-question">1</span>/<span id="total-questions">5</span></div>
+            <div class="score-info">Score: <span id="score" class="score-value">0</span></div>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+        </div>
+
+        <div id="game-area">
+            <div class="game-card">
+                <div class="hint-points" id="hint-points">5</div>
+                <h3>Mot à deviner:</h3>
+                
+                <div class="hints-container" id="hints-container">
+                    <span class="hint-number">Indice <span id="current-hint-num">1</span>/<span id="total-hints">5</span></span>
+                    <!-- Les indices seront ajoutés ici dynamiquement -->
+                </div>
+                
+                <button id="next-hint-btn" class="btn btn-hint">Afficher un autre indice</button>
+                
+                <div class="form-group">
+                    <input type="text" id="answer-input" class="input-field" placeholder="Ta réponse..." autocomplete="off">
+                    <button id="submit-btn" class="btn btn-submit">Valider</button>
+                </div>
+                
+                <div id="feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <div id="game-over" class="game-over">
+            <h2>Jeu terminé !</h2>
+            <div class="score-display">
+                Ton score final: <span id="final-score" class="score-highlight">0</span>/<span id="max-score">0</span>
+            </div>
+            
+            <div class="word-summary" id="word-summary">
+                <h3>Résumé des mots devinés:</h3>
+                <!-- Le résumé sera ajouté ici -->
+            </div>
+            
+            <button id="restart-btn" class="btn">Rejouer</button>
+        </div>
+    </div>
+
+    <script>
+        // Les données seront injectées ici par l'IA
+        // START_VOCABULARY_DATA
+        const vocabulaireData = {
+            "vocabulaire": [
+                {"word": "exemple1", "indices": ["Ceci est un indice difficile", "Un peu plus facile", "Encore plus facile", "Presque évident", "Très facile à deviner"]},
+                {"word": "exemple2", "indices": ["Premier indice", "Deuxième indice", "Troisième indice", "Quatrième indice", "Indice final"]}
+            ]
+        };
+        // END_VOCABULARY_DATA
+
+        // Variables d'état du jeu
+        let currentQuestionIndex = 0;
+        let currentHintIndex = 0;
+        let score = 0;
+        let words = [];
+        let wordResults = [];
+        let maxPoints = 5; // Points maximum par mot
+
+        // Références DOM
+        const hintsContainerElement = document.getElementById('hints-container');
+        const currentHintNumElement = document.getElementById('current-hint-num');
+        const totalHintsElement = document.getElementById('total-hints');
+        const hintPointsElement = document.getElementById('hint-points');
+        const nextHintBtn = document.getElementById('next-hint-btn');
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const feedbackElement = document.getElementById('feedback');
+        const currentQuestionElement = document.getElementById('current-question');
+        const totalQuestionsElement = document.getElementById('total-questions');
+        const scoreElement = document.getElementById('score');
+        const progressElement = document.getElementById('progress');
+        const gameAreaElement = document.getElementById('game-area');
+        const gameOverElement = document.getElementById('game-over');
+        const finalScoreElement = document.getElementById('final-score');
+        const maxScoreElement = document.getElementById('max-score');
+        const wordSummaryElement = document.getElementById('word-summary');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Initialisation du jeu
+        function initializeGame() {
+            // Extraction des données de vocabulaire
+            words = vocabulaireData.vocabulaire || vocabulaireData;
+            wordResults = [];
+            
+            // Mélanger les mots
+            shuffleArray(words);
+            
+            // Mettre à jour les affichages
+            totalQuestionsElement.textContent = words.length;
+            maxScoreElement.textContent = words.length * maxPoints;
+            
+            // Configurer les événements
+            submitBtn.addEventListener('click', checkAnswer);
+            nextHintBtn.addEventListener('click', showNextHint);
+            answerInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+            restartBtn.addEventListener('click', restartGame);
+            
+            // Afficher le premier mot
+            showCurrentWord();
+        }
+
+        // Afficher le mot actuel
+        function showCurrentWord() {
+            if (currentQuestionIndex < words.length) {
+                // Réinitialiser l'index de l'indice actuel
+                currentHintIndex = 0;
+                
+                // Vider le conteneur d'indices
+                hintsContainerElement.innerHTML = '';
+                hintsContainerElement.appendChild(createHintNumberElement());
+                
+                // Ajouter le premier indice
+                const wordData = words[currentQuestionIndex];
+                const totalHints = wordData.indices.length;
+                
+                addHintToDisplay(wordData.indices[0], 1);
+                
+                // Mettre à jour les compteurs
+                currentQuestionElement.textContent = currentQuestionIndex + 1;
+                currentHintNumElement.textContent = currentHintIndex + 1;
+                totalHintsElement.textContent = totalHints;
+                
+                // Mettre à jour les points disponibles (max - indices déjà montrés)
+                updatePointsDisplay();
+                
+                // Mettre à jour la barre de progression
+                updateProgress();
+                
+                // Réinitialiser le champ de réponse
+                answerInput.value = '';
+                answerInput.focus();
+                
+                // Masquer le feedback précédent
+                feedbackElement.style.display = 'none';
+                
+                // Afficher/masquer le bouton d'indice suivant si nécessaire
+                toggleNextHintButton();
+            } else {
+                endGame();
+            }
+        }
+        
+        // Créer l'élément d'affichage du numéro d'indice
+        function createHintNumberElement() {
+            const hintNumberElement = document.createElement('span');
+            hintNumberElement.className = 'hint-number';
+            hintNumberElement.innerHTML = 'Indice <span id="current-hint-num">1</span>/<span id="total-hints">5</span>';
+            return hintNumberElement;
+        }
+        
+        // Ajouter un indice à l'affichage
+        function addHintToDisplay(hintText, hintNumber) {
+            const hintElement = document.createElement('div');
+            hintElement.className = 'hint';
+            hintElement.innerHTML = `<span class="hint-badge">${hintNumber}</span> ${hintText}`;
+            hintsContainerElement.appendChild(hintElement);
+        }
+        
+        // Afficher l'indice suivant
+        function showNextHint() {
+            if (currentHintIndex < words[currentQuestionIndex].indices.length - 1) {
+                currentHintIndex++;
+                
+                // Ajouter le nouvel indice
+                const hintText = words[currentQuestionIndex].indices[currentHintIndex];
+                addHintToDisplay(hintText, currentHintIndex + 1);
+                
+                // Mettre à jour les compteurs
+                currentHintNumElement.textContent = currentHintIndex + 1;
+                
+                // Mettre à jour les points disponibles
+                updatePointsDisplay();
+                
+                // Afficher/masquer le bouton d'indice suivant
+                toggleNextHintButton();
+                
+                // Focus sur la zone de saisie
+                answerInput.focus();
+            }
+        }
+        
+        // Afficher/masquer le bouton d'indice suivant
+        function toggleNextHintButton() {
+            const indices = words[currentQuestionIndex].indices;
+            nextHintBtn.disabled = currentHintIndex >= indices.length - 1;
+            nextHintBtn.style.opacity = nextHintBtn.disabled ? '0.5' : '1';
+        }
+        
+        // Mettre à jour l'affichage des points
+        function updatePointsDisplay() {
+            const remainingPoints = maxPoints - currentHintIndex;
+            hintPointsElement.textContent = remainingPoints;
+        }
+
+        // Vérifier la réponse
+        function checkAnswer() {
+            const userAnswer = answerInput.value.trim().toLowerCase();
+            const wordData = words[currentQuestionIndex];
+            const correctAnswer = wordData.word.toLowerCase();
+            
+            if (userAnswer === '') return;
+            
+            // Calculer les points gagnés en fonction du nombre d'indices révélés
+            const earnedPoints = maxPoints - currentHintIndex;
+            
+            if (userAnswer === correctAnswer) {
+                // Réponse correcte - ajouter les points au score
+                score += earnedPoints;
+                scoreElement.textContent = score;
+                
+                // Enregistrer le résultat pour ce mot
+                wordResults.push({
+                    word: wordData.word,
+                    correct: true,
+                    hintsUsed: currentHintIndex + 1,
+                    points: earnedPoints
+                });
+                
+                // Afficher le feedback avec les points gagnés
+                showFeedback(true, `Bravo ! C'est la bonne réponse. <span class="points-earned">+${earnedPoints} pts</span>`);
+            } else {
+                // Réponse incorrecte - pas de points
+                wordResults.push({
+                    word: wordData.word,
+                    correct: false,
+                    hintsUsed: currentHintIndex + 1,
+                    points: 0
+                });
+                
+                showFeedback(false, `Incorrect. La bonne réponse était "${wordData.word}".`);
+            }
+            
+            // Désactiver les contrôles pendant le feedback
+            submitBtn.disabled = true;
+            nextHintBtn.disabled = true;
+            answerInput.disabled = true;
+            
+            // Passer à la question suivante après un délai
+            setTimeout(() => {
+                currentQuestionIndex++;
+                submitBtn.disabled = false;
+                answerInput.disabled = false;
+                showCurrentWord();
+            }, 2000);
+        }
+
+        // Afficher un feedback
+        function showFeedback(isCorrect, message) {
+            feedbackElement.innerHTML = message;
+            feedbackElement.className = isCorrect ? 'feedback correct' : 'feedback incorrect';
+            feedbackElement.style.display = 'block';
+        }
+
+        // Mettre à jour la barre de progression
+        function updateProgress() {
+            const progressPercentage = ((currentQuestionIndex) / words.length) * 100;
+            progressElement.style.width = `${progressPercentage}%`;
+        }
+
+        // Terminer le jeu
+        function endGame() {
+            gameAreaElement.style.display = 'none';
+            gameOverElement.style.display = 'block';
+            finalScoreElement.textContent = score;
+            
+            // Générer le résumé des mots
+            generateWordSummary();
+        }
+        
+        // Générer le résumé des mots
+        function generateWordSummary() {
+            wordSummaryElement.innerHTML = '<h3>Résumé des mots devinés:</h3>';
+            
+            wordResults.forEach((result, index) => {
+                const wordItem = document.createElement('div');
+                wordItem.className = 'word-item';
+                
+                const wordHeader = document.createElement('div');
+                wordHeader.className = 'word-item-header';
+                
+                const wordText = document.createElement('div');
+                wordText.className = 'word-text';
+                wordText.textContent = `${index + 1}. ${result.word}`;
+                
+                const wordPoints = document.createElement('div');
+                wordPoints.className = 'word-points';
+                wordPoints.textContent = `${result.points} pts`;
+                
+                wordHeader.appendChild(wordText);
+                wordHeader.appendChild(wordPoints);
+                
+                const wordDetails = document.createElement('div');
+                wordDetails.className = 'word-details';
+                wordDetails.textContent = result.correct 
+                    ? `Trouvé avec ${result.hintsUsed} indice${result.hintsUsed > 1 ? 's' : ''}.` 
+                    : 'Mot non trouvé.';
+                
+                wordItem.appendChild(wordHeader);
+                wordItem.appendChild(wordDetails);
+                
+                wordSummaryElement.appendChild(wordItem);
+            });
+        }
+
+        // Redémarrer le jeu
+        function restartGame() {
+            // Réinitialiser les variables d'état du jeu
+            currentQuestionIndex = 0;
+            currentHintIndex = 0;
+            score = 0;
+            wordResults = [];
+            
+            // Mettre à jour les affichages
+            scoreElement.textContent = score;
+            
+            // Mélanger les mots pour une nouvelle partie
+            shuffleArray(words);
+            
+            // Réinitialiser l'affichage
+            gameAreaElement.style.display = 'block';
+            gameOverElement.style.display = 'none';
+            
+            // Revenir au premier mot
+            showCurrentWord();
+        }
+
+        // Mélanger un tableau (algorithme Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Lancer le jeu quand la page est chargée
+        document.addEventListener('DOMContentLoaded', initializeGame);
+    </script>
+</body>
+</html>

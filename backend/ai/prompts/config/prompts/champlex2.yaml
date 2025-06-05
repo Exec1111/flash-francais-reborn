@@ -26,9 +26,9 @@ user_prompt_template: |
   Environ la moitié des mots doivent ne pas appartenir au champ lexical.
   {% endif %}
 
-  {% if instructions_supplementaires %}
-  Instructions supplémentaires :
-  {{ instructions_supplementaires }}
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
   {% endif %}
 
   {% if constraints %}
