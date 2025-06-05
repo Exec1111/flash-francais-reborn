@@ -134,7 +134,7 @@ const ResourceList = () => {
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
   // Fonction de chargement des ressources avec pagination
-  const fetchResources = async (currentPage = 1) => {
+  const fetchResources = async (currentPage = 1, search = searchTerm, typeId = selectedTypeId, subTypeId = selectedSubTypeId) => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * itemsPerPage;
@@ -142,14 +142,14 @@ const ResourceList = () => {
         skip: skip,
         limit: itemsPerPage,
       };
-      if (searchTerm) {
-        params.search = searchTerm;
+      if (search) {
+        params.search = search;
       }
-      if (selectedTypeId) {
-        params.typeId = selectedTypeId;
+      if (typeId) {
+        params.typeId = typeId;
       }
-      if (selectedSubTypeId) {
-        params.subTypeId = selectedSubTypeId;
+      if (subTypeId) {
+        params.subTypeId = subTypeId;
       }
       const response = await resourceService.getAll(params);
       
@@ -174,7 +174,8 @@ const ResourceList = () => {
   // Gestionnaire de changement de page
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-    fetchResources(newPage);
+    fetchResources(newPage, searchTerm, selectedTypeId, selectedSubTypeId);
+    window.scrollTo(0, 0);
   };
   
   // Fonction pour récupérer les informations de type et sous-type
@@ -282,10 +283,14 @@ const ResourceList = () => {
     const newSearchTerm = event.target.value;
     setSearchTerm(newSearchTerm);
 
-    clearTimeout(debounceTimer.current);
+    // Utiliser un timer pour ne pas envoyer une requête à chaque frappe
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
     debounceTimer.current = setTimeout(() => {
       setPage(1);
-      fetchResources(1);
+      // Passer directement la nouvelle valeur de recherche pour éviter le décalage des états asynchrones
+      fetchResources(1, newSearchTerm, selectedTypeId, selectedSubTypeId);
     }, 500);
   };
 
@@ -294,13 +299,16 @@ const ResourceList = () => {
     setSelectedTypeId(newTypeId);
     setSelectedSubTypeId(''); // Réinitialiser le sous-type car les options vont changer
     setPage(1);
-    fetchResources(1);
+    // Passer directement la nouvelle valeur du type pour éviter le décalage des états asynchrones
+    fetchResources(1, searchTerm, newTypeId, '');
   };
 
   const handleSubTypeChange = (event) => {
-    setSelectedSubTypeId(event.target.value);
+    const newSubTypeId = event.target.value;
+    setSelectedSubTypeId(newSubTypeId);
     setPage(1);
-    fetchResources(1);
+    // Passer directement la nouvelle valeur du sous-type pour éviter le décalage des états asynchrones
+    fetchResources(1, searchTerm, selectedTypeId, newSubTypeId);
   };
 
   // Effet pour filtrer les sous-types lorsque le type sélectionné change
