@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -19,6 +19,11 @@ import {
   DialogActions,
   Button as MuiButton,
   Pagination,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -50,9 +55,16 @@ const ResourceList = () => {
   // États pour la pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTypeId, setSelectedTypeId] = useState('');
+  const [selectedSubTypeId, setSelectedSubTypeId] = useState('');
+  const [typeOptions, setTypeOptions] = useState([]);
+  const [subTypeOptions, setSubTypeOptions] = useState([]);
+  const [filteredSubTypeOptions, setFilteredSubTypeOptions] = useState([]);
   const [totalResources, setTotalResources] = useState(0);
   const itemsPerPage = paginationConfig.resources.itemsPerPage;
   const navigate = useNavigate();
+  const debounceTimer = useRef(null);
 
   // Colonnes pour la DataGrid (vue tabulaire)
   const columns = [
@@ -122,14 +134,23 @@ const ResourceList = () => {
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
   // Fonction de chargement des ressources avec pagination
-  const fetchResources = async (currentPage = 1) => {
+  const fetchResources = async (currentPage = 1, search = searchTerm, typeId = selectedTypeId, subTypeId = selectedSubTypeId) => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * itemsPerPage;
       const params = {
         skip: skip,
-        limit: itemsPerPage
+        limit: itemsPerPage,
       };
+      if (search) {
+        params.search = search;
+      }
+      if (typeId) {
+        params.typeId = typeId;
+      }
+      if (subTypeId) {
+        params.subTypeId = subTypeId;
+      }
       const response = await resourceService.getAll(params);
       
       // Mise à jour des ressources et des informations de pagination
@@ -138,7 +159,8 @@ const ResourceList = () => {
       setTotalPages(Math.ceil(response.total / itemsPerPage) || 1);
       
       // Récupérer les types et sous-types pour toutes les ressources
-      await fetchResourceTypesInfo(response.items);
+      // await fetchResourceTypesInfo(response.items); // This line was problematic as fetchResourceTypesInfo no longer takes arguments
+      // Types and subtypes are fetched independently now in useEffect.
     } catch (err) {
       console.error('Erreur lors du chargement des ressources:', err);
       setResources([]);
@@ -152,29 +174,39 @@ const ResourceList = () => {
   // Gestionnaire de changement de page
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-    fetchResources(newPage);
+    fetchResources(newPage, searchTerm, selectedTypeId, selectedSubTypeId);
+    window.scrollTo(0, 0);
   };
   
   // Fonction pour récupérer les informations de type et sous-type
-  const fetchResourceTypesInfo = async (resourcesList) => {
+  const fetchResourceTypesInfo = async () => { // Removed resourcesList parameter
     setLoadingTypes(true);
     
     try {
       // Récupérer tous les types
-      const typesResponse = await resourceTypeService.getAllTypes();
+      const typesServiceResponse = await resourceTypeService.getAllTypes();
+      const typesData = typesServiceResponse.data || typesServiceResponse; // Adapt based on actual service response structure
       const typesMap = {};
-      typesResponse.forEach(type => {
+      // Assuming typesData is an array
+      (typesData || []).forEach(type => {
         typesMap[type.id] = type;
       });
       setResourceTypes(typesMap);
+      const typesForSelect = (typesData || []).map(type => ({ id: type.id, value: type.value, key: type.key || type.id.toString() }));
+      setTypeOptions(typesForSelect);
       
       // Récupérer tous les sous-types
-      const subtypesResponse = await resourceTypeService.getAllSubtypes();
+      const subtypesServiceResponse = await resourceTypeService.getAllSubtypes();
+      const subtypesData = subtypesServiceResponse.data || subtypesServiceResponse; // Adapt based on actual service response structure
       const subtypesMap = {};
-      subtypesResponse.forEach(subtype => {
+      // Assuming subtypesData is an array
+      (subtypesData || []).forEach(subtype => {
         subtypesMap[subtype.id] = subtype;
       });
       setResourceSubtypes(subtypesMap);
+      const subtypesForSelect = (subtypesData || []).map(subtype => ({ id: subtype.id, value: subtype.value, key: subtype.key || subtype.id.toString(), typeId: subtype.type_id }));
+      setSubTypeOptions(subtypesForSelect);
+
     } catch (err) {
       console.error('Erreur lors du chargement des types de ressources:', err);
     } finally {
@@ -246,11 +278,64 @@ const ResourceList = () => {
     saveViewPreference('resources', newMode);
   };
 
+  // --- Gestionnaires pour les filtres ---
+  const handleSearchChange = (event) => {
+    const newSearchTerm = event.target.value;
+    setSearchTerm(newSearchTerm);
+
+    // Utiliser un timer pour ne pas envoyer une requête à chaque frappe
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setPage(1);
+      // Passer directement la nouvelle valeur de recherche pour éviter le décalage des états asynchrones
+      fetchResources(1, newSearchTerm, selectedTypeId, selectedSubTypeId);
+    }, 500);
+  };
+
+  const handleTypeChange = (event) => {
+    const newTypeId = event.target.value;
+    setSelectedTypeId(newTypeId);
+    setSelectedSubTypeId(''); // Réinitialiser le sous-type car les options vont changer
+    setPage(1);
+    // Passer directement la nouvelle valeur du type pour éviter le décalage des états asynchrones
+    fetchResources(1, searchTerm, newTypeId, '');
+  };
+
+  const handleSubTypeChange = (event) => {
+    const newSubTypeId = event.target.value;
+    setSelectedSubTypeId(newSubTypeId);
+    setPage(1);
+    // Passer directement la nouvelle valeur du sous-type pour éviter le décalage des états asynchrones
+    fetchResources(1, searchTerm, selectedTypeId, newSubTypeId);
+  };
+
+  // Effet pour filtrer les sous-types lorsque le type sélectionné change
+  useEffect(() => {
+    if (selectedTypeId) {
+      setFilteredSubTypeOptions(
+        subTypeOptions.filter(subType => subType.typeId === selectedTypeId)
+      );
+    } else {
+      // Afficher tous les sous-types si aucun type n'est sélectionné,
+      // ou une liste vide si subTypeOptions est vide.
+      setFilteredSubTypeOptions(subTypeOptions);
+    }
+  }, [selectedTypeId, subTypeOptions]);
+
   // Effet de chargement initial
   useEffect(() => {
-    fetchResources(page);
+    fetchResources(page); // Utilise la page actuelle (initialement 1)
+    fetchResourceTypesInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Dépendances vides pour exécution unique au montage
+
+  // Effet pour recharger les données lorsque la page change (déjà géré par handlePageChange)
+  // Mais on peut aussi écouter `page` si on veut séparer la logique de chargement initial
+  // useEffect(() => {
+  //   fetchResources(page);
+  // }, [page]); // Attention, cela pourrait causer un double chargement au montage si fetchResources(page) est déjà dans l'effet de montage.
 
   if (loading && resources.length === 0) {
     return (
@@ -261,7 +346,64 @@ const ResourceList = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: 'background.default', p: { xs: 1, sm: 2, md: 3 }, minHeight: 'calc(100vh - 64px)' }}> 
+    <Box sx={{ bgcolor: 'background.default', p: { xs: 1, sm: 2, md: 3 }, minHeight: 'calc(100vh - 64px)' }}>
+      {/* Section des filtres */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom component="div">
+          Filtres
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Libellé"
+              variant="outlined"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <FormControl fullWidth variant="outlined" size="small">
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={selectedTypeId}
+                onChange={handleTypeChange}
+                label="Type"
+              >
+                <MenuItem value="">
+                  <em>Tous les types</em>
+                </MenuItem>
+                {typeOptions.map((type) => (
+                  <MenuItem key={type.key || type.id} value={type.id}>
+                    {type.value}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <FormControl fullWidth variant="outlined" size="small" disabled={!selectedTypeId && filteredSubTypeOptions.length === 0}>
+              <InputLabel>Sous-type</InputLabel>
+              <Select
+                value={selectedSubTypeId}
+                onChange={handleSubTypeChange}
+                label="Sous-type"
+              >
+                <MenuItem value="">
+                  <em>Tous les sous-types</em>
+                </MenuItem>
+                {filteredSubTypeOptions.map((subType) => (
+                  <MenuItem key={subType.key || subType.id} value={subType.id}>
+                    {subType.value}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
+
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs>
