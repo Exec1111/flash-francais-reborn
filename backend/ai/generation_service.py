@@ -3,7 +3,7 @@ from backend.ai.schemas import ChatInput, ChatOutput, ChatMessage
 from typing import List
 import os
 import logging
-from google import genai
+import google.generativeai as genai
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
