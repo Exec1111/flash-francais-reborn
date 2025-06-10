@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
-from models import Progression, Sequence, User
+from models import Progression, Sequence, User, StudyObject # Ajout de StudyObject
 from schemas.progression import ProgressionCreate, ProgressionUpdate
 from sqlalchemy import func
 from typing import List, Optional
@@ -39,14 +39,43 @@ def count_progressions(db: Session, user_id: int) -> int:
     return db.query(Progression).filter(Progression.user_id == user_id).count()
 
 def create_progression(db: Session, progression: ProgressionCreate, user_id: int):
+    # Extraire les study_object_ids du modèle Pydantic
+    # Utiliser model_dump() pour obtenir un dictionnaire, puis pop pour extraire la clé
+    progression_data = progression.model_dump()
+    study_object_ids = progression_data.pop('study_object_ids', []) # Sera une liste vide si non fourni
+
+    # Créer l'instance Progression avec les données de base
+    # progression_data contient maintenant title, description, order (si présent dans ProgressionBase et ProgressionCreate)
     db_progression = Progression(
-        title=progression.title,
-        description=progression.description,
-        user_id=user_id # Assigner l'ID de l'utilisateur
+        user_id=user_id,
+        **progression_data # S'assure que tous les champs de ProgressionCreate sont passés
     )
+
+    # Associer les objets d'étude s'ils sont fournis
+    if study_object_ids:
+        # StudyObject est déjà importé en haut du fichier
+        study_objects = db.query(StudyObject).filter(StudyObject.id.in_(study_object_ids)).all()
+        if study_objects: # S'assurer qu'on a trouvé des objets avant d'assigner
+            db_progression.study_objects = study_objects # Assigner à la relation
+        else:
+            # Optionnel: log si des IDs sont fournis mais aucun objet n'est trouvé
+            # Vous pouvez utiliser le logger configuré si vous en avez un, ou un simple print
+            print(f"Avertissement: Aucun StudyObject trouvé pour les IDs: {study_object_ids} lors de la création de la progression.")
+
     db.add(db_progression)
     db.commit()
-    db.refresh(db_progression)
+    db.refresh(db_progression) # Rafraîchit les attributs simples de db_progression
+
+    # S'assurer que la relation study_objects est également chargée dans la session pour l'objet db_progression
+    # Cela est utile si l'objet db_progression est utilisé immédiatement après et que l'on s'attend à ce que study_objects soit peuplé.
+    # Rafraîchir seulement si des IDs ont été fournis et que la relation a potentiellement été peuplée.
+    if study_object_ids and hasattr(db_progression, 'study_objects'):
+        # La condition `if study_objects:` dans le bloc précédent assure que `db_progression.study_objects`
+        # n'est assigné que si des objets valides ont été trouvés.
+        # Si `db_progression.study_objects` a été peuplé (c'est-à-dire, n'est pas None et potentiellement non vide),
+        # il est bon de le rafraîchir pour charger les données depuis la BDD dans la session actuelle.
+        db.refresh(db_progression, attribute_names=['study_objects'])
+
     return db_progression
 
 def update_progression(db: Session, progression_id: int, progression_update: ProgressionUpdate, user_id: int):

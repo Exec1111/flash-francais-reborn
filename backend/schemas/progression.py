@@ -8,7 +8,7 @@ class ProgressionBase(BaseModel):
     order: int = 0
 
 class ProgressionCreate(ProgressionBase):
-    pass
+    study_object_ids: Optional[List[int]] = None
 
 class ProgressionUpdate(ProgressionBase):
     study_object_ids: Optional[List[int]] = None
