@@ -265,6 +265,7 @@ app.include_router(
     prefix="/api/v1/dashboard",
     tags=["dashboard"]
 )
+logger.info("✅ [DIAGNOSTIC] Dashboard router included successfully.")
 
 # Inclusion des routes d'étude
 app.include_router(

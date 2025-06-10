@@ -100,13 +100,10 @@ def seed_reference_data(db: Session):
     # ===============================================================
     # == MODIFIER ICI : Données initiales pour ResourceType ==
     # ===============================================================
-    resource_types_to_seed = [
-        {"key": "EXERCICE", "value": "Exercice"},
-        {"key": "MULTIMEDIA", "value": "Multimédia"},
-        {"key": "LECON", "value": "Leçon"},
-        {"key": "OEUVRE", "value": "Oeuvre"},
-        # Ajoutez autant de types que nécessaire ici
-    ]
+    resource_types_to_seed = [   {'key': 'EXERCICE', 'value': 'Exercice'},
+    {'key': 'MULTIMEDIA', 'value': 'Multimédia'},
+    {'key': 'LECON', 'value': 'Leçon'},
+    {'key': 'OEUVRE', 'value': 'Oeuvre'}]
     # ===============================================================
     
     created_types = {} # Pour stocker les objets créés ou trouvés
@@ -130,26 +127,17 @@ def seed_reference_data(db: Session):
     # ===============================================================
     # == MODIFIER ICI : Données initiales pour ResourceSubType ==
     # ===============================================================
-    resource_subtypes_to_seed = [
-        # Utiliser 'key' pour le sous-type et 'parent_type_key' pour le parent
-        # Sous-types pour EXERCICE
-        {"key": "QCM", "parent_type_key": "EXERCICE", "value": "QCM"},
-        {"key": "DICTEE", "parent_type_key": "EXERCICE", "value": "DICTEE"},
-        {"key": "QOEUVRE", "parent_type_key": "EXERCICE", "value": "Questions sur une oeuvre"},
-        {"key": "QTEXTE", "parent_type_key": "EXERCICE", "value": "Questions sur un texte"},
-        
-        # Sous-types pour MULTIMEDIA - Aucun défini
-        
-        # Sous-types pour LECON
-        {"key": "FORMAT1", "parent_type_key": "LECON", "value": "Format court"},
-        {"key": "FORMAT2", "parent_type_key": "LECON", "value": "Format long"},
-        
-        # Sous-types pour OEUVRE
-        {"key": "TEXTE", "parent_type_key": "OEUVRE", "value": "Extrait de texte"},
-        {"key": "OEUVRE_SUB", "parent_type_key": "OEUVRE", "value": "Oeuvre complète"}, # Renommé la clé pour éviter conflit
-        
-        # Ajoutez autant de sous-types que nécessaire ici
-    ]
+    resource_subtypes_to_seed = [   {'key': 'QCM', 'parent_type_key': 'EXERCICE', 'value': 'QCM'},
+    {'key': 'DICTEE', 'parent_type_key': 'EXERCICE', 'value': 'Dictée'},
+    {'key': 'VOCABULAIRE', 'parent_type_key': 'EXERCICE', 'value': 'Vocabulaire'},
+    {'key': 'CHAMPLEX', 'parent_type_key': 'EXERCICE', 'value': 'Champs lexicaux multiples'},
+    {'key': 'PENDU', 'parent_type_key': 'EXERCICE', 'value': 'Jeu du pendu'},
+    {'key': 'QUISUISJE', 'parent_type_key': 'EXERCICE', 'value': 'Qui suis-je ?'},
+    {'key': 'CHAMPLEX2', 'parent_type_key': 'EXERCICE', 'value': 'Champ lexical simple'},
+    {'key': 'MOTS-CROISES', 'parent_type_key': 'EXERCICE', 'value': 'Mots croisés'},
+    {'key': 'LECONCOMPLETE1', 'parent_type_key': 'LECON', 'value': 'leçon / cours'},
+    {'key': 'TEXTE', 'parent_type_key': 'OEUVRE', 'value': 'Extrait de texte'},
+    {'key': 'OEUVRE_SUB', 'parent_type_key': 'OEUVRE', 'value': 'Oeuvre complète'}]
     # ===============================================================
     
     print("  Vérification/Création des ResourceSubType...")
