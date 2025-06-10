@@ -46,6 +46,7 @@ Le backend est construit avec FastAPI et utilise les technologies suivantes :
 - **Alembic** : Gestion des migrations de base de données
 - **JWT** (JSON Web Tokens) : Authentification des utilisateurs
 - **LangChain** : Intégration avec des modèles d'IA (OpenAI, Google)
+- **google-genai** : SDK Python officiel pour l'interaction directe avec les modèles Google Gemini (utilisé par les services `backend/ai/services/*` et `backend/ai/generation_service.py`, remplace `google-generativeai`).
 
 ### Structure du Backend
 
@@ -206,6 +207,7 @@ Les variables d'environnement suivantes sont configurées sur Render :
 - `PYTHON_VERSION` : Version de Python (3.11.11)
 - `SECRET_KEY` : Clé secrète pour la sécurité de l'application
 - `RENDER` : Défini sur `true` pour l'environnement Render
+- `GOOGLE_API_KEY` : Clé API pour Google Gemini. Utilisée par le SDK `google-genai`.
 
 ## Tests
 

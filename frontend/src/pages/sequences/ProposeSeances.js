@@ -64,7 +64,7 @@ const ProposeSeances = () => {
   const [objectiveModalOpen, setObjectiveModalOpen] = useState(false);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
   
   // Les étapes de la cinématique
   const steps = [
@@ -150,10 +150,12 @@ const ProposeSeances = () => {
     const fetchResources = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_BASE_URL}/api/v1/resources`, {
+        const response = await axios.get(`${API_BASE_URL}/api/v1/resources?skip=0&limit=100`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log("Réponse de /api/v1/resources (response.data):", JSON.parse(JSON.stringify(response.data)));
         if (response.data && response.data.items) {
+      console.log("Réponse de /api/v1/resources (response.data.items):", JSON.parse(JSON.stringify(response.data.items)));
           setAllResources(response.data.items);
           
           // Créer une map des ressources pour l'affichage
@@ -166,8 +168,9 @@ const ProposeSeances = () => {
       } catch (err) {
         console.error("Erreur lors du chargement des ressources", err);
       }
-    };
-    fetchResources();
+    }; // Fin de la définition de fetchResources
+
+    fetchResources(); // Appel de la fonction ici
   }, [API_BASE_URL]);
   
   // Récupérer les niveaux de classe disponibles depuis le schema du prompt YAML
@@ -199,32 +202,21 @@ const ProposeSeances = () => {
             setClassLevels(niveauClasseField.validations.enum);
             if (niveauClasseField.validations.enum.length > 0) {
               setNiveau(niveauClasseField.validations.enum[0]);
+            } else {
+              console.warn("La liste enum pour 'niveau' est vide.");
             }
-          }
-          // Méthode 2: Rechercher via enum directement dans le champ
-          else if (niveauClasseField && niveauClasseField.enum) {
-            console.log('Niveaux de classe disponibles via champ enum:', niveauClasseField.enum);
-            setClassLevels(niveauClasseField.enum);
-            if (niveauClasseField.enum.length > 0) {
-              setNiveau(niveauClasseField.enum[0]);
-            }
-          }
-          // Pour déboguer, vérifier si le champ existe mais pas l'enum
-          else if (niveauClasseField) {
-            console.log('Champ niveau trouvé mais pas d\'enum:', niveauClasseField);
-            setError("Schéma incomplet : le champ niveau existe mais ne contient pas de valeurs d'énumération.");
-            setClassLevels([]);
           } else {
-            setError("Schéma incomplet : le champ niveau n'a pas été trouvé dans le schéma.");
-            setClassLevels([]);
+            console.warn("Le champ 'niveau' ou ses validations 'enum' sont introuvables dans le schéma.");
           }
+        } else {
+          console.warn("La propriété 'fields' est manquante ou n'est pas un tableau dans le schéma.");
         }
       }
     })
     .catch(err => {
-      console.error('Erreur lors de la récupération du schéma:', err);
-      setError("Impossible de récupérer les niveaux de classe depuis l'API. Veuillez réessayer ou contacter l'administrateur.");
-      setClassLevels([]);
+      console.error("Erreur lors de la récupération du schéma du prompt:", err);
+      setError("Erreur lors de la récupération des niveaux de classe: " + (err.response?.data?.detail || err.message));
+      setClassLevels([]); // Assure que classLevels est un tableau même en cas d'erreur
     });
   }, [API_BASE_URL]);
 
@@ -237,46 +229,46 @@ const ProposeSeances = () => {
   const handleGenerationSubmit = async () => {
     setGenerating(true);
     setError("");
-    
+    setSeances([]);
+    setEditedSeances([]);
+    setCurrentEditIndex(0);
+
     try {
       const token = localStorage.getItem('token');
-      
-      // Préparer les données pour l'appel API
-      const allResourceIds = new Set();
-    studyObjectsWithResources.forEach(so => {
-      so.resources.forEach(res => {
-        allResourceIds.add(res.id);
-      });
-    });
-    const resourceIds = Array.from(allResourceIds);
       const payload = {
-      sequence_id: parseInt(id, 10),
-      nombre_seances: String(nombreSeances), // Convertir en chaîne et utiliser le bon nom de clé
-      instructions_supplementaires: instructions, // Utiliser le bon nom de clé
-      niveau: niveau,
-      // Le champ 'inclure_ressources' n'est pas envoyé, le backend utilisera sa valeur par défaut (False)
-    };
-    console.log("Payload corrigé envoyé à /api/v1/ai/generate-sessions:", payload); // Log pour vérification
-      // Appel API pour générer les séances
+        sequence_id: parseInt(id, 10),
+        nombre_seances: autoNombreSeances ? "auto" : nombreSeances, // Assure que c'est une chaîne
+        niveau: niveau,
+        instructions_supplementaires: instructions, // Correspond au modèle Pydantic
+        inclure_ressources: true, // Valeur par défaut ou à rendre dynamique
+      };
+      console.log("Payload envoyé pour la génération de séances:", payload);
+
       const response = await axios.post(
         `${API_BASE_URL}/api/v1/ai/generate-sessions`,
         payload,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Traiter la réponse
-      if (response.data && response.data.sessions) {
-        setSeances(response.data.sessions);
-        setEditedSeances(response.data.sessions);
+
+      if (response.data && Array.isArray(response.data.sessions)) {
+        const generatedSeances = response.data.sessions.map(s => ({
+          ...s,
+          title: s.title || "Titre non défini",
+          description: s.notes || s.description || "Description non définie",
+          objective_ids: s.objective_ids || [],
+          resource_ids: s.resource_ids || [],
+        }));
+        setSeances(generatedSeances);
+        setEditedSeances(JSON.parse(JSON.stringify(generatedSeances))); // Copie profonde pour l'édition
         setActiveStep(2); // Passer à l'étape d'édition
       } else {
-        setError("Aucune séance n'a été générée. Veuillez réessayer.");
+        setError("Format de réponse inattendu de l'API.");
       }
-    } catch (error) {
-      console.error(error);
-      setError(error);
+    } catch (err) {
+      console.error("Erreur lors de la génération des séances:", err);
+      const errorDetail = err.response?.data?.detail || err.message || "Une erreur inconnue est survenue.";
+      setError(`Erreur: ${errorDetail}`);
+      setActiveStep(0); // Revenir à la configuration en cas d'erreur
     } finally {
       setGenerating(false);
     }
@@ -284,24 +276,21 @@ const ProposeSeances = () => {
 
   const handleEditorChange = (index, newData) => {
     const updatedSeances = [...editedSeances];
-    updatedSeances[index] = newData;
+    updatedSeances[index] = { ...updatedSeances[index], ...newData };
     setEditedSeances(updatedSeances);
   };
-  
   // Gestion des modifications d'objectifs
   const handleObjectivesChange = (objectives) => {
-    handleEditorChange(currentEditIndex, {
-      ...editedSeances[currentEditIndex],
-      objective_ids: objectives
-    });
+    const updatedSeances = [...editedSeances];
+    updatedSeances[currentEditIndex].objective_ids = objectives.map(obj => obj.id);
+    setEditedSeances(updatedSeances);
   };
   
   // Gestion des modifications de ressources
   const handleResourcesChange = (resources) => {
-    handleEditorChange(currentEditIndex, {
-      ...editedSeances[currentEditIndex],
-      resource_ids: resources
-    });
+    const updatedSeances = [...editedSeances];
+    updatedSeances[currentEditIndex].resource_ids = resources.map(res => res.id);
+    setEditedSeances(updatedSeances);
   };
   
   // Ouvrir la modale de sélection d'objectifs
@@ -316,8 +305,8 @@ const ProposeSeances = () => {
   
   // Sauvegarder les objectifs sélectionnés depuis la modale
   const handleSaveObjectives = (selectedObjectives) => {
-    handleObjectivesChange(selectedObjectives.map(obj => obj.id));
-    setObjectiveModalOpen(false);
+    handleObjectivesChange(selectedObjectives);
+    closeObjectiveModal();
   };
   
   // Ouvrir la modale de sélection de ressources
@@ -332,56 +321,69 @@ const ProposeSeances = () => {
   
   // Sauvegarder les ressources sélectionnées depuis la modale
   const handleSaveResources = (selectedResources) => {
-    handleResourcesChange(selectedResources.map(res => res.id));
-    setResourceModalOpen(false);
+    handleResourcesChange(selectedResources);
+    closeResourceModal();
   };
 
   const handlePrevResult = () => {
-    setCurrentEditIndex(Math.max(0, currentEditIndex - 1));
+    setCurrentEditIndex(prev => Math.max(0, prev - 1));
   };
 
   const handleNextResult = () => {
-    setCurrentEditIndex(Math.min(editedSeances.length - 1, currentEditIndex + 1));
+    setCurrentEditIndex(prev => Math.min(editedSeances.length - 1, prev + 1));
   };
 
   const handleSaveSeances = async () => {
     try {
       const token = localStorage.getItem('token');
-      
-      // Enregistrer chaque séance éditée
-      const promises = editedSeances.map(seance => 
-        axios.post(
-          `${API_BASE_URL}/api/v1/sessions/`,
-          seance,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-      );
-      
-      await Promise.all(promises);
-      
-      // Rediriger vers la page de la séquence avec un message de succès
-      navigate(`/sequences/${id}`, { 
-        state: { 
-          refresh: true, 
-          messageSuccess: `${editedSeances.length} séances ont été créées avec succès!` 
-        } 
-      });
+      setError(""); // Réinitialiser les erreurs précédentes
+
+      for (let i = 0; i < editedSeances.length; i++) {
+        const seance = editedSeances[i];
+        const singleSeancePayload = {
+          sequence_id: parseInt(id, 10),
+          title: seance.title,
+          notes: seance.description, // 'notes' dans le schéma backend, la valeur vient de seance.description de l'UI
+          date: new Date().toISOString(), // Champ date requis par le backend
+          order: i, // Ce champ sera probablement ignoré par le backend car non dans SessionCreate
+          objective_ids: seance.objective_ids || [],
+          resource_ids: seance.resource_ids || [],
+          // 'notes' et 'duration' sont optionnels dans SessionBase
+        };
+
+        console.log(`Payload pour sauvegarde de la séance ${i + 1}:`, singleSeancePayload);
+
+        await axios.post(`${API_BASE_URL}/api/v1/sessions/`, singleSeancePayload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      // Si toutes les sauvegardes réussissent, naviguer vers la page de la séquence
+      navigate(`/sequences/${id}`);
     } catch (err) {
-      setError(err.response?.data?.detail || "Erreur lors de l'enregistrement des séances");
-      console.error(err);
+      console.error("Erreur lors de la sauvegarde d'une séance:", err);
+      let errorMessage = "Erreur lors de la sauvegarde d'une séance.";
+      if (err.response && err.response.data && err.response.data.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          errorMessage += " " + err.response.data.detail.map(d => `${d.loc ? d.loc.join('->') + ': ' : ''}${d.msg}`).join('; ');
+        } else {
+          errorMessage += " " + err.response.data.detail;
+        }
+      } else {
+        errorMessage += " " + err.message;
+      }
+      setError(errorMessage);
     }
   };
 
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (isNaN(date.getTime())) {
+        // Gérer le cas où la date n'est pas valide
+        return 'Date invalide';
+    }
+    return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleBackToConfig = () => {
@@ -389,279 +391,188 @@ const ProposeSeances = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4, mb: 8 }}>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Proposer des Séances pour "{sequenceTitle || 'Séquence en chargement...'}"
+      </Typography>
+
+      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
       <Card>
         <CardContent>
-          <Typography variant="h5" component="h1" gutterBottom>
-            Proposition de séances pour la séquence: {sequenceTitle}
-          </Typography>
-          
-          <Stepper activeStep={activeStep} sx={{ my: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-          
           {activeStep === 0 && (
             <form onSubmit={handleConfigSubmit}>
-              <Typography variant="h6" gutterBottom>
-                Configuration de la génération
-              </Typography>
-              
-              <Grid container spacing={3}>
+              <Typography variant="h6" gutterBottom>Configuration de la Génération</Typography>
+              <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth sx={{ mt: 2 }}>
-                    <InputLabel id="niveau-select-label">Niveau des apprenants</InputLabel>
-                    <Select
-                      labelId="niveau-select-label"
-                      value={niveau}
-                      onChange={(e) => setNiveau(e.target.value)}
-                      label="Niveau des apprenants"
-                    >
-                      {classLevels.map((level) => (
-                        <MenuItem key={level} value={level}>
-                          {level}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={autoNombreSeances}
+                        onChange={(e) => setAutoNombreSeances(e.target.checked)}
+                      />
+                    }
+                    label="Déterminer automatiquement le nombre de séances"
+                  />
                 </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                {!autoNombreSeances && (
+                  <Grid item xs={12} sm={6}>
                     <TextField
+                      label="Nombre de séances souhaitées"
                       type="number"
-                      label="Nombre de séances"
                       value={nombreSeances}
                       onChange={(e) => setNombreSeances(e.target.value)}
                       fullWidth
                       disabled={autoNombreSeances}
-                      InputProps={{ inputProps: { min: 1, max: 10 } }}
-                      sx={{ mr: 2 }}
+                      inputProps={{ min: 1, max: 10 }}
                     />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={autoNombreSeances}
-                          onChange={(e) => setAutoNombreSeances(e.target.checked)}
-                        />
-                      }
-                      label="Auto"
-                      labelPlacement="top"
-                    />
-                  </Box>
+                  </Grid>
+                )}
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="niveau-select-label">Niveau de classe</InputLabel>
+                    <Select
+                      labelId="niveau-select-label"
+                      value={niveau}
+                      label="Niveau de classe"
+                      onChange={(e) => setNiveau(e.target.value)}
+                    >
+                      {classLevels && classLevels.length > 0 ? (
+                        classLevels.map((level) => (
+                          <MenuItem key={level} value={level}>
+                            {level}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled value="">
+                          Chargement des niveaux...
+                        </MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
                 </Grid>
-                
+
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                    Objets d'étude et leurs ressources (utilisés pour la génération) :
+                    Objets d'étude et ressources de la séquence :
                   </Typography>
                   {studyObjectsWithResources.length > 0 ? (
-                    <Paper elevation={1} sx={{ p: 1, maxHeight: 250, overflow: 'auto' }}>
-                      <List dense>
-                        {studyObjectsWithResources.map((studyObject) => (
-                          <React.Fragment key={studyObject.id}>
-                            <ListItem sx={{ pt: 1, pb: 0 }}>
-                              <ListItemText 
-                                primary={studyObject.title} 
-                                primaryTypographyProps={{ variant: 'subtitle2', fontWeight: 'bold' }} 
-                              />
-                            </ListItem>
-                            {studyObject.resources.length > 0 ? (
-                              <List dense disablePadding sx={{ pl: 2 }}>
-                                {studyObject.resources.map((resource) => (
-                                  <ListItem key={resource.id} disablePadding sx={{ pt: 0, pb: 0.5 }}>
-                                    <ListItemIcon sx={{ minWidth: '30px' }}>
-                                      <DescriptionIcon fontSize="small" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={resource.title} primaryTypographyProps={{ variant: 'body2' }} />
-                                  </ListItem>
-                                ))}
-                              </List>
-                            ) : (
-                              <ListItem sx={{ pl: 2, pt:0, pb: 0.5 }}>
-                                <ListItemText primary="Aucune ressource associée à cet objet d'étude." primaryTypographyProps={{ variant: 'caption', fontStyle: 'italic' }} />
-                              </ListItem>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </List>
-                    </Paper>
+                    <List dense>
+                      {studyObjectsWithResources.map(so => (
+                        <ListItem key={so.id} sx={{ display: 'block', mb: 1, p:1, border: '1px solid lightgray', borderRadius: '4px' }}>
+                          <ListItemText 
+                            primary={so.title}
+                            primaryTypographyProps={{ fontWeight: 'medium' }}
+                          />
+                          {so.resources && so.resources.length > 0 ? (
+                            <List dense sx={{ pl: 2 }}>
+                              {so.resources.map(res => (
+                                <ListItem key={res.id} sx={{p:0}}>
+                                  <ListItemIcon sx={{minWidth: '30px'}}>
+                                    <DescriptionIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={res.title} 
+                                    secondary={`ID: ${res.id}`}
+                                    primaryTypographyProps={{ fontSize: '0.9rem' }}
+                                    secondaryTypographyProps={{ fontSize: '0.8rem' }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" sx={{pl:2}}>Aucune ressource associée à cet objet d'étude.</Typography>
+                          )}
+                        </ListItem>
+                      ))}
+                    </List>
                   ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Aucun objet d'étude (avec ressources) trouvé pour cette séquence.
-                    </Typography>
+                    <Typography>Aucun objet d'étude avec ressources trouvé pour cette séquence.</Typography>
                   )}
                 </Grid>
-                
+
                 <Grid item xs={12}>
                   <TextField
-                    label="Instructions supplémentaires (facultatif)"
+                    label="Instructions spécifiques pour l'IA (optionnel)"
+                    multiline
+                    rows={4}
                     value={instructions}
                     onChange={(e) => setInstructions(e.target.value)}
                     fullWidth
-                    multiline
-                    rows={3}
-                    placeholder="Précisez vos attentes spécifiques pour la génération des séances"
+                    variant="outlined"
+                    placeholder="Ex: Mettre l'accent sur la grammaire, proposer des activités ludiques..."
                   />
                 </Grid>
               </Grid>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => navigate(-1)}
-                  sx={{ mr: 2 }}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  type="submit"
-                >
-                  Continuer
-                </Button>
-              </Box>
+              <Button type="submit" variant="contained" sx={{ mt: 3 }} disabled={generating || !niveau || classLevels.length === 0}>
+                {generating ? <CircularProgress size={24} /> : "Générer les Séances"}
+              </Button>
+              {error && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {typeof error === 'string'
+                    ? error
+                    : error?.response?.data?.detail
+                      || error?.message
+                      || JSON.stringify(error)}
+                </Alert>
+              )}
             </form>
           )}
-          
+
           {activeStep === 1 && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Génération des séances
+            <Box sx={{ textAlign: 'center', p: 3 }}>
+              <CircularProgress size={60} />
+              <Typography variant="h6" sx={{ mt: 2 }}>
+                Génération des séances en cours...
               </Typography>
-              
-              <Paper elevation={3} sx={{ p: 3, my: 2, bgcolor: '#e3f2fd', border: '1px solid #90caf9' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                  <CircularProgress size={60} sx={{ mb: 2, color: '#1976d2' }} />
-                  <Typography variant="h6" gutterBottom color="primary">
-                    Génération en cours...
-                  </Typography>
-                  <Typography variant="body1" sx={{ textAlign: 'center', mb: 2 }}>
-                    L'intelligence artificielle génère des séances adaptées à votre séquence.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-                    Cette opération peut prendre jusqu'à 30 secondes selon la complexité de votre séquence.
-                  </Typography>
-                </Box>
-              </Paper>
-              
-              {error && (
-                <Box sx={{ mt: 2 }}>
-                  <Alert 
-                    severity="error"
-                    action={
-                      <Button color="inherit" size="small" onClick={handleBackToConfig}>
-                        Retour à la configuration
-                      </Button>
-                    }
-                  >
-                    {typeof error === 'string'
-                      ? error
-                      : error?.response?.data?.detail
-                        || error?.message
-                        || JSON.stringify(error)}
-                  </Alert>
-                </Box>
-              )}
+              <Typography variant="body1" color="text.secondary">
+                Veuillez patienter pendant que l'IA prépare les propositions.
+              </Typography>
             </Box>
           )}
-          
+
           {activeStep === 2 && (
             <Box>
-              <Typography variant="h6" gutterBottom>
-                Modification des séances générées
-              </Typography>
-              
+              <Typography variant="h6" gutterBottom>Édition des Séances Proposées</Typography>
               {editedSeances.length > 0 ? (
                 <Box>
-                  <Paper elevation={3} sx={{ p: 3, my: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                  <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                    <Typography variant="h5" gutterBottom>
                       Séance {currentEditIndex + 1} / {editedSeances.length}
                     </Typography>
-                    
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <TextField
-                          label="Titre"
+                          label="Titre de la séance"
                           value={editedSeances[currentEditIndex]?.title || ''}
-                          onChange={(e) => handleEditorChange(currentEditIndex, {
-                            ...editedSeances[currentEditIndex],
-                            title: e.target.value
-                          })}
+                          onChange={(e) => handleEditorChange(currentEditIndex, { title: e.target.value })}
                           fullWidth
-                          required
-                          margin="normal"
+                          sx={{ mb: 2 }}
                         />
                       </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          label="Date"
-                          type="datetime-local"
-                          value={editedSeances[currentEditIndex]?.date ? new Date(editedSeances[currentEditIndex].date).toISOString().slice(0, 16) : ''}
-                          onChange={(e) => handleEditorChange(currentEditIndex, {
-                            ...editedSeances[currentEditIndex],
-                            date: e.target.value
-                          })}
-                          fullWidth
-                          required
-                          InputLabelProps={{ shrink: true }}
-                          margin="normal"
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          label="Durée (minutes)"
-                          type="number"
-                          value={editedSeances[currentEditIndex]?.duration || ''}
-                          onChange={(e) => handleEditorChange(currentEditIndex, {
-                            ...editedSeances[currentEditIndex],
-                            duration: parseInt(e.target.value)
-                          })}
-                          fullWidth
-                          InputProps={{ inputProps: { min: 5 } }}
-                          margin="normal"
-                        />
-                      </Grid>
-                      
                       <Grid item xs={12}>
                         <TextField
-                          label="Notes"
-                          value={editedSeances[currentEditIndex]?.notes || ''}
-                          onChange={(e) => handleEditorChange(currentEditIndex, {
-                            ...editedSeances[currentEditIndex],
-                            notes: e.target.value
-                          })}
-                          fullWidth
+                          label="Description / Déroulement"
                           multiline
-                          rows={4}
-                          margin="normal"
+                          rows={8}
+                          value={editedSeances[currentEditIndex]?.description || ''}
+                          onChange={(e) => handleEditorChange(currentEditIndex, { description: e.target.value })}
+                          fullWidth
+                          sx={{ mb: 2 }}
                         />
                       </Grid>
-                      
-                      {/* Affichage des objectifs associés avec bouton pour ouvrir la modale */}
-                      <Grid item xs={12}>
+                      <Grid item xs={12} md={6}>
                         <Paper variant="outlined" sx={{ p: 2 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle2">
-                              Objectifs associés :
-                            </Typography>
-                            <Button 
-                              variant="outlined" 
-                              size="small" 
-                              onClick={openObjectiveModal}
-                            >
-                              Sélectionner des objectifs
-                            </Button>
+                            <Typography variant="subtitle1">Objectifs Pédagogiques</Typography>
+                            <Button size="small" onClick={openObjectiveModal}>Modifier</Button>
                           </Box>
-                          
-                          {/* Affichage des objectifs sélectionnés */}
                           {editedSeances[currentEditIndex]?.objective_ids?.length > 0 ? (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {editedSeances[currentEditIndex].objective_ids.map((objId) => (
@@ -679,33 +590,39 @@ const ProposeSeances = () => {
                           )}
                         </Paper>
                       </Grid>
-                      
-                      {/* Sélection et affichage des ressources associées */}
-                      <Grid item xs={12}>
+                      <Grid item xs={12} md={6}>
                         <Paper variant="outlined" sx={{ p: 2 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle2">
-                              Ressources associées :
-                            </Typography>
-                            <Button 
-                              variant="outlined" 
-                              size="small" 
-                              onClick={openResourceModal}
-                            >
-                              Sélectionner des ressources
-                            </Button>
+                            <Typography variant="subtitle1">Ressources Associées</Typography>
+                            <Button size="small" onClick={openResourceModal}>Modifier</Button>
                           </Box>
-                          
-                          {/* Affichage des ressources sélectionnées */}
                           {editedSeances[currentEditIndex]?.resource_ids?.length > 0 ? (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {editedSeances[currentEditIndex].resource_ids.map((resId) => (
-                                <Chip 
-                                  key={resId} 
-                                  label={resourcesMap[resId] || allResources.find(r => r.id === resId)?.title || `Ressource ${resId}`} 
-                                  size="small" 
-                                />
-                              ))}
+                              {editedSeances[currentEditIndex].resource_ids.map((resId) => {
+                                // DEBUGGING:
+                                console.log(`--- Débogage pour Ressource ID: ${resId} ---`);
+                                console.log("Contenu de resourcesMap:", JSON.parse(JSON.stringify(resourcesMap)));
+                                // Pour un débogage plus approfondi si nécessaire, décommentez la ligne suivante :
+                                // console.log("Contenu de allResources:", JSON.parse(JSON.stringify(allResources))); 
+                                const resourceFromMap = resourcesMap[resId];
+                                const resourceFromFind = allResources.find(r => r.id === resId);
+                                console.log(`Recherche pour ID ${resId}:`);
+                                console.log("  Titre depuis resourcesMap:", resourceFromMap);
+                                console.log("  Objet ressource depuis allResources.find():", resourceFromFind ? JSON.parse(JSON.stringify(resourceFromFind)) : "Non trouvé");
+                                const finalLabel = resourceFromMap || (resourceFromFind && resourceFromFind.title) || `Ressource ${resId}`;
+                                console.log(`  Label final calculé: ${finalLabel}`);
+                                console.log(`--- Fin débogage pour Ressource ID: ${resId} ---`);
+                                // FIN DEBUGGING
+
+                                return (
+                                  <Chip
+                                    key={resId}
+                                    label={finalLabel}
+                                    size="small"
+                                    sx={{ mr: 1, mb: 1 }}
+                                  />
+                                );
+                              })}
                             </Box>
                           ) : (
                             <Typography variant="body2" color="text.secondary">

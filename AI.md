@@ -11,19 +11,19 @@ Le module se compose principalement de deux fonctions asynchrones dans `backen
 - `generate_ai_resource_content(type_key, subtype_key, input_variables)` :
   1. Récupère le nom de prompt via `PROMPT_REGISTRY` et charge la config YAML correspondante.
   2. Génère le prompt système (`system_prompt`) et le prompt utilisateur (`user_prompt`) via la classe `PromptGenerator`.
-  3. Charge les variables d’environnement (`GOOGLE_API_KEY`, `GEMINI_CHAT_MODEL`).
-  4. Instancie le client Google GenAI (`genai.Client`).
+  3. Charge les variables d’environnement (`GOOGLE_API_KEY`, `GEMINI_CHAT_MODEL`). La clé API est utilisée pour initialiser le client.
+  4. Importe et instancie le client Google GenAI : `from google import genai`, puis `client = genai.Client(api_key=os.getenv('GOOGLE_API_KEY'))`.
   5. Concatène system + user en une seule chaîne et passe en `contents=[ [uploaded_file?, prompt_text] ]` pour la fusion ou `contents=[{"role":"user","parts":[{"text": prompt_text}]}]` pour la génération de contenu.
-  6. Construit dynamiquement `GenerateContentConfig` avec `response_mime_type="application/json"` et, si défini dans YAML, un schéma JSON (`response_schema`) nettoyé et aplati pour le SDK.
-  7. Appelle `client.models.generate_content(...)` pour obtenir `response.text`.
+  6. Construit dynamiquement la configuration de génération : `config = genai.GenerationConfig(response_mime_type="application/json", response_schema=...)` où `response_schema` est le schéma JSON nettoyé et aplati.
+  7. Appelle l'API de manière asynchrone : `response = await client.aio.models.generate_content(model=model_name, contents=..., generation_config=config)` pour obtenir `response.text`.
   8. Parse le JSON brut (`json.loads`) et valide localement (`generator.validate`) sans bloquer en cas d’erreur.
   9. Retourne le dictionnaire Python.
 
 - `merge_ai_resource_content(type_key, subtype_key, data_json, model_path, user_id)` :
   1. Charge les mêmes variables d’environnement.
-  2. Upload du template HTML (ou fichier fourni) via `client.files.upload(...)`.
+  2. Upload du template HTML (ou fichier fourni) via `uploaded_html = client.files.upload(file_path=model_path)`.
   3. Construit un prompt décrivant l’utilisation du template et des données JSON de l’utilisateur.
-  4. Passe `contents=[ [uploaded_file, prompt_text] ]` à `generate_content` pour produire le HTML fusionné.
+  4. Prépare le payload `contents=[uploaded_html, prompt_text]` et appelle l'API de manière asynchrone : `response = await client.aio.models.generate_content(model=model_name, contents=[payload])` pour produire le HTML fusionné.
   5. Écrit le contenu HTML dans un fichier temporaire sous `static/generated_resources/tmp/{user_id}` et renvoie `(chemin, URL)`.
 
 ---
@@ -66,7 +66,7 @@ Le module se compose principalement de deux fonctions asynchrones dans `backen
 
 ## 6. Dépendances
 
-- `google-genai` SDK
+- `google-genai` SDK (remplace `google-generativeai`)
 - `jsonschema` pour validation
 - `jinja2`, `pyyaml` pour templates
 

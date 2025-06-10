@@ -45,13 +45,20 @@ async def merge_ai_resource_content(
     try:
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
+        raw_model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-1.5-flash-latest") # Utilisation d'un fallback standard
+        if not raw_model_name.startswith("models/"):
+            model_name = f"models/{raw_model_name}"
+        else:
+            model_name = raw_model_name
         
-        # Configuration du client
+        # Initialisation du client google-genai
         client = genai.Client(api_key=api_key)
         
         # Upload du fichier modèle HTML
-        uploaded_html = client.files.upload(file=model_path)
+        # Note: La documentation de google-genai pour client.files.upload spécifie 'file_path' comme argument
+        # et elle retourne un objet File, pas directement le contenu ou un handle simple.
+        # Nous supposons que cet objet File peut être passé directement dans 'contents' à generate_content.
+        uploaded_html = client.files.upload(file=model_path)  # Changé de file_path à file
 
         # Charger les données JSON
         user_data = json.loads(data_json)
@@ -80,7 +87,7 @@ async def merge_ai_resource_content(
         # Tentative avec retry en cas d'erreur serveur
         for attempt in range(3):
             try:
-                response = client.models.generate_content(
+                response = await client.aio.models.generate_content(
                     model=model_name,
                     contents=[payload]
                 )

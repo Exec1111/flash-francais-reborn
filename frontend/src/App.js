@@ -41,6 +41,7 @@ import ManageSequenceObjectivesPage from './pages/sequences/ManageSequenceObject
 import NewSequence from './pages/sequences/NewSequence';
 import SequenceEdit from './pages/sequences/SequenceEdit'; 
 // Le composant ProposeSeances a été temporairement retiré pour résoudre un problème d'importation
+import ProposeSeances from './pages/sequences/ProposeSeances'; // Réactivé et déplacé
 import SequenceSummaryResourcePage from './pages/sequences/SequenceSummaryResourcePage';
 import NewSession from './pages/sessions/NewSession';
 import SessionEdit from './pages/sessions/SessionEdit';
@@ -355,7 +356,7 @@ function App() {
         <Route path=":id/objectives/manage" element={<ManageSequenceObjectivesPage />} />
         <Route path=":id" element={<SequenceDetailPage />} /> {/* Doit être APRÈS /:id/objectives/manage */}
         {/* Temporairement désactivé en raison de problèmes d'importation */}
-        <Route path=":id/propose-seances" element={<Navigate to="/dashboard" replace />} />
+        <Route path=":id/propose-seances" element={<ProposeSeances />} />
         <Route path=":id/generate-summary" element={<SequenceSummaryResourcePage />} />
       </Route>
 

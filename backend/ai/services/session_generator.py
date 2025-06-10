@@ -68,9 +68,13 @@ async def generate_ai_sessions(
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash-preview-04-17")
+        raw_model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-1.5-flash-latest") # Utilisation d'un fallback standard
+        if not raw_model_name.startswith("models/"):
+            model_name = f"models/{raw_model_name}"
+        else:
+            model_name = raw_model_name
         
-        # Configuration du client Google GenAI
+        # Initialisation du client google-genai
         client = genai.Client(api_key=api_key)
         
         # Fusionner instructions système et contenu utilisateur en un seul message user
@@ -78,18 +82,20 @@ async def generate_ai_sessions(
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         
         # Obtenir le schéma dynamique pour les séances
-        schema = get_session_json_schema()
+        schema_for_api = get_session_json_schema()
         
         # Nettoyer et préparer le schéma pour l'API Gemini
-        clean_schema(schema)
-        flatten_schema(schema)
-        remove_defaults_from_schema(schema)
+        clean_schema(schema_for_api)
+        flatten_schema(schema_for_api)
+        remove_defaults_from_schema(schema_for_api)
         
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=schema
-        )
-        
+        # Utiliser directement le dictionnaire pour generation_config
+        generation_config_params = {
+            "response_mime_type": "application/json",
+            "response_schema": schema_for_api
+        }
+        config = generation_config_params
+
         prompt_context = {
             "titre_sequence": sequence_title,
             "niveau": niveau,
@@ -101,15 +107,16 @@ async def generate_ai_sessions(
         logger.info(f"Contexte du prompt : {prompt_context}")
         
         # Appel API en JSON
-        logger.info(f"Génération de séances - Modèle : {model_name}")
-        logger.info(f"Génération de séances - Prompt : {prompt_text}...")
-        logger.info(f"Génération de séances - Schema : {schema}")
-        
+        logger.info(f"Génération de séances - Modèle: {model_name}")
+        logger.info(f"Génération de séances - Prompt : {prompt_text[:200]}...")
+        logger.info(f"Génération de séances - Schéma: {schema_for_api}")
+        logger.info(f"Génération de séances - Configuration: {config}")
+
         start_time = time.perf_counter()
-        response = client.models.generate_content(
+        response = await client.aio.models.generate_content(
             model=model_name,
             contents=contents,
-            config=config
+            config=config  # Changé de generation_config à config
         )
         duration_ms = int((time.perf_counter() - start_time) * 1000)
         response_content = response.text.strip()

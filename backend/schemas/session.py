@@ -11,6 +11,7 @@ class SessionBase(BaseModel):
     date: datetime
     notes: str | None = None
     duration: int | None = None  # Durée en minutes (entier)
+    order: Optional[int] = None # Pour gérer l'ordre des séances
     sequence_id: int
 
 class SessionCreate(SessionBase):

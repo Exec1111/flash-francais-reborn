@@ -614,7 +614,11 @@ const ResourceForm = ({
                       }
                     }}
                     selectedStudyObjects={selectedStudyObjects}
-                    prefilledData={prefilledAiData}
+                    prefilledData={{
+                    ...(prefilledAiData || {}),
+                    title: formData.title, // Titre saisi dans ResourceForm
+                    description: formData.description // Description saisie dans ResourceForm
+                  }}
                     readOnlyMode={false} // Toujours autoriser l'édition des champs
                   />
                 </CardContent>

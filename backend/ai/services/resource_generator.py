@@ -67,9 +67,13 @@ async def generate_ai_resource_content(
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-pro-preview-05-06")
+        raw_model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-1.5-flash-latest") # Utilisation d'un fallback standard
+        if not raw_model_name.startswith("models/"):
+            model_name = f"models/{raw_model_name}"
+        else:
+            model_name = raw_model_name
         
-        # Configuration du client Google GenAI
+        # Initialisation du client google-genai
         client = genai.Client(api_key=api_key)
         
         # Fusionner instructions système et contenu utilisateur en un seul message user
@@ -93,6 +97,7 @@ async def generate_ai_resource_content(
         # Activer la trace pour voir ce qui se passe avec Gemini
         logger.info("Début de la préparation de l'appel à l'API Gemini")
 
+        generation_config_params = {}
         if effective_schema_for_api:
             # Copier le schéma pour éviter de modifier l'original en cache par le PromptGenerator
             schema_to_send = copy.deepcopy(effective_schema_for_api)
@@ -101,16 +106,17 @@ async def generate_ai_resource_content(
             clean_schema(schema_to_send)
             flatten_schema(schema_to_send)
             
-            config = types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=schema_to_send
-            )
+            generation_config_params = {
+                "response_mime_type": "application/json",
+                "response_schema": schema_to_send
+            }
         else:
-            config = types.GenerateContentConfig(
-                response_mime_type="application/json" # Toujours demander du JSON
-            )
+            generation_config_params = {
+                "response_mime_type": "application/json" # Toujours demander du JSON
+            }
         
-
+        # Utiliser directement le dictionnaire pour generation_config
+        config = generation_config_params
 
         # Mesure de la durée si non fournie
         start_time = time.perf_counter() if duration_ms is None else None
@@ -120,10 +126,10 @@ async def generate_ai_resource_content(
         logger.info(f"Configuration de génération: {config}")
         
         try:
-            response = client.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
-                config=config
+                config=config  # Changé de generation_config à config
             )
             logger.info("Juste APRES l'appel GEMINI")
             logger.info(f"Réponse GEMINI réussie, longueur du texte: {len(response.text) if response and hasattr(response, 'text') else 'N/A'}")

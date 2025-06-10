@@ -27,6 +27,8 @@ import DialogComponents from './components/DialogComponents';
 const DynamicAIForm = ({
   typeKey,
   subtypeKey,
+  typeId, // Ajout de typeId ici
+  subtypeId, // Ajout de subtypeId ici
   prefilledData,
   onSuccess,
   onCancel
@@ -72,9 +74,11 @@ const DynamicAIForm = ({
   
   // Ajouter explicitement les clés de type aux données du formulaire
   const formDataWithTypes = {
-    ...formData,
+    ...formData, // formData de useFormSchema (devrait inclure title, description via prefilledData)
     typeKey,
-    subtypeKey
+    subtypeKey,
+    typeId,    // Ajout de typeId reçu en prop
+    subtypeId  // Ajout de subtypeId reçu en prop
   };
   
   const {
@@ -134,14 +138,6 @@ const DynamicAIForm = ({
     const currentStep = activeStep;
     setActiveStep((prevStep) => prevStep + 1);
     
-    // Déclencher la génération automatiquement quand on passe à l'étape 1
-    if (currentStep === 0) {
-      // Petit délai pour laisser le temps à l'étape de s'afficher
-      setTimeout(() => {
-        console.log("Déclenchement automatique de la génération");
-        handleSubmit();
-      }, 100);
-    }
   };
   
   const handleBack = () => {

@@ -575,14 +575,20 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
 
       updateProgress("Préparation des données...", "info");
       
-      // Extraire les informations importantes 
-      const title = mergedResults.titre || mergedResults.title || "";
-      const description = mergedResults.description || "";
+      // Extraire les informations importantes de formData (l'argument du hook)
+      // formData contient les données du formulaire, y compris title et description pré-remplis ou saisis.
+      console.log('[DEBUG][handleFinish] Contenu de formData reçu par useSubmitLogic:', JSON.stringify(formData, null, 2));
+
+      const title = formData.title || formData.titre || ""; // formData.title est prioritaire
+      const description = formData.description || "";
+      const typeIdToSubmit = formData.typeId || "1";
+      const subtypeIdToSubmit = formData.subtypeId || "1";
       
-      console.log('[DEBUG][handleFinish] Données extraites des résultats fusionnés:');
-      console.log('- title/titre:', title);
-      console.log('- description:', description);
-      console.log('- html_url:', mergedResults.html_url);
+      console.log('[DEBUG][handleFinish] Valeurs extraites pour la soumission API:');
+      console.log('- Titre (formData.title || formData.titre):', title);
+      console.log('- Description (formData.description):', description);
+      console.log('- Type ID (formData.typeId):', typeIdToSubmit, '(Original formData.typeId:', formData.typeId, ')');
+      console.log('- Subtype ID (formData.subtypeId):', subtypeIdToSubmit, '(Original formData.subtypeId:', formData.subtypeId, ')');
       
       // Préparation du FormData pour l'API
       const apiFormData = new FormData();
@@ -590,8 +596,8 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       // Ajouter les informations de base de la ressource
       apiFormData.append('title', title);
       apiFormData.append('description', description);
-      apiFormData.append('type_id', formData.typeId || "1"); // 1 = exercice par défaut
-      apiFormData.append('sub_type_id', formData.subtypeId || "1"); // 1 = qcm par défaut
+      apiFormData.append('type_id', typeIdToSubmit);
+      apiFormData.append('sub_type_id', subtypeIdToSubmit);
       apiFormData.append('source_type', 'ai');
       apiFormData.append('html_path', mergedResults.html_url);
       
