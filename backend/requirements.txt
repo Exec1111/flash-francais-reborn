@@ -21,7 +21,7 @@ python-multipart
 Werkzeug # Pour secure_filename et potentiellement d'autres utilitaires
 
 # Gemini Google API
-google-generativeai
+google-genai
 # Version compatible, déjà installée normalement
 # google-ai-generativelanguage==0.6.15
 jsonschema>=4.0.0
