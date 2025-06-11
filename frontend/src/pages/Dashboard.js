@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api'; // Importer l'instance API
+import api from '../services/api'; // Importer l'instance API
 import {
   Box,
   Typography,
