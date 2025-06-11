@@ -66,6 +66,9 @@ class Settings(BaseSettings):
         case_sensitive = True
         extra = 'allow'  # Autorise les variables d'environnement supplémentaires
 
+import logging # Assurez-vous que logging est importé
+logger = logging.getLogger(__name__) # Initialiser logger pour ce module
+
 @lru_cache() 
 def get_settings() -> Settings:
     settings = Settings() # Crée l'instance initiale
@@ -75,40 +78,59 @@ def get_settings() -> Settings:
         # En production (Render), utiliser le disque monté
         PRODUCTION_DISK_PATH = "/var/data/uploads-storage"
         settings.UPLOADS_BASE_DIR = Path(PRODUCTION_DISK_PATH) / "uploads"
-        print(f"INFO: Environnement de PRODUCTION détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
+        logger.info(f"Environnement de PRODUCTION détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
+
+        # S'assurer que les URLs de documentation sont actives en production pour le débogage
+        # Ces valeurs surchargeront celles de .env.production si elles sont None
+        if settings.DOCS_URL is None:
+            settings.DOCS_URL = "/docs"
+            logger.info("Forcing DOCS_URL to '/docs' in production as it was None.")
+        if settings.REDOC_URL is None:
+            settings.REDOC_URL = "/redoc"
+            logger.info("Forcing REDOC_URL to '/redoc' in production as it was None.")
+        if settings.OPENAPI_URL is None:
+            settings.OPENAPI_URL = "/openapi.json"
+            logger.info("Forcing OPENAPI_URL to '/openapi.json' in production as it was None.")
     else:
         # En développement, utiliser un dossier local
         settings.UPLOADS_BASE_DIR = BACKEND_ROOT / "local_uploads"
-        print(f"INFO: Environnement de DEVELOPPEMENT détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
+        logger.info(f"Environnement de DEVELOPPEMENT détecté. Uploads dans: {settings.UPLOADS_BASE_DIR}")
 
     # Créer le dossier (local ou prod) s'il n'existe pas
     if settings.UPLOADS_BASE_DIR:
         try:
             os.makedirs(settings.UPLOADS_BASE_DIR, exist_ok=True)
         except OSError as e:
-            print(f"ERROR: Impossible de créer le dossier d'uploads {settings.UPLOADS_BASE_DIR}: {e}")
-            # Vous pourriez vouloir lever une exception ici si le dossier est critique
+            logger.error(f"Impossible de créer le dossier d'uploads {settings.UPLOADS_BASE_DIR}: {e}")
             raise RuntimeError(f"Impossible de créer le dossier d'uploads requis: {settings.UPLOADS_BASE_DIR}") from e
     else:
-        # Gérer le cas où UPLOADS_BASE_DIR n'a pas pu être défini
+        logger.critical("FATAL: UPLOADS_BASE_DIR n'a pas pu être configuré.")
         raise ValueError("FATAL: UPLOADS_BASE_DIR n'a pas pu être configuré.")
 
-    # Vérifier si nous sommes sur Render
+    # Vérifier si nous sommes sur Render et ajuster ENV si nécessaire
     if os.environ.get("RENDER") == "true":
-        # Forcer le mode production
-        settings.ENV = "production"
+        if settings.ENV.lower() != "production":
+            logger.warning(f"Forcing ENV to 'production' as RENDER env var is true (was {settings.ENV}).")
+            settings.ENV = "production"
+            # Réappliquer la logique de documentation si ENV a été changé ici
+            if settings.DOCS_URL is None:
+                settings.DOCS_URL = "/docs"
+                logger.info("Forcing DOCS_URL to '/docs' in production (RENDER env var).")
+            if settings.REDOC_URL is None:
+                settings.REDOC_URL = "/redoc"
+                logger.info("Forcing REDOC_URL to '/redoc' in production (RENDER env var).")
+            if settings.OPENAPI_URL is None:
+                settings.OPENAPI_URL = "/openapi.json"
+                logger.info("Forcing OPENAPI_URL to '/openapi.json' in production (RENDER env var).")
         
-        # Récupérer l'URL de la base de données directement depuis les variables d'environnement
-        render_db_url = os.environ.get("DATABASE_URL")
+        render_db_url = os.environ.get("DATABASE_URL") # Cette variable est fournie par Render
         if render_db_url:
             settings.DATABASE_URL = render_db_url
-        
-        # Les paramètres de documentation sont déjà définis par .env.production
-        # Nous ne les modifions pas ici pour éviter les conflits
+            logger.info(f"Using DATABASE_URL from Render environment variable.")
+        else:
+            logger.warning("RENDER env var is true, but DATABASE_URL env var from Render is not set. Check Render service config.")
     else:
-        # En développement local, utiliser l'URL depuis .env
-        local_db_url = os.environ.get("DATABASE_URL")
-        if local_db_url:
-            settings.DATABASE_URL = local_db_url
+        # En développement local, DATABASE_URL est déjà chargé depuis .env par Pydantic
+        pass
     
     return settings
