@@ -19,26 +19,6 @@ services:
         value: 10000
       - key: RENDER
         value: true
-      # Ajoutez ici d'autres variables d'environnement nécessaires à votre backend
-      # Par exemple, GOOGLE_API_KEY, etc. en les marquant avec sync: false
-
-  # --- NOUVELLE Configuration pour votre Frontend React ---
-  - type: static # Type de service pour un site statique
-    name: flash-francais-frontend # Nom de votre service frontend
-    env: static # Environnement statique
-    rootDir: frontend # Répertoire racine de votre code frontend
-    buildCommand: npm install && npm run build # Commande pour builder votre frontend
-                                            # (adaptez si vous utilisez yarn : yarn install && yarn build)
-    publishDir: build # Répertoire où les fichiers buildés sont placés (par ex. frontend/build)
-                      # Ajustez ce chemin relatif à rootDir, donc si rootDir est 'frontend',
-                      # et que votre build est dans 'frontend/build', alors publishDir est 'build'.
-    envVars:
-      - key: REACT_APP_API_BASE_URL
-        value: https://flash-francais-api.onrender.com
-    routes:
-      - type: rewrite # Règle de réécriture pour les SPAs
-        source: /* # Intercepter toutes les routes
-        destination: /index.html # Rediriger vers index.html
 
 databases:
   - name: flash-francais-db

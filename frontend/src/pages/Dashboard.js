@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../services/api'; // Importer l'instance API
 import {
   Box,
   Typography,
@@ -35,27 +36,14 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('token'); 
-        if (!token) {
-          throw new Error('Token non trouvé');
-        }
-
-        const response = await fetch('/api/v1/dashboard/summary', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'Erreur inconnue' }));
-          throw new Error(errorData.detail || `Erreur HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        setSummary(data);
+        // Le token est automatiquement ajouté par l'intercepteur Axios
+        const response = await api.get('/dashboard/summary');
+        setSummary(response.data);
       } catch (err) {
         console.error("Erreur lors de la récupération du résumé du dashboard:", err);
-        setError(err.message);
+        // L'intercepteur Axios gère déjà la déconnexion en cas de 401
+        // Pour les autres erreurs, on peut afficher le message du backend s'il existe
+        setError(err.response?.data?.detail || err.message || 'Une erreur est survenue');
       } finally {
         setLoading(false);
       }
