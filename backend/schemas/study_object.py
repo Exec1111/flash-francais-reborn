@@ -21,6 +21,7 @@ class StudyObjectRead(StudyObjectBase):
     id: int
     progression_ids: List[int] = []
     resource_ids: List[int] = []
+    user_id: int | None = None
 
     class Config:
         from_attributes = True
@@ -32,7 +33,8 @@ class StudyObjectRead(StudyObjectBase):
             title=orm_obj.title,
             description=orm_obj.description,
             progression_ids=[p.id for p in getattr(orm_obj, 'progressions', [])],
-            resource_ids=[r.id for r in getattr(orm_obj, 'resources', [])]
+            resource_ids=[r.id for r in getattr(orm_obj, 'resources', [])],
+            user_id=getattr(orm_obj, 'user_id', None)
         )
 
 class StudyObjectReadShort(BaseModel):
@@ -66,4 +68,3 @@ if not TYPE_CHECKING:
 StudyObjectRead.model_rebuild()
 StudyObjectReadShort.model_rebuild()
 StudyObjectWithResources.model_rebuild()
-

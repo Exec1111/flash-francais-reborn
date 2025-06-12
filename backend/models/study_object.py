@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -13,6 +13,10 @@ class StudyObject(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # --- Propriété de l'utilisateur ---
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    user = relationship("User", back_populates="study_objects")
 
     progressions = relationship(
         "Progression",

@@ -20,7 +20,7 @@ router = APIRouter(
 
 @router.post("/", response_model=StudyObjectRead)
 def create(obj: StudyObjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_obj = crud.create_study_object(db, obj)
+    db_obj = crud.create_study_object(db, obj, current_user)
     return db_obj
 
 @router.get("/", response_model=PaginatedResponse[StudyObjectRead])
@@ -30,27 +30,27 @@ def read_all(
     limit: int = Query(10, ge=1, le=200, description="Nombre maximum d'éléments à retourner"),
     current_user: User = Depends(get_current_user)
     ):
-    study_objects_data = crud.get_study_objects(db, skip=skip, limit=limit)
+    study_objects_data = crud.get_study_objects(db, current_user, skip=skip, limit=limit)
     pydantic_items = [StudyObjectRead.from_orm_with_resources(item) for item in study_objects_data["items"]]
     return PaginatedResponse(total=study_objects_data["total"], items=pydantic_items)
 
 @router.get("/{obj_id}", response_model=StudyObjectRead)
 def read_one(obj_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_obj = crud.get_study_object(db, obj_id)
+    db_obj = crud.get_study_object(db, obj_id, current_user)
     if not db_obj:
         raise HTTPException(status_code=404, detail="StudyObject not found")
     return StudyObjectRead.from_orm_with_resources(db_obj)
 
 @router.patch("/{obj_id}", response_model=StudyObjectRead)
 def update(obj_id: int, obj: StudyObjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_obj = crud.update_study_object(db, obj_id, obj)
+    db_obj = crud.update_study_object(db, obj_id, obj, current_user)
     if not db_obj:
         raise HTTPException(status_code=404, detail="StudyObject not found")
     return db_obj
 
 @router.delete("/{obj_id}", status_code=204)
 def delete(obj_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    deleted = crud.delete_study_object(db, obj_id)
+    deleted = crud.delete_study_object(db, obj_id, current_user)
     if not deleted:
         raise HTTPException(status_code=404, detail="StudyObject not found")
 

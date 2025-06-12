@@ -1,21 +1,22 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session, selectinload
 from models import StudyObject, Progression, Resource
+from models.user import User
 from schemas.study_object import StudyObjectCreate, StudyObjectUpdate
 
 
-def get_study_object(db: Session, study_object_id: int) -> Optional[StudyObject]:
+def get_study_object(db: Session, study_object_id: int, user: User) -> Optional[StudyObject]:
     return db.query(StudyObject).options(
         selectinload(StudyObject.progressions),
         selectinload(StudyObject.resources)
-    ).filter(StudyObject.id == study_object_id).first()
+    ).filter(StudyObject.id == study_object_id, StudyObject.user_id == user.id).first()
 
 
-def get_study_objects(db: Session, skip: int = 0, limit: int = 100):
+def get_study_objects(db: Session, user: User, skip: int = 0, limit: int = 100):
     query = db.query(StudyObject).options(
         selectinload(StudyObject.progressions), 
         selectinload(StudyObject.resources)
-    )
+    ).filter(StudyObject.user_id == user.id)
     total = query.count()
     items = query.offset(skip).limit(limit).all()
     return {"total": total, "items": items}
@@ -30,8 +31,8 @@ def get_study_objects_by_resource(db: Session, resource_id: int) -> List[StudyOb
     return db.query(StudyObject).join(StudyObject.resources).filter(Resource.id == resource_id).all()
 
 
-def create_study_object(db: Session, obj_in: StudyObjectCreate) -> StudyObject:
-    db_obj = StudyObject(title=obj_in.title, description=obj_in.description)
+def create_study_object(db: Session, obj_in: StudyObjectCreate, user: User) -> StudyObject:
+    db_obj = StudyObject(title=obj_in.title, description=obj_in.description, user_id=user.id)
     if obj_in.progression_ids:
         db_progressions = db.query(Progression).filter(Progression.id.in_(obj_in.progression_ids)).all()
         db_obj.progressions = db_progressions
@@ -44,8 +45,8 @@ def create_study_object(db: Session, obj_in: StudyObjectCreate) -> StudyObject:
     return db_obj
 
 
-def update_study_object(db: Session, study_object_id: int, obj_update: StudyObjectUpdate) -> Optional[StudyObject]:
-    db_obj = get_study_object(db, study_object_id)
+def update_study_object(db: Session, study_object_id: int, obj_update: StudyObjectUpdate, user: User) -> Optional[StudyObject]:
+    db_obj = get_study_object(db, study_object_id, user)
     if not db_obj:
         return None
     update_data = obj_update.model_dump(exclude_unset=True)
@@ -62,8 +63,8 @@ def update_study_object(db: Session, study_object_id: int, obj_update: StudyObje
     return db_obj
 
 
-def delete_study_object(db: Session, study_object_id: int) -> bool:
-    db_obj = get_study_object(db, study_object_id)
+def delete_study_object(db: Session, study_object_id: int, user: User) -> bool:
+    db_obj = get_study_object(db, study_object_id, user)
     if not db_obj:
         return False
     db.delete(db_obj)

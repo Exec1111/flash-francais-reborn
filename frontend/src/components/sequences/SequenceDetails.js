@@ -252,7 +252,7 @@ const SequenceDetails = () => {
               startIcon={<AddIcon />} 
               variant="contained" 
               color="primary"
-              onClick={() => navigate(`/sequences/${id}/sessions/new`)}
+              onClick={() => navigate(`/sessions/new/${id}`)}
             >
               Ajouter une séance
             </Button>

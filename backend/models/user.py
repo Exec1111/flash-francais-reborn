@@ -32,6 +32,7 @@ class User(Base):
     sessions = relationship("Session", back_populates="user")
     objectives = relationship("Objective", back_populates="user")
     progressions = relationship("Progression", back_populates="user")
+    study_objects = relationship("StudyObject", back_populates="user")
 
     # Méthode pour vérifier le mot de passe
     def check_password(self, plain_password: str) -> bool:
