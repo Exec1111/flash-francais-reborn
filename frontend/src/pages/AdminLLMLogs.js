@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from '../services/api';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Dialog, DialogTitle, DialogContent, IconButton, Button, Tooltip } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Dialog, DialogTitle, DialogContent, IconButton, Button, Tooltip, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -13,6 +13,12 @@ const AdminLLMLogs = () => {
   const [loading, setLoading] = useState(true);
   const [openCell, setOpenCell] = useState({row: null, col: null, value: '', title: ''});
   const [refreshing, setRefreshing] = useState(false);
+
+  // États de filtre
+  const [modelFilter, setModelFilter] = useState('');
+  const [promptTypeFilter, setPromptTypeFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [showErrorsOnly, setShowErrorsOnly] = useState(false);
 
   // Fonction pour charger les données
   const loadLogData = async () => {
@@ -62,13 +68,24 @@ const AdminLLMLogs = () => {
     checkAdminAndLoadData();
   }, [user, navigate]);
 
+  // Logs filtrés
+  const filteredLogs = React.useMemo(() => {
+    return logs.filter((log) => {
+      const byModel = modelFilter ? log.model_name?.toLowerCase().includes(modelFilter.toLowerCase()) : true;
+      const byPrompt = promptTypeFilter ? log.prompt_type?.toLowerCase().includes(promptTypeFilter.toLowerCase()) : true;
+      const byUser = userFilter ? String(log.user_id).includes(userFilter) : true;
+      const byError = showErrorsOnly ? !!log.error_message : true;
+      return byModel && byPrompt && byUser && byError;
+    });
+  }, [logs, modelFilter, promptTypeFilter, userFilter, showErrorsOnly]);
+
   if (loading) {
     return <Box display="flex" justifyContent="center" alignItems="center" height="60vh"><CircularProgress /></Box>;
   }
 
   return (
     <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={2}>
         <Typography variant="h5" gutterBottom>Logs d'interactions LLM</Typography>
         <Button 
           variant="contained" 
@@ -79,6 +96,44 @@ const AdminLLMLogs = () => {
         >
           {refreshing ? 'Rafraîchissement...' : 'Rafraîchir'}
         </Button>
+
+        {/* Filtres */}
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <TextField 
+            label="Modèle" 
+            variant="outlined" 
+            value={modelFilter} 
+            onChange={(e) => setModelFilter(e.target.value)}
+          />
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <TextField 
+            label="Type prompt" 
+            variant="outlined" 
+            value={promptTypeFilter} 
+            onChange={(e) => setPromptTypeFilter(e.target.value)}
+          />
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <TextField 
+            label="Utilisateur" 
+            variant="outlined" 
+            value={userFilter} 
+            onChange={(e) => setUserFilter(e.target.value)}
+          />
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id="error-filter-label">Erreurs</InputLabel>
+          <Select
+            labelId="error-filter-label"
+            value={showErrorsOnly ? 'errors' : 'all'}
+            label="Erreurs"
+            onChange={(e) => setShowErrorsOnly(e.target.value === 'errors')}
+          >
+            <MenuItem value="all">Toutes</MenuItem>
+            <MenuItem value="errors">Avec erreur</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
       <TableContainer component={Paper} sx={{ maxHeight: '75vh' }}>
         <Table size="small" sx={{ '& .MuiTableCell-root': { fontSize: '0.65rem', padding: '3px 6px' } }}>
@@ -95,13 +150,15 @@ const AdminLLMLogs = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {(logs || []).map((log, rowIdx) => (
+            {(filteredLogs || []).map((log, rowIdx) => (
               <TableRow key={log.id}>
                 <TableCell>
                   <span style={{fontSize:'0.65rem',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</span>
                 </TableCell>
                 <TableCell>
-                  <span style={{fontSize:'0.65rem',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.model_name}</span>
+                  <Tooltip title={log.model_name}>
+                    <span style={{fontSize:'0.65rem',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.model_name}</span>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
                   <span style={{fontSize:'0.65rem',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block',verticalAlign:'middle'}}>{log.prompt_type}</span>
