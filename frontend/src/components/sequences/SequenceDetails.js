@@ -237,43 +237,6 @@ const SequenceDetails = () => {
             onClick={(obj) => navigate(`/study-objects/${obj.id}`)}
           />
           
-          <Divider sx={{ my: 3 }} />
-          
-          <Typography variant="h6" gutterBottom>
-            Séances
-          </Typography>
-          {sequence.sessions && sequence.sessions.length > 0 ? (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              {sequence.sessions.map(session => (
-                <Grid item xs={12} sm={6} md={4} key={session.id}>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ p: 2, height: '100%', cursor: 'pointer' }}
-                    onClick={() => navigate(`/sessions/${session.id}`)}
-                  >
-                    <Typography variant="subtitle1" gutterBottom>
-                      {session.title}
-                    </Typography>
-                    {session.date && (
-                      <Typography variant="body2" color="text.secondary">
-                        Date: {session.date}
-                      </Typography>
-                    )}
-                    {session.duration && (
-                      <Typography variant="body2" color="text.secondary">
-                        Durée: {session.duration} minutes
-                      </Typography>
-                    )}
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              Aucune séance dans cette séquence.
-            </Typography>
-          )}
-          
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
             <Button 
               onClick={() => navigate(-1)} 
