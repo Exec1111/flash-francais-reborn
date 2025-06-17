@@ -119,7 +119,10 @@ const ResourceList = () => {
           <IconButton size="small" title="Voir" data-action="view" onClick={() => handleViewResource(params.row.id)}>
             <VisibilityIcon />
           </IconButton>
-          <IconButton size="small" title="Modifier" data-action="edit" onClick={() => handleEditResource(params.row.id)}>
+          <IconButton size="small" title="Modifier" data-action="edit" onClick={(event) => {
+            event.stopPropagation();
+            handleEditResource(params.row.id);
+          }}>
             <EditIcon />
           </IconButton>
           <IconButton size="small" title="Supprimer" color="error" data-action="delete" onClick={() => handleDeleteResource(params.row.id)}>
@@ -242,6 +245,7 @@ const ResourceList = () => {
   };
 
   const handleEditResource = (id) => {
+    console.log('Calling handleEditResource with id:', id, 'and navigating to:', `/resources/${id}/edit`);
     navigate(`/resources/${id}/edit`);
   };
 
@@ -454,9 +458,10 @@ const ResourceList = () => {
               onPageChange={(newPage) => handlePageChange(null, newPage + 1)}
               onCellClick={(params, event) => {
                 // Désactiver la sélection, gérer la navigation via le titre ou les boutons actions
-                if (params.field === 'title') {
-                  navigate(`/resources/${params.row.id}`);
-                }
+                // The following problematic navigation has been removed:
+                // if (params.field === 'title') {
+                //   navigate(`/resources/${params.row.id}`);
+                // }
               }}
             />
           </Paper>
@@ -488,10 +493,14 @@ const ResourceList = () => {
                           variant: 'h6',
                           fontWeight: 'bold',
                           color: 'primary.main',
-                          sx: { cursor: 'pointer' } // Added cursor pointer here
+                          sx: { cursor: 'pointer' }
                         }}
                         sx={{ pb: 0 }}
-                        onClick={() => navigate(`/resources/view/${resource.id}`)} // Added onClick handler here
+                        onClick={(event) => {
+                          event.stopPropagation(); // Prevent event bubbling
+                          console.log('Navigating to resource view from CardHeader, resource.id:', resource.id);
+                          navigate(`/resources/view/${resource.id}`);
+                        }}
                       />
                       <CardContent sx={{ pt: 1, pb: 1, flex: 1 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -514,7 +523,10 @@ const ResourceList = () => {
                           <IconButton size="small" title="Voir" onClick={() => handleViewResource(resource.id)}>
                             <VisibilityIcon />
                           </IconButton>
-                          <IconButton size="small" title="Modifier" onClick={() => handleEditResource(resource.id)}>
+                          <IconButton size="small" title="Modifier" onClick={(event) => {
+                            event.stopPropagation();
+                            handleEditResource(resource.id);
+                          }}>
                             <EditIcon />
                           </IconButton>
                         </Box>
