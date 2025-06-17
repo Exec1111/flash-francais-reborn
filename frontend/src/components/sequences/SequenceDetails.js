@@ -54,7 +54,7 @@ const SequenceDetails = () => {
         setLoading(true);
         setStudyObjectDetailsLoading(true);
         setError('');
-        const sequenceData = await sequenceService.getSequenceWithObjects(id);
+        const sequenceData = await sequenceService.getSequenceById(id);
         console.log("Données de la séquence reçues:", sequenceData);
         setSequence(sequenceData);
 
