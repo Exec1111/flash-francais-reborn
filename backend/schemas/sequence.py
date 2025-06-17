@@ -85,6 +85,7 @@ class SequenceWithObjects(BaseModel):
     level: Optional[str] = None
     objectives: List['ObjectiveRead'] = []
     resources: List['ResourceRead'] = []
+    study_objects: List['StudyObjectWithResources'] = []
     bilan_resource_id: Optional[int] = None
     bilan_resource: Optional['ResourceRead'] = None
     

@@ -212,6 +212,7 @@ async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, 
         "description": sequence.description,
         "level": getattr(sequence, "level", "B1"),  # Valeur par défaut si le niveau n'est pas défini
         "objectives": sequence.objectives,
+        "study_objects": sequence.study_objects,
         "resources": resources,
         "bilan_resource_id": sequence.bilan_resource_id,
         "bilan_resource": sequence.bilan_resource

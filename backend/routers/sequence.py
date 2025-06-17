@@ -105,16 +105,18 @@ def read_sequences_by_progression_route(
     )
     return sequences
 
-@sequence_router.get("/{sequence_id}", response_model=SequenceRead)
-def read_sequence_route(
+@sequence_router.get("/{sequence_id}", response_model=SequenceWithObjects)
+async def read_sequence_route(
     sequence_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    db_sequence = crud.get_sequence(db, sequence_id=sequence_id)
-    if db_sequence is None:
+    db_sequence_data = await crud.sequence.get_sequence_with_objects(db, sequence_id=sequence_id)
+    if db_sequence_data is None:
         raise HTTPException(status_code=404, detail="Sequence not found")
-    return SequenceRead.from_orm_with_study_objects(db_sequence)
+    
+    # Pydantic will validate the dictionary against the response_model
+    return db_sequence_data
 
 @sequence_router.post("/{sequence_id}/study-objects/{study_object_id}", response_model=SequenceRead)
 def add_study_object(
