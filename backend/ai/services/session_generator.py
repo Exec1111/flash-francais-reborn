@@ -22,6 +22,7 @@ from backend.database import SessionLocal
 async def generate_ai_sessions(
     sequence_id: int,
     sequence_title: str,
+    description_sequence: str,
     niveau: str,
     nombre_seances: str,
     inclure_ressources: bool,
@@ -37,6 +38,7 @@ async def generate_ai_sessions(
     Args:
         sequence_id: ID de la séquence pour laquelle générer des séances
         sequence_title: Titre de la séquence
+        description_sequence: Description de la séquence
         niveau: Niveau des apprenants (A1-C2)
         nombre_seances: Nombre de séances à générer ou "auto"
         inclure_ressources: Si True, inclure des ressources dans les séances
@@ -53,6 +55,7 @@ async def generate_ai_sessions(
         input_variables = {
             "nombre_seances": nombre_seances,
             "titre_sequence": sequence_title,
+            "description_sequence": description_sequence,
             "niveau": niveau,
             "inclure_ressources": inclure_ressources,
             "ressources_disponibles": ressources_disponibles,
@@ -98,6 +101,7 @@ async def generate_ai_sessions(
 
         prompt_context = {
             "titre_sequence": sequence_title,
+            "description_sequence": description_sequence,
             "niveau": niveau,
             "nombre_seances": nombre_seances,
             "objectifs": objectifs,

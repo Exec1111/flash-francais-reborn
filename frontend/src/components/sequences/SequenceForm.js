@@ -349,14 +349,18 @@ const SequenceForm = ({
 
         {/* --- Section Gestion des Objets d'Étude --- */}
         <Grid item xs={12}>
-          <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
-            Objets d'étude associés ({selectedStudyObjects.length})
-          </Typography>
-          {process.env.NODE_ENV !== 'production' && (
-            <Typography variant="caption" color="secondary">
-              progression_id DEBUG: {String(formData.progression_id)}
+          <CardHeader title="Objets d'étude associés" action={
+            <Tooltip title="Ajouter des objets d'étude">
+              <IconButton aria-label="add study object" onClick={handleOpenStudyObjectModal} size="large" color="primary">
+                +
+              </IconButton>
+            </Tooltip>
+          } />
+          <Box sx={{ px: 2, pb: 1 }}>
+            <Typography variant="caption" color="warning.main" sx={{ fontStyle: 'italic' }}>
+              Vous ne pouvez rattacher que des objets d'étude connus par votre progression.
             </Typography>
-          )}
+          </Box>
           <Button
             variant="outlined"
             onClick={handleOpenStudyObjectModal}

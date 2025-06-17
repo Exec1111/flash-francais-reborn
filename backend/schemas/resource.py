@@ -35,6 +35,7 @@ class ResourceBase(BaseModel):
     type_id: int
     sub_type_id: Optional[int] = None
     source_type: str  # 'file' ou 'ai'
+    file_path: Optional[str] = None # Ajout pour le computed field
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
     study_object_ids: Optional[List[int]] = None
@@ -111,6 +112,20 @@ class ResourceRead(ResourceBase):
     id: int
     sessions: List[SessionReadSimple] = []
     objectives: List[ObjectiveIdentifier] = []
+
+    @computed_field(return_type=Optional[str])
+    @property
+    def html_content_url(self) -> Optional[str]:
+        # 'self' est ici l'instance du modèle SQLAlchemy 'Resource'
+        # grâce à from_attributes=True
+        if self.source_type == 'ai' and self.file_path:
+            # Note: The base URL part (e.g., http://localhost:8000) is handled by the browser.
+            # We just need to provide the absolute path.
+            # The frontend consistently uses /media/uploads/ for all resources.
+            # There might be a background process moving AI files.
+            # We align with the working frontend implementation.
+            return f"/media/uploads/{self.file_path}"
+        return None
 
     class Config:
         from_attributes = True

@@ -43,6 +43,8 @@ class SequenceRead(BaseModel):
     sessions: List['SessionRead'] = []
     study_object_ids: List[int] = [] # Peut être redondant si StudyObjectWithResources les inclut, ou utile pour un accès rapide
     study_objects: List['StudyObjectWithResources'] = []
+    bilan_resource_id: Optional[int] = None
+    bilan_resource: Optional['ResourceRead'] = None
 
     class Config:
         from_attributes = True
@@ -59,6 +61,8 @@ class SequenceRead(BaseModel):
             sessions=[SessionRead.from_orm(sess) for sess in getattr(sequence_orm, 'sessions', [])],
             study_object_ids=[obj.id for obj in getattr(sequence_orm, 'study_objects', [])],
             study_objects=[StudyObjectWithResources.from_orm(obj) for obj in getattr(sequence_orm, 'study_objects', [])],
+            bilan_resource_id=getattr(sequence_orm, 'bilan_resource_id', None),
+            bilan_resource=ResourceRead.from_orm(sequence_orm.bilan_resource) if getattr(sequence_orm, 'bilan_resource', None) else None,
         )
 
 # Les imports directs pour model_rebuild ne sont plus nécessaires si tout est en forward ref
@@ -81,6 +85,8 @@ class SequenceWithObjects(BaseModel):
     level: Optional[str] = None
     objectives: List['ObjectiveRead'] = []
     resources: List['ResourceRead'] = []
+    bilan_resource_id: Optional[int] = None
+    bilan_resource: Optional['ResourceRead'] = None
     
     class Config:
         from_attributes = True

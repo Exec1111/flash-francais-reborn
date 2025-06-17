@@ -102,7 +102,7 @@ const DynamicAIForm = ({
     handleMergeAll,
     handleFinish,
     updateProgress
-  } = useSubmitLogic(formDataWithTypes, validateForm, handleSuccess);
+  } = useSubmitLogic(formDataWithTypes, validateForm, handleFinalSuccess);
   
   // Indicateur de chargement global
   const isLoading = schemaLoading || submitLoading;
@@ -117,22 +117,27 @@ const DynamicAIForm = ({
   
   // Gestionnaire de succès final (pour la finalisation)
   function handleFinalSuccess(result) {
-    if (onSuccess && typeof onSuccess === 'function') {
+    console.log(`[DEBUG] DynamicAIForm.jsx -> handleFinalSuccess: Résultat reçu.`, result);
+    setMergeSuccess(true);
+    if (onSuccess) {
+      console.log(`[DEBUG] DynamicAIForm.jsx -> handleFinalSuccess: Appel du callback onSuccess parent (de ResourceForm).`);
       onSuccess(result);
+    } else {
+      console.warn(`[DEBUG] DynamicAIForm.jsx -> handleFinalSuccess: Pas de callback onSuccess parent à appeler.`);
     }
     setShowSuccess(true);
     setSuccessMessage("Ressource générée et enregistrée avec succès !");
-  }
+  };
   
   // Gestionnaire d'annulation
-  const handleCancel = () => {
+  function handleCancel() {
     if (onCancel && typeof onCancel === 'function') {
       onCancel();
     }
   };
   
   // Gestionnaires de navigation entre les étapes
-  const handleNext = () => {
+  function handleNext() {
     // Si on passe de l'étape de configuration à l'étape de génération (0 -> 1),
     // déclencher automatiquement la génération
     const currentStep = activeStep;
@@ -140,7 +145,7 @@ const DynamicAIForm = ({
     
   };
   
-  const handleBack = () => {
+  function handleBack() {
     setActiveStep((prevStep) => prevStep - 1);
   };
   
@@ -178,7 +183,7 @@ const DynamicAIForm = ({
   ];
   
   // Rendu conditionnel de l'étape active
-  const renderStepContent = () => {
+  function renderStepContent() {
     switch (activeStep) {
       case 0:
         return (
@@ -222,10 +227,8 @@ const DynamicAIForm = ({
           <MergeStep 
             mergedResults={mergedResults}
             onMergeAll={handleMergeAll}
-            onFinish={(result) => {
-              handleFinish(result);
-              // Appeler le callback de succès final ici pour déclencher la redirection
-              handleFinalSuccess(result);
+            onFinish={() => {
+              handleFinish();
             }}
             onPrev={handleBack}
             isLoading={isLoading}

@@ -4,7 +4,7 @@ import { Box, Container, Typography, Paper, CircularProgress } from '@mui/materi
 import SequenceSummaryResourceGenerator from '../../components/sequences/SequenceSummaryResourceGenerator';
 
 /**
- * Page pour générer un résumé de séquence pédagogique
+ * Page pour générer un bilan de fin de séquence pédagogique
  */
 const SequenceSummaryResourcePage = () => {
   const { id } = useParams();
@@ -38,7 +38,7 @@ const SequenceSummaryResourcePage = () => {
       <Box sx={{ mt: 4, mb: 4 }}>
         <Paper sx={{ p: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Générer un résumé de séquence
+            Générer un bilan de fin de séquence
           </Typography>
           <Typography variant="body1" color="text.secondary" paragraph>
             Créez une ressource pédagogique résumant la séquence sélectionnée et ses composants.

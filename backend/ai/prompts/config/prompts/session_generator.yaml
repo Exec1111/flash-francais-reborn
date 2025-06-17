@@ -8,6 +8,9 @@ user_prompt_template: |
   Je souhaite créer {{ nombre_seances }} séance(s) pour une séquence pédagogique en français avec les caractéristiques suivantes :
   
   Niveau des apprenants : {{ niveau }}
+  {% if description_sequence %}
+  Description de la séquence : {{ description_sequence }}
+  {% endif %}
   {% if study_objects %}
   Objets d'étude de la séquence :
   {% for study_object in study_objects %}
@@ -47,10 +50,14 @@ parameters:
   - name: titre_sequence
     type: str
     description: Titre de la séquence pédagogique pour laquelle générer des séances
+  - name: description_sequence
+    type: str
+    description: Description courte de la séquence pédagogique
   - name: niveau
     type: str
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
+  - name: inclure_ressources
     type: bool
     description: Indique si les ressources doivent être incluses dans les séances
   - name: ressources_disponibles
@@ -91,7 +98,7 @@ parameters:
     default: ""
 
 constraints:
-  - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants.
+  - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants et la description fournie.
   - Les séances doivent inclure des activités variées et complémentaires.
   - L'ensemble des séances doit couvrir tous les objectifs pédagogiques.
   - Les dates des séances doivent être réalistes et progressives.

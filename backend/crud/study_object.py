@@ -72,8 +72,9 @@ def delete_study_object(db: Session, study_object_id: int, user: User) -> bool:
     return True
 
 
-def attach_to_progression(db: Session, study_object_id: int, progression_id: int) -> StudyObject:
-    db_obj = get_study_object(db, study_object_id)
+def attach_to_progression(db: Session, study_object_id: int, progression_id: int, user: User | None = None) -> StudyObject:
+    # Récupérer l'objet d'étude, avec ou sans filtre utilisateur selon disponibilité
+    db_obj = get_study_object(db, study_object_id, user) if user else db.query(StudyObject).filter(StudyObject.id == study_object_id).first()
     db_prog = db.query(Progression).filter(Progression.id == progression_id).first()
     if not db_obj or not db_prog:
         raise ValueError("StudyObject or Progression not found")
@@ -83,8 +84,8 @@ def attach_to_progression(db: Session, study_object_id: int, progression_id: int
     return db_obj
 
 
-def detach_from_progression(db: Session, study_object_id: int, progression_id: int) -> StudyObject:
-    db_obj = get_study_object(db, study_object_id)
+def detach_from_progression(db: Session, study_object_id: int, progression_id: int, user: User | None = None) -> StudyObject:
+    db_obj = get_study_object(db, study_object_id, user) if user else db.query(StudyObject).filter(StudyObject.id == study_object_id).first()
     if not db_obj:
         raise ValueError("StudyObject not found")
     db_obj.progressions = [p for p in db_obj.progressions if p.id != progression_id]

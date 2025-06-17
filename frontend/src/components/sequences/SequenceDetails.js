@@ -12,20 +12,24 @@ import {
   CircularProgress,
   Alert,
   Box,
-  Paper
+  Paper,
+  Link
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
   Delete as DeleteIcon,
   Add as AddIcon,
   AssignmentTurnedIn as ObjectiveIcon,
-  Summarize as SummarizeIcon
-} from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
+  Summarize as SummarizeIcon,
+  Launch as LaunchIcon
+ } from '@mui/icons-material';
+import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
 import studyObjectService from '../../services/studyObjectService';
 import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 import SequenceSummaryResourceGenerator from './SequenceSummaryResourceGenerator';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
 
 /**
  * Composant affichant les détails d'une séquence et permettant
@@ -41,6 +45,7 @@ const SequenceDetails = () => {
   const [studyObjectDetailsLoading, setStudyObjectDetailsLoading] = useState(false);
   const [studyObjectHasResources, setStudyObjectHasResources] = useState(false);
   const [summaryGeneratorOpen, setSummaryGeneratorOpen] = useState(false);
+  
 
   // Charger les détails de la séquence
   useEffect(() => {
@@ -49,7 +54,8 @@ const SequenceDetails = () => {
         setLoading(true);
         setStudyObjectDetailsLoading(true);
         setError('');
-        const sequenceData = await sequenceService.getSequenceById(id);
+        const sequenceData = await sequenceService.getSequenceWithObjects(id);
+        console.log("Données de la séquence reçues:", sequenceData);
         setSequence(sequenceData);
 
         if (sequenceData && sequenceData.study_objects && sequenceData.study_objects.length > 0) {
@@ -145,15 +151,16 @@ const SequenceDetails = () => {
               >
                 Proposer des séances
               </Button>
+
               <Button
                 variant="contained"
-                color="secondary"
+                color={sequence?.bilan_resource ? 'secondary' : 'primary'}
                 startIcon={<SummarizeIcon />}
                 onClick={() => navigate(`/sequences/${id}/generate-summary`)}
                 sx={{ mr: 2 }}
-                title="Générer un résumé de cette séquence comme ressource pédagogique"
+                title={sequence?.bilan_resource ? 'Re-générer le bilan de cette séquence' : 'Générer un bilan de cette séquence'}
               >
-                Générer un résumé
+                {sequence?.bilan_resource ? 'Re-générer le bilan' : 'Générer le bilan'}
               </Button>
               <Button
                 variant="contained"
@@ -176,6 +183,26 @@ const SequenceDetails = () => {
           <Typography variant="body1" color="text.secondary" paragraph>
             {sequence.description || "Aucune description disponible."}
           </Typography>
+
+          {sequence?.bilan_resource?.html_content_url && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Bilan de fin de séquence
+                </Typography>
+                <Link
+                  href={`${API_BASE_URL}${sequence.bilan_resource.html_content_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ display: 'flex', alignItems: 'center' }}
+                >
+                  <LaunchIcon sx={{ mr: 0.5 }} />
+                  Voir le bilan
+                </Link>
+              </Box>
+            </>
+          )}
         
           <Divider sx={{ my: 3 }} />
           
@@ -249,14 +276,6 @@ const SequenceDetails = () => {
           
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
             <Button 
-              startIcon={<AddIcon />} 
-              variant="contained" 
-              color="primary"
-              onClick={() => navigate(`/sessions/new/${id}`)}
-            >
-              Ajouter une séance
-            </Button>
-            <Button 
               onClick={() => navigate(-1)} 
               variant="outlined"
             >
@@ -266,7 +285,7 @@ const SequenceDetails = () => {
         </CardContent>
       </Card>
       
-      {/* Le composant pour générer un résumé de séquence a été déplacé vers une page dédiée */}
+      {/* Le composant pour générer un bilan de fin de séquence a été déplacé vers une page dédiée */}
     </Container>
   );
 };

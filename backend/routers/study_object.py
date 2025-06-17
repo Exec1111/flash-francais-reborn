@@ -55,16 +55,20 @@ def delete(obj_id: int, db: Session = Depends(get_db), current_user: User = Depe
         raise HTTPException(status_code=404, detail="StudyObject not found")
 
 @router.post("/{obj_id}/progressions/{pid}", response_model=StudyObjectRead)
-def attach_prog(obj_id: int, pid: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def attach_prog(obj_id: int, pid: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Attache un objet d'étude à une progression"""
     try:
-        return crud.attach_to_progression(db, obj_id, pid)
+        db_obj = crud.attach_to_progression(db, obj_id, pid, current_user)
+        return StudyObjectRead.from_orm_with_resources(db_obj)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{obj_id}/progressions/{pid}", response_model=StudyObjectRead)
-def detach_prog(obj_id: int, pid: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def detach_prog(obj_id: int, pid: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Détache un objet d'étude d'une progression"""
     try:
-        return crud.detach_from_progression(db, obj_id, pid)
+        db_obj = crud.detach_from_progression(db, obj_id, pid, current_user)
+        return StudyObjectRead.from_orm_with_resources(db_obj)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

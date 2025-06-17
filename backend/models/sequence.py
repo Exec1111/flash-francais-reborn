@@ -39,3 +39,7 @@ class Sequence(Base):
         secondary=sequence_study_object,
         back_populates="sequences"
     )
+
+    # --- Bilan de fin de séquence ---
+    bilan_resource_id = Column(Integer, ForeignKey("resources.id"), nullable=True)
+    bilan_resource = relationship("Resource", foreign_keys=[bilan_resource_id])

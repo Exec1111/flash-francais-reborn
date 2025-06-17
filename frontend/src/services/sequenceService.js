@@ -180,6 +180,35 @@ const sequenceService = {
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors de la récupération des séances de la séquence" };
     }
+  },
+
+  /**
+   * Attache un bilan à une séquence
+   * @param {number} sequenceId - ID de la séquence
+   * @param {number} resourceId - ID de la ressource à attacher
+   * @returns {Promise} - Promesse avec la réponse
+   */
+  attachBilan: async (sequenceId, resourceId) => {
+    try {
+      const response = await api.post(`${SEQUENCES_ENDPOINT}/${sequenceId}/bilan/${resourceId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de l'attachement du bilan à la séquence" };
+    }
+  },
+
+  /**
+   * Retire le bilan d'une séquence
+   * @param {number} sequenceId - ID de la séquence
+   * @returns {Promise} - Promesse avec la réponse
+   */
+  removeBilan: async (sequenceId) => {
+    try {
+      const response = await api.delete(`${SEQUENCES_ENDPOINT}/${sequenceId}/bilan`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la suppression du bilan de la séquence" };
+    }
   }
 };
 

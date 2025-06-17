@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import resourceService from '../../../services/resourceService';
+import api from '../../../services/api';
 
 /**
  * Hook personnalisé pour gérer la logique de soumission du formulaire
@@ -78,20 +79,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
             return [];
           }
           
-          // Appel à l'API pour récupérer les séances de la séquence
-          const response = await fetch(`${API_BASE_URL}/api/v1/sequences/${sequenceId}/sessions`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (!response.ok) {
-            console.error('[ERROR][fetchSequenceSessions] Erreur lors de la récupération des séances:', response.status);
-            return [];
-          }
-          
-          const sessionsBasic = await response.json();
+          // Utiliser l'instance api (axios) qui gère déjà le token et la base URL
+          const response = await api.get(`/sequences/${sequenceId}/sessions`);
+          const sessionsBasic = response.data;
           console.log('[DEBUG][fetchSequenceSessions] Séances de base récupérées:', sessionsBasic);
           
           // Récupérer les détails complets de chaque séance avec leurs ressources enrichies
@@ -397,9 +387,10 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         updateProgress("Génération réussie", "success");
         
         // Si un callback de succès est fourni, l'appeler
-        if (onSuccess) {
-          onSuccess(result.content);
-        }
+        // Nous le commentons car il est prématuré. Le vrai onSuccess est appelé dans handleFinish.
+        // if (onSuccess) {
+        //   onSuccess(result.content);
+        // }
       } else {
         throw new Error("Aucun contenu généré");
       }

@@ -182,7 +182,7 @@ async def get_sequence_with_objects_endpoint(
 ):
     """
     Récupère une séquence avec tous ses objets associés (objectifs, ressources, etc.)
-    pour générer un résumé complet.
+    pour générer un bilan de fin de séquence complet.
     """
     # Récupérer la séquence avec ses objets associés
     sequence_data = await crud.sequence.get_sequence_with_objects(db, sequence_id)
@@ -256,3 +256,45 @@ def get_sequence_sessions_route(
     } for session in db_sequence.sessions]
     
     return sessions
+
+# ------------------- Bilan de fin de séquence -------------------
+
+@sequence_router.post("/{sequence_id}/bilan/{resource_id}", response_model=SequenceRead)
+def attach_bilan_resource(
+    sequence_id: int,
+    resource_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Attache ou remplace le bilan de fin de séquence par la ressource donnée."""
+    sequence = crud.get_sequence(db, sequence_id)
+    if not sequence:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    if sequence.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+    
+    try:
+        updated_seq = crud.sequence.set_bilan_resource(db, sequence_id, resource_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return SequenceRead.from_orm_with_study_objects(updated_seq)
+
+
+@sequence_router.delete("/{sequence_id}/bilan", response_model=SequenceRead)
+def remove_bilan(
+    sequence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Supprime le bilan existant (et la ressource associée)."""
+    seq = crud.get_sequence(db, sequence_id)
+    if not seq:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    if seq.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+    
+    try:
+        updated = crud.sequence.remove_bilan_resource(db, sequence_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return SequenceRead.from_orm_with_study_objects(updated)

@@ -338,6 +338,7 @@ async def merge_resource(
 # Création de nouveaux schémas pour la génération de séances
 class AISessionGenerationRequest(BaseModel):
     sequence_id: int
+    description_sequence: str | None = None
     nombre_seances: str  # nombre numérique ou "auto"
     inclure_ressources: bool = False
     instructions_supplementaires: str = ""
@@ -437,13 +438,15 @@ async def generate_sessions(
         generation_result = await ai_resource_service.generate_ai_sessions(
             sequence_id=request.sequence_id,
             sequence_title=sequence.title,
+            description_sequence=request.description_sequence or sequence.description or "",
             niveau=request.niveau,
             nombre_seances=request.nombre_seances,
             inclure_ressources=request.inclure_ressources,
             ressources_disponibles=ressources_disponibles,
             objectifs=objectifs,
             study_objects=formatted_study_objects,
-            instructions_supplementaires=request.instructions_supplementaires
+            instructions_supplementaires=request.instructions_supplementaires,
+            user_id=current_user.id
         )
         
         # Vérifier que nous avons bien les séances dans la réponse

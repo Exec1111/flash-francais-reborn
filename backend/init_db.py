@@ -136,6 +136,7 @@ def seed_reference_data(db: Session):
     {'key': 'CHAMPLEX2', 'parent_type_key': 'EXERCICE', 'value': 'Champ lexical simple'},
     {'key': 'MOTS-CROISES', 'parent_type_key': 'EXERCICE', 'value': 'Mots croisés'},
     {'key': 'LECONCOMPLETE1', 'parent_type_key': 'LECON', 'value': 'leçon / cours'},
+    {'key': 'SEQUENCE_SUMMARY', 'parent_type_key': 'LECON', 'value': 'Bilan de fin de séquence'},
     {'key': 'TEXTE', 'parent_type_key': 'OEUVRE', 'value': 'Extrait de texte'},
     {'key': 'OEUVRE_SUB', 'parent_type_key': 'OEUVRE', 'value': 'Oeuvre complète'}]
     # ===============================================================

@@ -134,7 +134,7 @@ async def merge_ai_resource_content(
         os.makedirs(static_gen_dir, exist_ok=True)
         
         # Génération d'un nom de fichier unique
-        html_filename = f"qcm_{uuid.uuid4().hex}.html"
+        html_filename = f"{uuid.uuid4().hex}.html"
         html_path = os.path.join(static_gen_dir, html_filename)
         
         # Écriture du fichier HTML généré

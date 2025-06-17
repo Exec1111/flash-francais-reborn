@@ -53,7 +53,8 @@ const ResourceForm = ({
   // Nouvelles options pour masquer certains champs
   hideTypeSelection = false,
   hideStudyObjectSelection = false,
-  forcedType = null
+  forcedType = null,
+  disableNavigation = false,
 }) => {
   // --- Utiliser useNavigate pour la redirection ---
   const navigate = useNavigate(); 
@@ -309,7 +310,8 @@ const ResourceForm = ({
         
         // Appeler la fonction onSuccess si fournie
         if (onSuccess) {
-            onSuccess(response);
+            // Attendre la complétion du callback (important si navigation/détachements doivent suivre)
+            await onSuccess(response);
         }
         
         // Réinitialiser les champs du formulaire si création
@@ -322,6 +324,11 @@ const ResourceForm = ({
         // Si on est en mode dialogue, fermer le dialogue
         if (isDialog && onClose) {
             onClose();
+        }
+
+        // Redirection automatique uniquement si autorisée
+        if (!disableNavigation && !isDialog) {
+            navigate('/resources');
         }
     } catch (err) {
         console.error("Erreur lors de la sauvegarde de la ressource:", err);
@@ -603,14 +610,25 @@ const ResourceForm = ({
                     typeId={selectedType?.id || forcedType?.typeId}
                     subtypeId={selectedSubType?.id || forcedType?.subtypeId}
                     onSubmit={handleSubmit}
-                    onSuccess={(generatedContent) => {
+                                        onSuccess={(createdResource) => {
+                      console.log('[DEBUG] ResourceForm.js -> onSuccess de DynamicAIForm: Callback déclenché.', { createdResource });
                       setSuccess('Ressource générée avec succès!');
+
+                      // D'ABORD, appeler le callback onSuccess principal fourni à ResourceForm
+                      // pour permettre des actions comme attachBilan AVANT toute navigation.
+                      if (onSuccess) { // 'onSuccess' ici est la prop de ResourceForm
+                        console.log('[DEBUG] ResourceForm.js: Appel du onSuccess parent (de SequenceSummaryResourceGenerator).');
+                        onSuccess(createdResource);
+                      } else {
+                        console.warn('[DEBUG] ResourceForm.js: Pas de callback onSuccess parent à appeler.');
+                      }
                       
-                      // Si c'est une création et pas dans un dialog, rediriger vers les ressources
-                      if (!isEdit && !isDialog) {
-                        // Rediriger vers la liste des ressources en utilisant useNavigate qui préserve le contexte d'authentification
-                        console.log('[DEBUG] Redirection vers /resources via navigate()');
+                      // ENSUITE, gérer la navigation conditionnelle
+                      if (!disableNavigation && !isEdit && !isDialog) {
+                        console.log('[DEBUG] ResourceForm.js: Redirection vers /resources via navigate() (car non désactivée).');
                         navigate('/resources');
+                      } else {
+                        console.log('[DEBUG] ResourceForm.js: Navigation désactivée.', { disableNavigation, isEdit, isDialog });
                       }
                     }}
                     selectedStudyObjects={selectedStudyObjects}

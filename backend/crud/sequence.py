@@ -8,11 +8,12 @@ from sqlalchemy import func
 from typing import List, Dict, Any, Optional
 
 def get_sequence(db: Session, sequence_id: int):
-    """Récupère une séquence par son ID, en chargeant les objectifs ET les study_objects associés."""
+    """Récupère une séquence par son ID, en chargeant les objectifs, les study_objects et le bilan associés."""
     return db.query(Sequence).options(
         selectinload(Sequence.objectives),
         selectinload(Sequence.sessions),
-        selectinload(Sequence.study_objects)
+        selectinload(Sequence.study_objects),
+        joinedload(Sequence.bilan_resource)  # Eager load for the bilan
     ).filter(Sequence.id == sequence_id).first()
 
 def get_sequences(db: Session, user_id: int = None, skip: int = 0, limit: int = 100):
@@ -172,7 +173,7 @@ def remove_study_object_from_sequence(db: Session, sequence_id: int, study_objec
 async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, Any]:
     """
     Récupère une séquence avec tous ses objets associés (objectifs, ressources, etc.)
-    pour générer un résumé complet.
+    pour générer un bilan de fin de séquence complet.
     
     Args:
         db (Session): La session de base de données
@@ -181,10 +182,11 @@ async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, 
     Returns:
         Dict[str, Any]: Un dictionnaire contenant toutes les données de la séquence et ses objets associés
     """
-    # Récupérer la séquence avec ses objectifs
+    # Récupérer la séquence avec ses objectifs, objets d'étude et son bilan
     sequence = db.query(Sequence).options(
         selectinload(Sequence.objectives),
-        selectinload(Sequence.study_objects)
+        selectinload(Sequence.study_objects),
+        joinedload(Sequence.bilan_resource)  # Eager load for the bilan
     ).filter(Sequence.id == sequence_id).first()
     
     if not sequence:
@@ -210,7 +212,9 @@ async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, 
         "description": sequence.description,
         "level": getattr(sequence, "level", "B1"),  # Valeur par défaut si le niveau n'est pas défini
         "objectives": sequence.objectives,
-        "resources": resources
+        "resources": resources,
+        "bilan_resource_id": sequence.bilan_resource_id,
+        "bilan_resource": sequence.bilan_resource
     }
     
     return result
@@ -232,3 +236,45 @@ def is_owner_or_admin(db: Session, user: User, sequence: Sequence) -> bool:
         return True
     
     return sequence.user_id == user.id
+
+
+# ---------------------- Bilan de séquence ----------------------
+
+def set_bilan_resource(db: Session, sequence_id: int, resource_id: int):
+    """Attache un bilan à la séquence en remplaçant l'ancien si présent.
+    
+    Args:
+        db (Session): session DB
+        sequence_id (int): ID séquence
+        resource_id (int): ID ressource bilan
+    Returns:
+        Sequence: instance mise à jour
+    """
+    sequence = db.query(Sequence).filter(Sequence.id == sequence_id).first()
+    if sequence is None:
+        raise ValueError("Sequence not found")
+
+    # Supprimer l'ancienne ressource si différente
+    if sequence.bilan_resource_id and sequence.bilan_resource_id != resource_id:
+        old_res = db.query(Resource).filter(Resource.id == sequence.bilan_resource_id).first()
+        if old_res:
+            db.delete(old_res)
+
+    sequence.bilan_resource_id = resource_id
+    db.add(sequence)
+    db.commit()
+    db.refresh(sequence)
+    return sequence
+
+def remove_bilan_resource(db: Session, sequence_id: int):
+    sequence = db.query(Sequence).filter(Sequence.id == sequence_id).first()
+    if not sequence:
+        raise ValueError("Sequence not found")
+    if sequence.bilan_resource_id:
+        old_res = db.query(Resource).filter(Resource.id == sequence.bilan_resource_id).first()
+        if old_res:
+            db.delete(old_res)
+    sequence.bilan_resource_id = None
+    db.commit()
+    db.refresh(sequence)
+    return sequence
