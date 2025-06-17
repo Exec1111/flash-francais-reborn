@@ -245,8 +245,8 @@ const ResourceList = () => {
   };
 
   const handleEditResource = (id) => {
-    console.log('Calling handleEditResource with id:', id, 'and navigating to:', `/resources/${id}/edit`);
-    navigate(`/resources/${id}/edit`);
+    console.log('Calling handleEditResource with id:', id, 'and navigating to:', `/resources/edit/${id}`); // Corrected path
+    navigate(`/resources/edit/${id}`); // Corrected path
   };
 
   const handleDeleteResource = (id) => {
