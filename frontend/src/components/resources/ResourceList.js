@@ -73,7 +73,7 @@ const ResourceList = () => {
       headerName: 'Titre', 
       width: 200, 
       renderCell: (params) => (
-        <span style={{ color: '#5a47d1', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate(`/resources/${params.row.id}`)}>
+        <span style={{ color: '#5a47d1', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate(`/resources/view/${params.row.id}`)}>
           {params.value}
         </span>
       )
@@ -238,7 +238,7 @@ const ResourceList = () => {
   };
 
   const handleViewResource = (id) => {
-    navigate(`/resources/${id}`);
+    navigate(`/resources/view/${id}`);
   };
 
   const handleEditResource = (id) => {
@@ -484,8 +484,14 @@ const ResourceList = () => {
                     >
                       <CardHeader 
                         title={resource.title} 
-                        titleTypographyProps={{ variant: 'h6', fontWeight: 'bold', color: 'primary.main' }}
+                        titleTypographyProps={{
+                          variant: 'h6',
+                          fontWeight: 'bold',
+                          color: 'primary.main',
+                          sx: { cursor: 'pointer' } // Added cursor pointer here
+                        }}
                         sx={{ pb: 0 }}
+                        onClick={() => navigate(`/resources/view/${resource.id}`)} // Added onClick handler here
                       />
                       <CardContent sx={{ pt: 1, pb: 1, flex: 1 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
