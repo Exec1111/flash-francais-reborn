@@ -349,13 +349,7 @@ const SequenceForm = ({
 
         {/* --- Section Gestion des Objets d'Étude --- */}
         <Grid item xs={12}>
-          <CardHeader title="Objets d'étude associés" action={
-            <Tooltip title="Ajouter des objets d'étude">
-              <IconButton aria-label="add study object" onClick={handleOpenStudyObjectModal} size="large" color="primary">
-                +
-              </IconButton>
-            </Tooltip>
-          } />
+          <CardHeader title="Objets d'étude associés" />
           <Box sx={{ px: 2, pb: 1 }}>
             <Typography variant="caption" color="warning.main" sx={{ fontStyle: 'italic' }}>
               Vous ne pouvez rattacher que des objets d'étude connus par votre progression.
