@@ -82,6 +82,7 @@ class SequenceWithObjects(BaseModel):
     id: int
     title: str
     description: Optional[str]
+    progression_id: int
     level: Optional[str] = None
     objectives: List['ObjectiveRead'] = []
     resources: List['ResourceRead'] = []

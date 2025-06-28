@@ -134,7 +134,7 @@ parameters:
   - name: niveau_classe
     type: string
     description: "Niveau de classe des élèves."
-    enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé", "Seconde", "Première", "Terminale", "A1", "A2", "B1", "B2", "C1", "C2"]
+    enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé]
     default: null
   - name: selected_exercise_types
     type: array
