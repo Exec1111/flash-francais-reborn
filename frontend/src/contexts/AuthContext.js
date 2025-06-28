@@ -24,7 +24,9 @@ export const AuthProvider = ({ children }) => {
       const userData = await authService.login(email, password);
       setUser(userData);
       setIsAuthenticated(true);
-      setToken(userData.token);
+      // Récupérer le token stocké par authService dans le localStorage
+      const storedToken = localStorage.getItem('token');
+      setToken(storedToken);
       return userData;
     } catch (error) {
       throw error;

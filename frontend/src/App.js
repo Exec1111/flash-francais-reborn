@@ -19,6 +19,7 @@ import {
   Menu as MenuIcon, 
   ChatBubbleOutline as ChatIcon,
   Dashboard as DashboardIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material'; 
 import { useTheme } from '@mui/material/styles'; 
 import SideNav, { drawerWidth } from './components/SideNav';
@@ -63,7 +64,7 @@ import ProposeWorks from './pages/studyObjects/ProposeWorks';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
-  const { user, token } = useAuth(); // Ajouter token ici si nécessaire pour le fetch initial
+  const { user, token, logout } = useAuth(); // Ajouter token ici si nécessaire pour le fetch initial
   const navigate = useNavigate(); // Hook de navigation React Router
   // État pour la barre latérale principale (TreeView)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
@@ -90,14 +91,9 @@ function ProtectedLayout() {
     setIsTreeLoading(true);
     setTreeError(null);
     try {
-      if (!token) {
-        // Gérer le cas où le token n'est pas encore prêt (peut arriver au chargement initial)
-        console.warn("RefreshTreeData: Token not available yet.");
-        // Optionnel: attendre un peu ou ne rien faire
-        return; 
-      }
+      
       // Utiliser l'instance api pour faire l'appel (le token est injecté par l'intercepteur)
-      const response = await api.get('/progressions'); 
+      const response = await api.get('/progressions/'); 
       const progressions = response.data;
 
       console.log("ProtectedLayout: Progressions data fetched:", progressions);
@@ -122,7 +118,7 @@ function ProtectedLayout() {
     } finally {
       setIsTreeLoading(false);
     }
-  }, [token]); // Dépend du token pour s'assurer qu'il est disponible
+  }, []);
 
   // Chargement initial des données au montage de ProtectedLayout
   useEffect(() => {
@@ -178,6 +174,16 @@ function ProtectedLayout() {
               sx={{ mr: 1 }}
             >
               <DashboardIcon sx={{ fontSize: '20px' }} />
+            </IconButton>
+            {/* Bouton de déconnexion */}
+            <IconButton
+              size="small"
+              color="inherit"
+              aria-label="se déconnecter"
+              onClick={() => { logout(); navigate('/login'); }}
+              sx={{ mr: 1 }}
+            >
+              <LogoutIcon sx={{ fontSize: '20px' }} />
             </IconButton>
             
             {/* Bouton logs LLM visible uniquement pour ADMIN */}

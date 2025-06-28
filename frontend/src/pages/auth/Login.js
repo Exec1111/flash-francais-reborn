@@ -17,17 +17,25 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import AppleIcon from '@mui/icons-material/Apple';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import authService from '../../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login: loginContext, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [shouldRedirect, setShouldRedirect] = useState(false);
+  
+
+  // Redirection automatique lorsque l'utilisateur est authentifié
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   // Pré-remplissage des champs en mode développement
   useEffect(() => {
@@ -37,11 +45,7 @@ const Login = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (shouldRedirect) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [shouldRedirect, navigate]);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,13 +56,11 @@ const Login = () => {
       setLoading(true);
       console.log('Login: Appel du service d\'authentification');
       
-      // Appel au service d'authentification pour la connexion
-      const userData = await authService.login(email, password);
+      // Appel via AuthContext
+      const userData = await loginContext(email, password);
       console.log('Login: Connexion réussie, données utilisateur:', userData);
       
-      // Déclencher la redirection après la mise à jour de l'état
-      console.log('Login: Redirection vers le dashboard');
-      setShouldRedirect(true);
+      
     } catch (err) {
       console.error('Login: Erreur lors de la connexion:', err);
       setError(err.detail || 'Email ou mot de passe incorrect');
