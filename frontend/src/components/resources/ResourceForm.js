@@ -35,6 +35,8 @@ import fusionService from '../../services/fusionService';
 import studyObjectService from '../../services/studyObjectService';
 import DynamicAIForm from '../DynamicAIForm/index';  // Import mis à jour pour utiliser la version refactorisée
 import api from '../../services/api';
+import TinyHtmlEditor from '../editors/TinyHtmlEditor';
+import RefreshIcon from '@mui/icons-material/Autorenew';
 
 /**
  * Composant de formulaire réutilisable pour la création et l'édition de ressources
@@ -82,10 +84,13 @@ const ResourceForm = ({
 
   // --- Animation de chargement pour la génération IA ---
   const [aiLoading, setAiLoading] = useState(false);
+  // Contenu HTML pour l'éditeur
+  const [htmlContent, setHtmlContent] = useState('');
 
   const [allStudyObjects, setAllStudyObjects] = useState([]);
   const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
 
+  // (placeholder supprimé)
   // --- Effets --- 
 
   // Debug initialData
@@ -141,6 +146,40 @@ const ResourceForm = ({
         setFormData(prev => ({ ...prev, session_ids: [session.id] }));
     }
   }, [initialData, resourceTypes, session, isEdit, allStudyObjects]);
+
+  // Charger le contenu HTML existant le cas échéant
+  useEffect(() => {
+    if (!initialData) return;
+    if (
+      initialData.html_url ||
+      initialData.html_content_url ||
+      (initialData.file_path || '').endsWith('.html') ||
+      (initialData.url || '').endsWith('.html')
+    ) {
+      const relativeUrlRaw = initialData.html_url || initialData.html_content_url || initialData.file_path || initialData.url;
+      // Remplacer les backslashes éventuels par des slashs pour une URL valide
+      const relativeUrl = (relativeUrlRaw || '').replace(/\\/g, '/');
+      let fullUrl;
+      if (relativeUrl.startsWith('http')) {
+        fullUrl = relativeUrl;
+      } else {
+        let base = process.env.REACT_APP_API_BASE_URL || '';
+        // Si base se termine par /api ou /api/, on le retire pour accéder aux fichiers statiques
+        base = base.replace(/\/api\/?$/, '');
+        // Si le chemin commence par "uploads/", préfixer avec /media/
+        if (relativeUrl.startsWith('uploads/')) {
+          // Cas backend: MEDIA_URL = /media/uploads/ => besoin de /media/uploads/<relative>
+          fullUrl = `${base}/media/uploads/${relativeUrl}`;
+        } else {
+          fullUrl = `${base}${relativeUrl}`;
+        }
+      }
+      fetch(fullUrl)
+        .then(res => res.text())
+        .then(setHtmlContent)
+        .catch(() => setHtmlContent(''));
+    }
+  }, [initialData]);
 
   // Charger les types
   const fetchResourceTypes = useCallback(async () => {
@@ -263,6 +302,10 @@ const ResourceForm = ({
 
     // Préparation des données à envoyer
     const dataToSend = new FormData();
+    // Ajouter le contenu HTML si présent
+    if (htmlContent) {
+      dataToSend.append('html_content', htmlContent);
+    }
     
     // Ajout des champs communs à la FormData 
     Object.keys(formData).forEach(key => {
@@ -300,11 +343,11 @@ const ResourceForm = ({
         
         if (isEdit) {
             // Edition d'une ressource existante 
-            response = await resourceService.updateResource(resourceId, dataToSend);
+            response = await resourceService.update(resourceId, dataToSend);
             setSuccess('Ressource mise à jour avec succès!');
         } else {
             // Création d'une nouvelle ressource
-            response = await resourceService.createResource(dataToSend);
+            response = await resourceService.create(dataToSend);
             setSuccess('Ressource créée avec succès!');
         }
         
@@ -358,6 +401,28 @@ const ResourceForm = ({
     }
   };
 
+  // Handler pour la régénération du document IA existant
+  const handleRegenerate = async () => {
+    if (!initialData) return;
+    try {
+      setAiLoading(true);
+      const { type_key: typeKey, subtype_key: subtypeKey, model_path: modelPath, id: userId } = initialData; // Ajuster selon structure réelle
+      if (!typeKey || !subtypeKey) {
+        console.warn('[ResourceForm] Impossible de régénérer : clés type/subtype manquantes');
+        return;
+      }
+      const dataJson = JSON.stringify(initialData.data_json || {});
+      await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
+      // Après fusion, recharger la page ou notifier succès
+      setSuccess('Document régénéré avec succès');
+    } catch (err) {
+      console.error('[ResourceForm] Erreur lors de la régénération', err);
+      setError(err?.response?.data?.detail || err.message || 'Erreur lors de la régénération');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Gestionnaire de génération IA avec animation
   const handleAIGenerationWithLoading = async (payload) => {
     setAiLoading(true);
@@ -377,7 +442,14 @@ const ResourceForm = ({
   const hasSelectedSubType = selectedSubType || (hideTypeSelection && forcedType);
   
   // Afficher le formulaire IA si on est en mode IA et que les types sont définis (soit par sélection, soit par forçage)
-  const showAIGenerationForm = sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
+  // Afficher le formulaire de génération IA seulement en mode création
+  const showAIGenerationForm = !isEdit && sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
+
+  // L'éditeur HTML ne doit apparaître qu'en mode édition ET si un contenu initial HTML existe ou a déjà été chargé/édité
+  const showHtmlEditor = isEdit && (
+    Boolean(htmlContent && htmlContent.trim()) ||
+    Boolean(initialData?.html_url || initialData?.html_content_url || (initialData?.file_path || '').endsWith('.html') || (initialData?.url || '').endsWith('.html'))
+  );
   
   // Debug pour aider à comprendre pourquoi le formulaire pourrait ne pas s'afficher
   console.log('[DEBUG ResourceForm] État du formulaire IA:', {
@@ -393,8 +465,10 @@ const ResourceForm = ({
     showAIGenerationForm
   });
 
-  // Boutons d'action partagés (affichés uniquement si la source n'est pas de type IA)
-  const actionButtons = sourceType === 'ai' ? null : (
+  // Boutons d'action partagés
+  // En mode création d'une ressource IA, les boutons sont gérés par DynamicAIForm.
+  // En mode édition (isEdit), on doit quand même afficher les boutons, même si la source est "ai".
+  const actionButtons = (!isEdit && sourceType === 'ai') ? null : (
     <>
       <Button 
         onClick={isDialog ? onClose : () => navigate(-1)} 
@@ -433,6 +507,13 @@ const ResourceForm = ({
             disabled={submitting}
           />
         </Grid>
+
+        {showHtmlEditor && (
+          <Grid item xs={12}>
+            <Typography variant="h6" gutterBottom>Éditer le contenu HTML</Typography>
+            <TinyHtmlEditor initialHtml={htmlContent} onChange={setHtmlContent} />
+          </Grid>
+        )}
 
         {/* Sélecteur des objets d'étude - caché si hideStudyObjectSelection=true */}
         {!hideStudyObjectSelection && (
@@ -536,14 +617,19 @@ const ResourceForm = ({
         {isEdit && initialData?.source_type === 'ai' && initialData?.file_path && (
           <Grid item xs={12}>
             <Alert severity="info" sx={{ mt: 2 }}>
-              Document actuellement lié :{' '}
-              <a
-                href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'}/media/uploads/${initialData.file_path.startsWith('/') ? initialData.file_path.substring(1) : initialData.file_path}`.replace(/\\/g, '/')}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ouvrir le document généré
-              </a><br />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <span>
+                  Document actuellement lié :{' '}
+                  <a
+                    href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'}/media/uploads/${initialData.file_path.startsWith('/') ? initialData.file_path.substring(1) : initialData.file_path}`.replace(/\\/g, '/')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ouvrir le document généré
+                  </a>
+                </span>
+
+              </Box>
               <span style={{fontStyle: 'italic', color: '#888'}}>Ce document est celui actuellement rattaché à la ressource.</span>
             </Alert>
           </Grid>

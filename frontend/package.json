@@ -4,12 +4,14 @@
   "private": true,
   "proxy": "http://localhost:10000",
   "dependencies": {
+
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.17.1",
     "@mui/x-data-grid": "^6.6.0",
     "@mui/x-tree-view": "^7.28.1",
+    "@tinymce/tinymce-react": "^6.2.1",
     "axios": "^1.6.2",
     "react": "^18.2.0",
     "react-arborist": "^3.4.3",
@@ -17,7 +19,8 @@
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "tinymce": "^7.9.1"
   },
   "scripts": {
     "start": "react-scripts start",

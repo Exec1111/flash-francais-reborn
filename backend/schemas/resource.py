@@ -98,6 +98,7 @@ class ResourceUpdate(BaseModel):
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
     study_object_ids: Optional[List[int]] = None  # Ajout pour la gestion des objets d'étude associés
+    html_content: Optional[str] = None  # Contenu HTML envoyé pour écraser le fichier existant
     # Pas de mise à jour de source_type ici, c'est généralement fixé à la création
     # Pas de file_* ici, la mise à jour de fichier est gérée séparément dans la route/CRUD
 

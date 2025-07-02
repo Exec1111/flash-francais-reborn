@@ -360,6 +360,7 @@ async def update_resource_route(
     objective_ids_json: Optional[str] = Form(None), # Ajout pour les objectifs
     study_object_ids_json: Optional[str] = Form(None), # Ajout pour les objets d'étude
     source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
+    html_content: Optional[str] = Form(None),  # Contenu HTML modifié envoyé par le frontend
     file: Optional[UploadFile] = File(None)
 ):
     """Met à jour une ressource. Si un fichier est fourni, il remplace l'ancien (si existant).
@@ -375,6 +376,31 @@ async def update_resource_route(
     if db_resource_check.user_id != current_user.id:
         logger.error(f"Accès non autorisé pour la mise à jour de la ressource {resource_id} par l'utilisateur {current_user.id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this resource")
+
+    # --- Écriture éventuelle du nouveau contenu HTML ---
+    if html_content is not None and db_resource_check.source_type == 'ai' and db_resource_check.file_path:
+        try:
+            # Le chemin stocké est relatif à /media/uploads/
+            relative_path = db_resource_check.file_path.lstrip('/')
+            full_path = settings.UPLOADS_BASE_DIR / relative_path
+            import re
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            # Préserver les balises <style> existantes si le nouveau contenu n'en contient pas
+            if not re.search(r"<style[\s>].*?</style>", html_content, flags=re.S|re.I):
+                try:
+                    if full_path.exists():
+                        original_html = full_path.read_text(encoding="utf-8")
+                        styles_match = re.findall(r"<style[\s>].*?</style>", original_html, flags=re.S|re.I)
+                        if styles_match:
+                            preserved_styles = "\n".join(styles_match)
+                            html_content = f"{preserved_styles}\n{html_content}"
+                except Exception as e_read:
+                    logger.warning(f"Impossible de lire l'ancien fichier HTML pour extraire les styles : {e_read}")
+            full_path.write_text(html_content, encoding="utf-8")
+            logger.info(f"Fichier HTML {full_path} mis à jour avec succès pour la ressource {resource_id}.")
+        except Exception as e:
+            logger.error(f"Erreur lors de l'écriture du fichier HTML pour la ressource {resource_id}: {e}")
+            raise HTTPException(status_code=500, detail="Erreur lors de l'enregistrement du contenu HTML")
 
     # --- Parsing des IDs de session --- 
     session_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
