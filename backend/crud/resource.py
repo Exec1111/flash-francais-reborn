@@ -189,6 +189,8 @@ def get_resources_standalone(db: Session, skip: int = 0, limit: int = 100):
 def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_upload: Optional[ResourceFileUpload] = None):
     """Crée une nouvelle ressource et gère les associations initiales."""
     resource_data = resource.model_dump()
+    # Éviter la duplication d'arguments (file_path éventuellement présent mais géré séparément)
+    resource_data.pop('file_path', None)
     session_ids = resource_data.pop('session_ids', [])
     objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
     study_object_ids = resource_data.pop('study_object_ids', []) # Extraire les study_object_ids

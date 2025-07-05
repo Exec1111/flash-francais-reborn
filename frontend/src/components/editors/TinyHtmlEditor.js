@@ -68,6 +68,8 @@ const TinyHtmlEditor = ({ initialHtml = '', onChange }) => {
     contentCss.push(...savedLinksRef.current);
   }
   const inlineStyles = savedStylesRef.current || '';
+  // Style par défaut : texte noir pour éviter le texte blanc sur fond clair
+  const defaultContentStyle = `${inlineStyles}\nbody { color: #000; }`;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -103,9 +105,10 @@ const TinyHtmlEditor = ({ initialHtml = '', onChange }) => {
         }}
         init={{
           language: 'fr_FR',
-          skin: 'oxide-dark',
+          
           content_css: contentCss,
-          content_style: inlineStyles,
+          content_style: defaultContentStyle,
+          skin: 'oxide', // thème clair pour éviter texte blanc
           menubar: false,
           plugins: 'lists link table',
           toolbar:

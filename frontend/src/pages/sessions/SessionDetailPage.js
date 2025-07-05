@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -18,17 +18,25 @@ import {
   Chip,
   Stack,
   Box,
+  Link,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
-  Psychology as PsychologyIcon
+  Psychology as PsychologyIcon,
+  Launch as LaunchIcon
 } from '@mui/icons-material';
 import api from '../../services/api';
+
 import { useTreeData } from '../../contexts/TreeDataContext';
 import objectiveService from '../../services/objectiveService';
+import sessionService from '../../services/sessionService';
+import resourceService from '../../services/resourceService';
+
 import ResourceGenerationWizard from '../../components/ResourceGenerationWizard';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
 
 /**
  * Page pour afficher les détails d'une séance
@@ -37,11 +45,49 @@ const SessionDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { refreshTreeData } = useTreeData();
+  
+  // États principaux
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [objectives, setObjectives] = useState([]);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [ficheUrlResolved, setFicheUrlResolved] = useState('');
+
+  // Résolution automatique de l'URL de la fiche lorsque la session change
+  useEffect(() => {
+    const resolveFiche = async () => {
+      if (!session) return;
+      let url = session.fiche_url;
+      if (!url && session.fiche_resource_id) {
+        try {
+          const res = await resourceService.getById(session.fiche_resource_id);
+          url = res?.html_content_url || res?.file_url || (res?.file_path ? `/media/uploads/${res.file_path}` : '');
+        } catch (e) {
+          console.error('Erreur résolution fiche', e);
+        }
+      }
+      if (url && !url.startsWith('http')) {
+        url = `${API_BASE_URL}${url}`;
+      }
+      setFicheUrlResolved(url || '');
+    };
+    resolveFiche();
+  }, [session]);
+
+  const openFicheInNewTab = async () => {
+    try {
+      const url = ficheUrlResolved;
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert('URL de la fiche introuvable');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Impossible d\'ouvrir la fiche');
+    }
+  };
 
   // Fonction pour récupérer les détails de la session
   const fetchSessionDetails = async () => {
@@ -103,16 +149,12 @@ const SessionDetailPage = () => {
     }
   };
 
+  const handleOpenFicheGenerator = () => {
+    navigate(`/sessions/${id}/build-fiche`);
+  };
+
   const handleOpenWizard = () => {
-    // On a besoin de l'ID de la session et de l'ID de la séquence pour contextualiser les suggestions.
-    // Le type/subtype sera déterminé au niveau de la ressource elle-même lors de la sélection du template.
-    console.log("État de 'session' au moment de l'appel à handleOpenWizard:", JSON.stringify(session, null, 2));
-    if (session && session.id && session.sequence_id) { 
-      setWizardOpen(true);
-    } else {
-      alert("L'ID de la session ou de la séquence est manquant. Impossible de lancer l'assistant.");
-      console.error("Tentative d'ouverture du wizard sans ID de session ou de séquence valide:", session);
-    }
+    setWizardOpen(true);
   };
 
   const handleWizardClose = (needsRefresh = false) => {
@@ -123,10 +165,27 @@ const SessionDetailPage = () => {
   };
 
   // Fonction appelée lorsque des ressources sont générées avec succès
-  const handleResourcesGenerated = (newResources) => {
+  const handleResourcesGenerated = async (newResources) => {
     console.log("[SessionDetailPage] Ressources générées avec succès:", newResources);
-    // Rafraîchir les détails de la session pour afficher les nouvelles ressources
+  // Si une ressource a été générée, l'attacher comme fiche de séance
+  if (newResources && newResources.length > 0) {
+    try {
+      await sessionService.attachFiche(session.id, newResources[0].id);
+    } catch (err) {
+      console.error('Erreur lors de l\'attachement de la fiche:', err);
+    }
+  }
+    // Rafraîchir les détails de la session pour afficher la fiche attachée
     fetchSessionDetails();
+  };
+
+  const handleDetachFiche = async () => {
+    try {
+      await sessionService.detachFiche(session.id);
+      fetchSessionDetails(); // Recharger les détails de la session pour afficher la fiche détachée
+    } catch (err) {
+      console.error('Erreur lors du détachement de la fiche:', err);
+    }
   };
 
   if (loading) {
@@ -153,15 +212,14 @@ const SessionDetailPage = () => {
     );
   }
 
-  // Si le wizard est ouvert, afficher le wizard en pleine page
+  // Comportement: plus de modal pour la fiche; navigation vers page dédiée
   if (wizardOpen) {
     return (
       <ResourceGenerationWizard
-        sessionId={String(session.id)} // Conversion en chaîne pour respecter le PropType
-        sessionTitle={session.title}
-        sequenceId={session.sequence_id} 
+        open={wizardOpen}
         onClose={handleWizardClose}
-        onResourcesGenerated={handleResourcesGenerated} // Ajout de la prop requise
+        onSuccess={handleResourcesGenerated}
+        context={{ sessionId: session.id, sequenceId: session.sequence_id }}
       />
     );
   }
@@ -176,6 +234,18 @@ const SessionDetailPage = () => {
               {session.title}
             </Typography>
             <Box>
+              {session.fiche_resource_id ? (
+                <>
+                <Button variant="contained" color="secondary" onClick={handleOpenFicheGenerator} sx={{ mr: 1 }}>
+                  Re-générer la fiche de séance
+                </Button>
+
+                </>
+              ) : (
+                <Button variant="contained" color="primary" onClick={handleOpenFicheGenerator} sx={{ mr: 1 }}>
+                  Générer la fiche
+                </Button>
+              )}
               <Button 
                 variant="contained" 
                 color="secondary" 
@@ -209,6 +279,21 @@ const SessionDetailPage = () => {
           <Typography variant="body1" color="text.secondary" paragraph>
             {session.notes || session.description || 'Aucune description disponible'}
           </Typography>
+
+          {session.fiche_resource_id && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Fiche de séance
+                </Typography>
+                <Link component="button" onClick={openFicheInNewTab} sx={{ display:'flex', alignItems:'center', background:'none', border:0, p:0, m:0, cursor:'pointer', color:'inherit', textAlign:'left' }}>
+                    <LaunchIcon sx={{ mr:0.5 }} />
+                    Voir la fiche de séance
+                  </Link>
+              </Box>
+            </>
+          )}
 
           <Divider sx={{ my: 3 }} />
 

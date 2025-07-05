@@ -8,6 +8,8 @@ from schemas.session import SessionCreate, SessionUpdate, SessionRead
 from models.user import User
 from models.session import Session as SessionModel
 from security import get_current_active_user
+from crud.session import set_fiche_resource, remove_fiche_resource
+import os
 
 session_router = APIRouter(
     # prefix="/sessions", # Supprimé car géré dans app.py
@@ -128,6 +130,43 @@ def update_session_route(session_id: int, session: SessionUpdate, db: Session = 
     if db_session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return db_session
+
+# -------------------- Fiche de séance --------------------
+
+def _add_fiche_url(db_session: SessionModel):
+    """Ajoute l'URL publique de la fiche (si présente)."""
+    if db_session.fiche_resource_id and db_session.fiche_resource and db_session.fiche_resource.file_path:
+        base = os.getenv("API_BASE_URL", "http://localhost:10000")
+        db_session.fiche_url = f"{base}/media/uploads/{db_session.fiche_resource.file_path.lstrip('/').replace('\\', '/')}"
+    else:
+        db_session.fiche_url = None
+    return db_session
+
+
+@session_router.post("/{session_id}/fiche/{resource_id}", response_model=SessionRead)
+def attach_fiche_resource(session_id: int, resource_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    """Attache ou remplace la fiche de séance par la ressource donnée."""
+    db_session = crud.get_session_by_id(db, session_id=session_id)
+    if db_session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if db_session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    updated = set_fiche_resource(db, session_id, resource_id)
+    updated = _add_fiche_url(updated)
+    return updated
+
+
+@session_router.delete("/{session_id}/fiche", response_model=SessionRead)
+def detach_fiche_resource(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    """Supprime la fiche de séance (et la ressource associée)."""
+    db_session = crud.get_session_by_id(db, session_id=session_id)
+    if db_session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if db_session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    updated = remove_fiche_resource(db, session_id)
+    updated = _add_fiche_url(updated)
+    return updated
 
 @session_router.delete("/{session_id}", status_code=204)
 def delete_session_route(session_id: int, db: Session = Depends(get_db)):

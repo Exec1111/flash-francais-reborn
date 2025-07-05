@@ -44,9 +44,11 @@ import SequenceEdit from './pages/sequences/SequenceEdit';
 // Le composant ProposeSeances a été temporairement retiré pour résoudre un problème d'importation
 import ProposeSeances from './pages/sequences/ProposeSeances'; // Réactivé et déplacé
 import SequenceSummaryResourcePage from './pages/sequences/SequenceSummaryResourcePage';
+import SessionFicheBuilderPage from './pages/sessions/SessionFicheBuilderPage';
 import NewSession from './pages/sessions/NewSession';
 import SessionEdit from './pages/sessions/SessionEdit';
 import SessionDetailPage from './pages/sessions/SessionDetailPage';
+import SessionSummaryResourcePage from './pages/sessions/SessionSummaryResourcePage';
 import { useAuth } from './contexts/AuthContext'; // Réimporter le hook useAuth
 import Chatbox from './components/Chatbox/Chatbox'; 
 import ProgressionBuilder from './pages/progressions/ProgressionBuilder'; 
@@ -377,6 +379,8 @@ function App() {
         <Route path="new" element={<NewSession />} />
         <Route path="new/:sequenceId" element={<NewSession />} />
         <Route path="edit/:id" element={<SessionEdit />} />
+        <Route path="/sessions/:id/build-fiche" element={<SessionFicheBuilderPage />} />
+        <Route path=":id/generate-summary" element={<SessionSummaryResourcePage />} />
         <Route path=":id" element={<SessionDetailPage />} />
       </Route>
 

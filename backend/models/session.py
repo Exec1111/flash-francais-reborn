@@ -21,6 +21,10 @@ class Session(Base):
     # Champ pour l'ordre d'affichage et le drag-and-drop
     order = Column(Integer, nullable=True)
 
+    # Lien vers la fiche de séance (Resource) générée par IA
+    fiche_resource_id = Column(Integer, ForeignKey("resources.id"), nullable=True)
+    fiche_resource = relationship("Resource", foreign_keys=[fiche_resource_id])
+
     # Relationship with Sequence (many-to-one)
     sequence = relationship("Sequence", back_populates="sessions") # 'sessions' sera ajouté à Sequence
     # Relationship with Objective (many-to-many)

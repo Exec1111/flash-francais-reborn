@@ -14,7 +14,8 @@ def get_session_by_id(db: Session, session_id: int):
         selectinload(Session.objectives),
         selectinload(Session.sequence),
         selectinload(Session.resources).selectinload(Resource.type), # Charger les ressources puis leur type
-        selectinload(Session.resources).selectinload(Resource.sub_type) # Charger les ressources puis leur sous-type
+        selectinload(Session.resources).selectinload(Resource.sub_type), # Charger les ressources puis leur sous-type
+        selectinload(Session.fiche_resource)  # Charger la fiche de séance si elle existe
     ).filter(Session.id == session_id).first()
 
 def get_sessions(db: Session, skip: int = 0, limit: int = 100):
@@ -149,6 +150,43 @@ def delete_session(db: Session, session_id: int):
     db.delete(db_session)
     db.commit()
     return True # Confirme la suppression
+
+# ---------------------- Fiche de séance ----------------------
+
+def set_fiche_resource(db: Session, session_id: int, resource_id: int):
+    """Attache une fiche de séance à la session, remplaçant l'ancienne si présente."""
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if session is None:
+        raise ValueError("Session not found")
+
+    # Supprimer l'ancienne ressource si différente
+    if session.fiche_resource_id and session.fiche_resource_id != resource_id:
+        old_res = db.query(Resource).filter(Resource.id == session.fiche_resource_id).first()
+        if old_res:
+            db.delete(old_res)
+
+    session.fiche_resource_id = resource_id
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def remove_fiche_resource(db: Session, session_id: int):
+    """Détache et supprime la fiche de séance associée, s'il y en a une."""
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise ValueError("Session not found")
+    if session.fiche_resource_id:
+        old_res = db.query(Resource).filter(Resource.id == session.fiche_resource_id).first()
+        if old_res:
+            db.delete(old_res)
+    session.fiche_resource_id = None
+    db.commit()
+    db.refresh(session)
+    return session
+
+# ---------------------- Divers utilitaires ----------------------
 
 def get_sessions_with_no_resources(db: Session, user_id: int) -> List[Session]:
     """Récupère les sessions d'un utilisateur qui n'ont aucune ressource associée."""

@@ -154,6 +154,14 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# --- Middleware global de secours pour forcer l'en-tête CORS sur toutes les réponses ---
+@app.middleware("http")
+async def ensure_cors_header(request, call_next):
+    response = await call_next(request)
+    if "access-control-allow-origin" not in response.headers:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
 # --- Cache désactivé temporairement --- 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -171,17 +179,19 @@ app.openapi = custom_openapi
 # --- Fin cache désactivé ---
 
 # --- Configuration CORS ---
-origins = [
-    "http://localhost:3000",  # L'origine de votre frontend React en dev
-    "http://localhost:8080",  # Si vous utilisez une autre origine pour le dev
-    "http://127.0.0.1:3000", # Parfois nécessaire
-    "https://flash-francais-reborn.onrender.com", # Votre frontend en production
-]
+# Autoriser toutes origines (pas de cookies)
+origins = ["*"]
+# origins = [
+    # "http://localhost:3000",  # L'origine de votre frontend React en dev
+    # "http://localhost:8080",  # Autre origine éventuelle
+    # "http://127.0.0.1:3000", # Variante IP
+    # "http://localhost:3000",  # Frontend React local
+    # "https://flash-francais-reborn.onrender.com"] # production
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  # Liste des origines autorisées
-    allow_credentials=True, # Autoriser les cookies/jetons dans les requêtes cross-origin
+    allow_credentials=False,  # Pas de cookies nécessaires pour servir des fichiers statiques
     allow_methods=["*"],    # Autoriser toutes les méthodes (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],    # Autoriser tous les en-têtes
 )
@@ -277,10 +287,18 @@ app.include_router(
 # Inclusion des routes admin
 app.include_router(admin.router)
 
-# --- Monter le dossier d'uploads en utilisant la config --- 
-# Le dossier est déjà créé par la logique dans config.py
-app.mount(settings.MEDIA_URL_PREFIX, StaticFiles(directory=str(settings.UPLOADS_BASE_DIR)), name="user_uploads")
-logger.info(f"Montage des médias depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
+# --- Monter le dossier d'uploads avec CORS pour servir les fichiers HTML ---
+from starlette.middleware.cors import CORSMiddleware as _Cors
+_uploads_static = StaticFiles(directory=str(settings.UPLOADS_BASE_DIR), html=True)
+_uploads_app = _Cors(
+    _uploads_static,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
+app.mount(settings.MEDIA_URL_PREFIX, _uploads_app, name="user_uploads")
+logger.info(f"Montage des médias (avec CORS) depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
 # --- Fin montage Render Disk --- 
 
 # --- Montage du dossier des ressources générées IA ---

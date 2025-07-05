@@ -31,10 +31,10 @@ Le module se compose principalement de deux fonctions asynchrones dans `backen
 ## 2. PromptGenerator
 
 - Lit les fichiers YAML (dans `backend/ai/prompts/config/prompts/*.yaml`).
-- Définit : `system_prompt`, `user_prompt_template`, `parameters`, `constraints` et éventuellement `response_schema` (fichier JSON Schema dans `schemas/`).
+- Définit : `system_prompt`, `user_prompt_template`, `parameters`, `constraints` et éventuellement `response_schema` (fichier JSON Schema dans `schemas/`).
 - Méthode `build(**kwargs)` : rend le prompt Jinja avec les paramètres fournis.
 - Méthode `validate(json_response)` : valide en local avec `jsonschema` contre `response_schema` sans bloquer.
-
+- Le template HTML avec lequel seront fusionnées les données produites par le LLM est stocké dans `backend/ai/template/`
 ---
 
 ## 3. Ajout d’un nouveau type de ressource
