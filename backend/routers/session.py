@@ -136,8 +136,10 @@ def update_session_route(session_id: int, session: SessionUpdate, db: Session = 
 def _add_fiche_url(db_session: SessionModel):
     """Ajoute l'URL publique de la fiche (si présente)."""
     if db_session.fiche_resource_id and db_session.fiche_resource and db_session.fiche_resource.file_path:
-        base = os.getenv("API_BASE_URL", "http://localhost:10000")
-        db_session.fiche_url = f"{base}/media/uploads/{db_session.fiche_resource.file_path.lstrip('/').replace('\\', '/')}"
+        base = os.getenv("API_BASE_URL", "http://localhost:10000").rstrip("/")
+        # Normaliser le chemin en séparateurs POSIX pour éviter les antislashs dans l'expression d'une f-string
+        rel_path = db_session.fiche_resource.file_path.lstrip("/").replace("\\", "/")
+        db_session.fiche_url = f"{base}/media/uploads/{rel_path}"
     else:
         db_session.fiche_url = None
     return db_session
