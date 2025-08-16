@@ -143,7 +143,9 @@ async def merge_ai_resource_content(
             
         # Construction de l'URL publique
         relative_public_path = f"tmp/{user_id}/{html_filename}"
-        html_url = f"http://localhost:10000/static/{relative_public_path}"
+        # Utiliser une base d'URL dynamique pour compatibilité Render
+        base = os.getenv("API_BASE_URL", "http://localhost:10000").rstrip("/")
+        html_url = f"{base}/static/{relative_public_path}"
         
         logger.info(f"[Fusion] HTML généré sauvegardé : {html_path}")
         return html_path, html_url
