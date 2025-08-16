@@ -51,7 +51,7 @@ async def handle_chat_message(input_data: ChatInput):
     """
     logger.info(f"Received request on /ai/chat endpoint.")
     try:
-        response = await ai_resource_service.generation_service.get_chat_response(input_data)
+        response = await generation_service.get_chat_response(input_data)
         logger.info(f"Successfully processed /ai/chat request.")
         return response
     except ValueError as ve:
@@ -399,7 +399,8 @@ async def generate_sessions(
         for objective in sequence_objectives:
             objectifs.append({
                 "id": objective.id,
-                "title": objective.title
+                "title": objective.title,
+                "description": getattr(objective, "description", None) or ""
             })
         
         # Récupérer les objets d'étude de la séquence et les logger pour débogage

@@ -216,10 +216,11 @@ const SessionDetailPage = () => {
   if (wizardOpen) {
     return (
       <ResourceGenerationWizard
-        open={wizardOpen}
+        sessionId={String(session.id)}
+        sessionTitle={session.title}
+        sequenceId={session.sequence_id}
         onClose={handleWizardClose}
-        onSuccess={handleResourcesGenerated}
-        context={{ sessionId: session.id, sequenceId: session.sequence_id }}
+        onResourcesGenerated={handleResourcesGenerated}
       />
     );
   }

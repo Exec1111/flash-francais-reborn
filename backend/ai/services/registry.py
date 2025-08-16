@@ -8,6 +8,15 @@ logger = logging.getLogger(__name__)
 
 import os
 
+# Normalisation utilitaire: variations de clés en MAJ, avec '-'/'_' interchangeables
+def _key_variants_upper(s: str):
+    base = (s or "").strip().upper()
+    return list({
+        base,
+        base.replace('-', '_'),
+        base.replace('_', '-')
+    })
+
 # Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
     ("exercice", "qcm"): "qcm",
@@ -75,24 +84,27 @@ def get_available_ai_resource_types(db: Session) -> List[AITypeSchema]:
     ai_types_data = {}  # Utiliser un dictionnaire pour regrouper les sous-types par type
 
     for type_key_reg, subtype_key_reg in PROMPT_REGISTRY.keys():
-        # Les clés dans PROMPT_REGISTRY sont en minuscules, celles en BDD sont attendues en MAJUSCULES
-        db_type_key = type_key_reg.upper()
-        db_subtype_key = subtype_key_reg.upper()
+        # Ignorer le type virtuel 'meta' (pas stocké en BDD)
+        if (type_key_reg or "").lower() == 'meta':
+            continue
+        # Préparer variantes de clés pour tolérer '-'/'_' et la casse
+        type_candidates = _key_variants_upper(type_key_reg)
+        subtype_candidates = _key_variants_upper(subtype_key_reg)
 
         # Récupérer ResourceType depuis la BDD
-        db_type = db.query(ResourceType).filter(ResourceType.key == db_type_key).first()
+        db_type = db.query(ResourceType).filter(ResourceType.key.in_(type_candidates)).first()
         if not db_type:
-            logger.warning(f"ResourceType avec la clé '{db_type_key}' (de PROMPT_REGISTRY) non trouvé en BDD. Ignoré.")
+            logger.debug(f"ResourceType non trouvé en BDD pour candidates={type_candidates} (issu de PROMPT_REGISTRY). Ignoré.")
             continue
 
         # Récupérer ResourceSubType depuis la BDD
         db_subtype = db.query(ResourceSubType).filter(
-            ResourceSubType.key == db_subtype_key,
-            ResourceSubType.type_id == db_type.id
+            ResourceSubType.type_id == db_type.id,
+            ResourceSubType.key.in_(subtype_candidates)
         ).first()
 
         if not db_subtype:
-            logger.warning(f"ResourceSubType avec la clé '{db_subtype_key}' pour le type '{db_type_key}' (de PROMPT_REGISTRY) non trouvé en BDD. Ignoré.")
+            logger.debug(f"ResourceSubType non trouvé en BDD pour type={db_type.key}, candidates={subtype_candidates} (issu de PROMPT_REGISTRY). Ignoré.")
             continue
 
         # Si le type n'est pas encore dans notre dictionnaire de résultats, l'ajouter

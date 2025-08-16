@@ -16,6 +16,11 @@ import json
 from backend.models.llm_interaction_log import LLMInteractionLog
 from backend.database import SessionLocal
 
+# Normalisation légère des clés pour comparer type/subtype de manière robuste
+def _norm_key(value: str) -> str:
+    """Normalise une clé en minuscules et remplace '-' par '_' pour éviter les mismatches."""
+    return (value or "").strip().lower().replace('-', '_')
+
 async def suggest_exercise_types_for_session(
     session_title: str,
     session_description: str,
@@ -54,10 +59,11 @@ async def suggest_exercise_types_for_session(
         
         # Si l'utilisateur a spécifié des types/sous-types précis
         if type_resources:
-            # Vérifier si ce type/sous-type est dans la liste des types demandés
+            # Vérifier si ce type/sous-type est dans la liste des types demandés (avec normalisation -/_)
             for type_resource in type_resources:
-                if (type_resource.get("type_key", "").lower() == type_key.lower() and
-                    type_resource.get("subtype_key", "").lower() == subtype_key.lower()):
+                tr_type = _norm_key(type_resource.get("type_key", ""))
+                tr_sub = _norm_key(type_resource.get("subtype_key", ""))
+                if (_norm_key(type_key) == tr_type and _norm_key(subtype_key) == tr_sub):
                     include_resource = True
                     break
         # Sinon utiliser la liste blanche par défaut
@@ -84,7 +90,30 @@ async def suggest_exercise_types_for_session(
             logger.warning(f"Impossible de charger/parser le prompt '{prompt_name}' (type: {type_key}, subtype: {subtype_key}) pour la liste des exercices disponibles : {e}")
     
     if not available_exercise_types:
-        logger.warning("Aucun type d'exercice disponible n'a pu être chargé depuis PROMPT_REGISTRY pour la suggestion.")
+        if type_resources:
+            logger.warning("Aucun type d'exercice ne correspond aux 'type_resources' fournis après normalisation. Repli sur la liste blanche par défaut.")
+            # Repli: inclure tous les types de la liste blanche
+            for (type_key, subtype_key), prompt_name in PROMPT_REGISTRY.items():
+                if type_key.lower() not in EXERCISE_TYPES:
+                    continue
+                try:
+                    generator = PromptGenerator(prompt_name)
+                    params_config = generator.config.get("parameters", [])
+                    available_exercise_types.append({
+                        "type_key": type_key,
+                        "subtype_key": subtype_key,
+                        "name_fr": generator.config.get("name_fr", prompt_name),
+                        "description_courte": generator.config.get("description_courte", ""),
+                        "parameters": params_config
+                    })
+                except Exception as e:
+                    logger.warning(f"Impossible de charger/parser le prompt de repli '{prompt_name}' (type: {type_key}, subtype: {subtype_key}) : {e}")
+        else:
+            logger.warning("Aucun type d'exercice disponible n'a pu être chargé depuis PROMPT_REGISTRY pour la suggestion.")
+
+    logger.info(f"Nombre de types d'exercices disponibles pour la suggestion: {len(available_exercise_types)}")
+    if available_exercise_types:
+        logger.debug(f"Aperçu premiers types: {[ (t['type_key'], t['subtype_key']) for t in available_exercise_types[:5] ]}")
     
     input_vars_for_suggester = {
         "session_title": session_title,

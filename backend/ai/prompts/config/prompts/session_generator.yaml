@@ -20,7 +20,7 @@ user_prompt_template: |
   {% if objectifs %}
   Objectifs pédagogiques de la séquence :
   {% for objectif in objectifs %}
-  - {{ objectif.title }} (ID: {{ objectif.id }})
+  - {{ objectif.title }} (ID: {{ objectif.id }}{% if objectif.description %}, Description: {{ objectif.description }}{% endif %})
   {% endfor %}
   {% endif %}
   
@@ -81,6 +81,8 @@ parameters:
         id: 
           type: integer
         title: 
+          type: string
+        description:
           type: string
   - name: study_objects
     type: list

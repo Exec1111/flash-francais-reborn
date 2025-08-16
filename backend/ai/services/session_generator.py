@@ -61,7 +61,10 @@ async def generate_ai_sessions(
             "ressources_disponibles": ressources_disponibles,
             "objectifs": objectifs,
             "study_objects": study_objects,
-            "instructions_supplementaires": instructions_supplementaires
+            "instructions_supplementaires": instructions_supplementaires,
+            # Le YAML attend 'instructions_personnalisees' dans le template.
+            # On mappe la même valeur pour assurer la compatibilité.
+            "instructions_personnalisees": instructions_supplementaires
         }
         
         # Générer le contenu en utilisant le prompt "session_generator"

@@ -1,2 +1,7 @@
 Système de règles pour les alertes à remonter au dashboard
 Possibilité de paramétrer l'importance de ces règles
+
+
+La génération de séance semble exploiter le titre des objectifs mais pas la description. Exemple titre = conjugaison et descroiption = passé/simple imparfait => géère une séance sur le présent.
+
+Génération de ressources sur une séance : ne fonctionne pas.
