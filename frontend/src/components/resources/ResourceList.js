@@ -39,6 +39,7 @@ import resourceTypeService from '../../services/resourceTypeService';
 import ResourceDocumentLink from './ResourceDocumentLink';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 import paginationConfig from '../../config/pagination';
+import DoclingStatusChip from '../docling/DoclingStatusChip';
 
 const ResourceList = () => {
   const { user } = useAuth();
@@ -109,6 +110,21 @@ const ResourceList = () => {
       sortable: false,
       filterable: false,
       renderCell: (params) => <ResourceDocumentLink resource={params.row} />
+    },
+    {
+      field: 'docling',
+      headerName: 'Docling',
+      width: 140,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <DoclingStatusChip
+          resourceId={params.row.id}
+          fileType={params.row.file_type}
+          filePath={params.row.file_path}
+          autoFetch
+        />
+      )
     },
     { 
       field: 'actions', 
@@ -516,6 +532,14 @@ const ResourceList = () => {
                         </Typography>
                         <Box sx={{ mt: 'auto', pt: 2 }}>
                           <ResourceDocumentLink resource={resource} />
+                        </Box>
+                        <Box sx={{ mt: 1 }}>
+                          <DoclingStatusChip
+                            resourceId={resource.id}
+                            fileType={resource.file_type}
+                            filePath={resource.file_path}
+                            autoFetch
+                          />
                         </Box>
                       </CardContent>
                       <Box sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'space-between' }}>

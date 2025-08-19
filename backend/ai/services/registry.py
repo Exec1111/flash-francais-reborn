@@ -19,7 +19,7 @@ def _key_variants_upper(s: str):
 
 # Registre des prompts associés aux types/sous-types de ressources (nom des configs YAML)
 PROMPT_REGISTRY = {
-    ("exercice", "qcm"): "qcm",
+    ("exercice","qcm"): {"config": "qcm"},
     ("exercice", "dictee"): "dictee",
     ("exercice", "vocabulaire"): "vocabulaire",
     ("exercice", "champlex"): "champlex",
@@ -27,6 +27,7 @@ PROMPT_REGISTRY = {
     ("exercice", "mots-croises"): "mots_croises",
     ("exercice", "pendu"): "pendu",
     ("exercice", "quisuisje"): "quisuisje",
+    ("exercice", "analyse_texte"): "analyse_texte",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("seance", "generator"): "session_generator",
@@ -56,6 +57,7 @@ TEMPLATE_REGISTRY = {
     ("exercice", "pendu"): "default_exercice_pendu.html",
     ("exercice", "champlex2"): "default_exercice_champlex2.html", 
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
+    ("exercice", "analyse_texte"): "default_exercice_analysetexte.html",
     ("lecon", "leconcomplete1"): "default_lecon_complete1.html",
     ("lecon", "sequence_summary"): "default_lecon_sequencesummary.html",
     ("seance", "summary"): "default_seance_summary.html",

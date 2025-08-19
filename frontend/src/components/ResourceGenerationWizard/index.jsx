@@ -65,6 +65,7 @@ const ResourceGenerationWizard = ({ sessionId, sessionTitle, sequenceId, onClose
           handleToggleSuggestion={wizard.suggestions.handleToggleSuggestion}
           handleNextStep={wizard.handleNextStep}
           onClose={onClose}
+          supportId={wizard.configParams.support_id}
         />
       )}
 

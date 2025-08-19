@@ -32,6 +32,8 @@ const useFormValidation = (formData, formSchema) => {
     if (!formSchema || !formSchema.fields) {
       return true; // Pas de validation possible sans schéma
     }
+
+    const isPdfMode = formData?.sourceMode === 'pdf_resource' || formData?.sourceMode === 'pdf_file';
     
     formSchema.fields.forEach(field => {
       // Vérification des champs requis
@@ -39,8 +41,13 @@ const useFormValidation = (formData, formSchema) => {
           (formData[field.name] === undefined || 
            formData[field.name] === null || 
            formData[field.name] === '')) {
-        newErrors[field.name] = `Le champ ${field.label || field.name} est requis`;
-        isValid = false;
+        // En mode PDF, ignorer la contrainte requise sur le champ texte_source
+        if (isPdfMode && field.name === 'texte_source') {
+          // ne rien faire
+        } else {
+          newErrors[field.name] = `Le champ ${field.label || field.name} est requis`;
+          isValid = false;
+        }
       }
       
       // Validations spécifiques selon le type
@@ -83,6 +90,25 @@ const useFormValidation = (formData, formSchema) => {
         }
       }
     });
+
+    // Validations spécifiques au mode PDF (champs UI hors schéma)
+    if (isPdfMode) {
+      if (formData.sourceMode === 'pdf_resource') {
+        if (!formData.pdfResourceId) {
+          newErrors.pdfResourceId = `Veuillez sélectionner une ressource PDF`;
+          isValid = false;
+        }
+      }
+      if (formData.sourceMode === 'pdf_file') {
+        if (!formData.pdfFile) {
+          newErrors.pdfFile = `Veuillez sélectionner un fichier PDF`;
+          isValid = false;
+        } else if (formData.pdfFile && formData.pdfFile.type && formData.pdfFile.type !== 'application/pdf') {
+          newErrors.pdfFile = `Le fichier sélectionné doit être un PDF`;
+          isValid = false;
+        }
+      }
+    }
     
     setErrors(newErrors);
     return isValid;

@@ -75,14 +75,16 @@ async def suggest_exercise_types_for_session(
             continue
         
         try:
-            generator = PromptGenerator(prompt_name)
+            # Support du format dict: {"config": "nom_du_yaml"}
+            prompt_config = prompt_name.get("config") if isinstance(prompt_name, dict) else prompt_name
+            generator = PromptGenerator(prompt_config)
             # Récupérer la structure des paramètres directement depuis la config du prompt
             params_config = generator.config.get("parameters", [])
                 
             available_exercise_types.append({
                 "type_key": type_key,
                 "subtype_key": subtype_key,
-                "name_fr": generator.config.get("name_fr", prompt_name), # Pour affichage si besoin
+                "name_fr": generator.config.get("name_fr", prompt_config), # Pour affichage si besoin
                 "description_courte": generator.config.get("description_courte", ""),
                 "parameters": params_config # Passe la liste des paramètres telle quelle
             })
@@ -97,12 +99,13 @@ async def suggest_exercise_types_for_session(
                 if type_key.lower() not in EXERCISE_TYPES:
                     continue
                 try:
-                    generator = PromptGenerator(prompt_name)
+                    prompt_config = prompt_name.get("config") if isinstance(prompt_name, dict) else prompt_name
+                    generator = PromptGenerator(prompt_config)
                     params_config = generator.config.get("parameters", [])
                     available_exercise_types.append({
                         "type_key": type_key,
                         "subtype_key": subtype_key,
-                        "name_fr": generator.config.get("name_fr", prompt_name),
+                        "name_fr": generator.config.get("name_fr", prompt_config),
                         "description_courte": generator.config.get("description_courte", ""),
                         "parameters": params_config
                     })

@@ -19,7 +19,8 @@ const SuggestionStep = ({
   selectedSuggestionsIndices, 
   handleToggleSuggestion, 
   handleNextStep, 
-  onClose 
+  onClose, 
+  supportId 
 }) => {
   return (
     <Box>
@@ -31,19 +32,26 @@ const SuggestionStep = ({
       )}
       {!isLoadingSuggestions && !suggestionsError && suggestions.length > 0 && (
         <List>
-          {suggestions.map((suggestion, index) => (
-            <ListItemButton 
-              key={index} 
-              onClick={() => handleToggleSuggestion(index)}
-              sx={{ border: '1px solid #eee', mb: 1, borderRadius: '4px', bgcolor: selectedSuggestionsIndices[index] ? 'action.hover' : 'transparent' }}
-            >
-              <Checkbox checked={!!selectedSuggestionsIndices[index]} edge="start" disableRipple />
-              <ListItemText 
-                primary={`${suggestion.type_key} - ${suggestion.subtype_key}`}
-                secondary={suggestion.justification}
-              />
-            </ListItemButton>
-          ))}
+          {suggestions.map((suggestion, index) => {
+            const requiresSupport = (suggestion?.type_key === 'exercice' && suggestion?.subtype_key === 'analyse_texte');
+            const isDisabled = requiresSupport && !supportId;
+            return (
+              <ListItemButton 
+                key={index} 
+                disabled={isDisabled}
+                onClick={() => handleToggleSuggestion(index)}
+                sx={{ border: '1px solid #eee', mb: 1, borderRadius: '4px', bgcolor: selectedSuggestionsIndices[index] ? 'action.hover' : 'transparent' }}
+              >
+                <Checkbox checked={!!selectedSuggestionsIndices[index]} edge="start" disableRipple disabled={isDisabled} />
+                <ListItemText 
+                  primary={`${suggestion.type_key} - ${suggestion.subtype_key}`}
+                  secondary={isDisabled 
+                    ? `${suggestion.justification ? suggestion.justification + ' — ' : ''}Requiert un support pédagogique`
+                    : suggestion.justification}
+                />
+              </ListItemButton>
+            );
+          })}
         </List>
       )}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
@@ -67,7 +75,8 @@ SuggestionStep.propTypes = {
   selectedSuggestionsIndices: PropTypes.object.isRequired,
   handleToggleSuggestion: PropTypes.func.isRequired,
   handleNextStep: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  supportId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
 };
 
 export default SuggestionStep;

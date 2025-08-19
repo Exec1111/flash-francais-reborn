@@ -28,10 +28,12 @@ from routers.resource import resource_router
 from routers.resource_type import resource_type_router
 from routers.objective import objective_router
 from routers.user import user_router
-from routers import ai_router  # Importation du routeur AI
+from routers.ai_router import router as ai_api_router  # Importation explicite du routeur AI
+from routers.config import router as config_router
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
 from routers.study_object import router as study_object_router
 from routers import admin
+from routers.docling import router as docling_router
 
 # ... (autres includes)
 # (déplacement de l'inclusion du routeur admin plus bas)
@@ -255,9 +257,16 @@ app.include_router(
     tags=["objectives"]
 )
 
+# Inclusion des routes Docling
+app.include_router(
+    docling_router,
+    prefix="/api/v1/docling",
+    tags=["docling"]
+)
+
 # Inclusion des routes AI
 app.include_router(
-    ai_router,
+    ai_api_router,
     prefix="/api/v1/ai",
     tags=["AI"]
 )
@@ -282,6 +291,13 @@ app.include_router(
     study_object_router,
     prefix="/api/v1/study_objects",
     tags=["study_objects"]
+)
+
+# Inclusion des routes de configuration
+app.include_router(
+    config_router,
+    prefix="/api/v1/config",
+    tags=["config"]
 )
 
 # Inclusion des routes admin

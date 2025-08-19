@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import resourceService from '../services/resourceService';
 import resourceTypeService from '../services/resourceTypeService';
 import { 
     Box, Typography, CircularProgress, Alert, Button, Link, Divider, List, ListItem,
-    Container, Card, CardContent, IconButton, Chip
+    Container, Card, CardContent, IconButton, Chip, Stack, FormControlLabel, Checkbox
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import StudyObjectChips from '../components/studyObjects/StudyObjectChips';
@@ -34,6 +34,16 @@ function ResourceView() {
     const [resourceSubtype, setResourceSubtype] = useState(null);
     const [loadingTypes, setLoadingTypes] = useState(false);
 
+    // Docling: statut, contenu et polling
+    const [doclingStatus, setDoclingStatus] = useState(null);
+    const [doclingMarkdown, setDoclingMarkdown] = useState('');
+    const [doclingTables, setDoclingTables] = useState([]);
+    const [doclingLoading, setDoclingLoading] = useState(false);
+    const [doclingError, setDoclingError] = useState(null);
+    const [polling, setPolling] = useState(false);
+    const [reextractOpts, setReextractOpts] = useState({ ocr: false, force: false });
+    const intervalRef = useRef(null);
+
     useEffect(() => {
         const fetchResource = async () => {
             setLoading(true);
@@ -57,6 +67,100 @@ function ResourceView() {
             setLoading(false);
         }
     }, [id]);
+
+    // Détection PDF
+    const isPdf = (() => {
+        const ft = (resource?.file_type || '').toLowerCase();
+        const fp = (resource?.file_path || '').toLowerCase();
+        return ft === 'application/pdf' || fp.endsWith('.pdf');
+    })();
+
+    // Couleur du Chip selon statut
+    const chipColor = (status) => {
+        switch ((status || '').toLowerCase()) {
+            case 'ready': return 'success';
+            case 'processing': return 'info';
+            case 'pending': return 'warning';
+            case 'error': return 'error';
+            default: return 'default';
+        }
+    };
+
+    // Récupérer le statut Docling
+    const fetchDoclingStatus = async () => {
+        if (!id || !isPdf) return;
+        setDoclingLoading(true);
+        try {
+            const data = await resourceService.getDoclingStatus(id);
+            setDoclingStatus(data?.status || null);
+            setDoclingMarkdown(data?.document_markdown || '');
+            const tables = Array.isArray(data?.tables) ? data.tables : [];
+            setDoclingTables(tables);
+            setDoclingError(data?.error || null);
+        } catch (err) {
+            setDoclingError(err.response?.data?.detail || err.message || 'Erreur lors de la récupération du statut Docling.');
+        } finally {
+            setDoclingLoading(false);
+        }
+    };
+
+    // Lancer/arrêter le polling automatiquement
+    useEffect(() => {
+        if (!resource || !isPdf) {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            setPolling(false);
+            return;
+        }
+        // Premier fetch immédiat
+        fetchDoclingStatus();
+        if (!intervalRef.current) {
+            intervalRef.current = setInterval(() => {
+                fetchDoclingStatus();
+            }, 2500);
+            setPolling(true);
+        }
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            setPolling(false);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, resource?.file_path, isPdf]);
+
+    // Stopper le polling quand terminé (ready ou error)
+    useEffect(() => {
+        const done = (doclingStatus || '').toLowerCase();
+        if (done === 'ready' || done === 'error') {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            setPolling(false);
+        }
+    }, [doclingStatus]);
+
+    const handleReextract = async () => {
+        if (!id || !isPdf) return;
+        setDoclingError(null);
+        try {
+            await resourceService.reextractDocling(id, reextractOpts);
+            setDoclingStatus('pending');
+            // Redémarrer le polling si arrêté
+            if (!intervalRef.current) {
+                intervalRef.current = setInterval(() => {
+                    fetchDoclingStatus();
+                }, 2500);
+                setPolling(true);
+            }
+        } catch (err) {
+            setDoclingError(err.response?.data?.detail || err.message || "Erreur lors du redémarrage de l'extraction.");
+        }
+    };
 
     // Effet pour récupérer les informations de type et sous-type
     useEffect(() => {
@@ -216,6 +320,48 @@ function ResourceView() {
                 )}
 
                 <Divider sx={{ my: 2 }} />
+
+                {/* Section Docling: statut & contenu pour PDF */}
+                {isPdf && (
+                    <Box sx={{ my: 2 }}>
+                        <Typography variant="h6">Extraction Docling (PDF)</Typography>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ my: 1, flexWrap: 'wrap' }}>
+                            <Chip label={`Statut: ${doclingStatus || 'inconnu'}`} color={chipColor(doclingStatus)} variant="outlined" />
+                            {polling && <Chip label="Polling..." size="small" />}
+                            {doclingLoading && <CircularProgress size={20} />}
+                            <Button variant="outlined" onClick={fetchDoclingStatus} disabled={doclingLoading}>Actualiser</Button>
+                            <FormControlLabel
+                                control={<Checkbox checked={reextractOpts.ocr} onChange={(e) => setReextractOpts(o => ({ ...o, ocr: e.target.checked }))} />}
+                                label="OCR"
+                            />
+                            <FormControlLabel
+                                control={<Checkbox checked={reextractOpts.force} onChange={(e) => setReextractOpts(o => ({ ...o, force: e.target.checked }))} />}
+                                label="Forcer"
+                            />
+                            <Button variant="contained" onClick={handleReextract} disabled={doclingLoading}>Relancer l'extraction</Button>
+                        </Stack>
+                        {doclingError && <Alert severity="error" sx={{ my: 1 }}>{doclingError}</Alert>}
+
+                        {doclingStatus === 'ready' && (
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="subtitle1">Markdown extrait</Typography>
+                                <Box component="pre" sx={{ p: 1, bgcolor: 'grey.100', borderRadius: 1, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                                    {doclingMarkdown || '—'}
+                                </Box>
+                                {Array.isArray(doclingTables) && doclingTables.length > 0 && (
+                                    <Box sx={{ mt: 2 }}>
+                                        <Typography variant="subtitle1">Tables détectées</Typography>
+                                        {doclingTables.map((tbl, idx) => (
+                                            <Box key={idx} sx={{ my: 1, p: 1, border: '1px solid', borderColor: 'grey.300', borderRadius: 1, overflow: 'auto' }}
+                                                dangerouslySetInnerHTML={{ __html: typeof tbl === 'string' ? tbl : (tbl?.html || '') }}
+                                            />
+                                        ))}
+                                    </Box>
+                                )}
+                            </Box>
+                        )}
+                    </Box>
+                )}
 
                 <Typography variant="h6">Objets d'étude associés</Typography>
                 {loadingStudyObjects ? (

@@ -119,6 +119,15 @@ export const useSuggestions = (sessionId, activeStep, configParams) => {
         error: "Aucune suggestion valide parmi les sélectionnées"
       };
     }
+
+    // Règle métier: 'analyse_texte' requiert un support pédagogique
+    const hasAnalyseTexte = validSuggestions.some(s => s.type_key === 'exercice' && s.subtype_key === 'analyse_texte');
+    if (hasAnalyseTexte && !configParams?.support_id) {
+      return {
+        valid: false,
+        message: "L'exercice 'Analyse de texte' requiert un support pédagogique (œuvre). Veuillez sélectionner un support dans la configuration."
+      };
+    }
     
     return { valid: true, suggestions: validSuggestions };
   };

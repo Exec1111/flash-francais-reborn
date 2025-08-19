@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiche d'Analyse de Texte</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS --- */
+        :root {
+            --primary-color: #4a4e69;
+            --secondary-color: #9a8c98;
+            --background-color: #f2e9e4;
+            --card-background: #ffffff;
+            --text-color: #22223b;
+            --question-color: #c9ada7;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        #analysis-title {
+            color: var(--primary-color);
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .analysis-section {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--box-shadow);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .analysis-section:hover {
+            transform: translateY(-5px);
+        }
+
+        .analysis-section h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--question-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .qa-pair {
+            margin-bottom: 20px;
+        }
+
+        .qa-pair:last-child {
+            margin-bottom: 0;
+        }
+
+        .question {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
+        }
+
+        .answer {
+            background-color: #f9f9f9;
+            border-left: 4px solid var(--question-color);
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: 300;
+        }
+
+        .placeholder {
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            #analysis-title {
+                font-size: 2em;
+            }
+            .analysis-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1 id="analysis-title">Fiche d'Analyse de Texte</h1>
+        </header>
+
+        <main id="analysis-sheet">
+            <!-- Section 1: J'observe -->
+            <section class="analysis-section" id="section-1">
+                <h2>1. J'observe</h2>
+                <div class="qa-container">
+                    <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+
+            <!-- Section 2: Je lis, j'écoute -->
+            <section class="analysis-section" id="section-2">
+                <h2>2. Je lis, j'écoute</h2>
+                <div class="qa-container">
+                     <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+
+            <!-- Section 3: Je comprends -->
+            <section class="analysis-section" id="section-3">
+                <h2>3. Je comprends</h2>
+                <div class="qa-container">
+                     <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+
+            <!-- Section 4: Je réagis -->
+            <section class="analysis-section" id="section-4">
+                <h2>4. Je réagis</h2>
+                <div class="qa-container">
+                     <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+
+            <!-- Section 5: J'interprète -->
+            <section class="analysis-section" id="section-5">
+                <h2>5. J'interprète</h2>
+                <div class="qa-container">
+                     <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+
+            <!-- Section 6: Je rédige un bilan -->
+            <section class="analysis-section" id="section-6">
+                <h2>6. Je rédige un bilan</h2>
+                <div class="qa-container">
+                     <p class="placeholder">Chargement des questions et réponses...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    // --- JavaScript ---
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- DONNÉES À FOURNIR PAR L'IA ---
+        // C'est ici que l'objet JSON généré par l'IA sera inséré.
+        // Pour la démonstration, nous utilisons un exemple.
+        const analysisData = {
+          "analysisTitle": "Analyse de 'La Parure' de Guy de Maupassant",
+          "sections": [
+            {
+              "id": 1,
+              "title": "J'observe",
+              "qa_pairs": [
+                {
+                  "question": "Quel est le titre et qui est l'auteur ?",
+                  "answer": "Le titre est 'La Parure'. L'auteur est Guy de Maupassant, une figure majeure du courant réaliste du XIXe siècle."
+                },
+                {
+                  "question": "Quel est le genre du texte et quel est son contexte ?",
+                  "answer": "Il s'agit d'une nouvelle réaliste. Le contexte est la société parisienne de la fin du XIXe siècle, avec ses codes sociaux et son importance accordée à l'apparence."
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Je lis, j'écoute",
+              "qa_pairs": [
+                {
+                  "question": "Qui sont les personnages principaux et où se déroule l'action ?",
+                  "answer": "Les personnages sont Mathilde Loisel, son mari, et Mme Forestier. L'action se déroule principalement à Paris."
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "title": "Je comprends",
+              "qa_pairs": [
+                {
+                  "question": "Résumez l'intrigue avec vos propres mots.",
+                  "answer": "Une jeune femme modeste, rêvant de luxe, emprunte un collier pour un bal, le perd, et passe dix ans de sa vie dans la misère pour le rembourser, avant de découvrir que le bijou était faux."
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Je réagis",
+              "qa_pairs": [
+                {
+                  "question": "Quel sentiment le destin de Mathilde vous inspire-t-il ?",
+                  "answer": "Le destin de Mathilde inspire un mélange de pitié pour sa souffrance et une réflexion sur la tragédie causée par sa vanité initiale. La révélation finale est choquante et met en lumière l'ironie tragique de sa vie."
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "title": "J'interprète",
+              "qa_pairs": [
+                {
+                  "question": "Quel message l'auteur a-t-il voulu transmettre ?",
+                  "answer": "Maupassant critique la superficialité d'une société obsédée par les apparences et le statut social. Il montre comment la vanité et le désir de paraître peuvent mener à la destruction."
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "title": "Je rédige un bilan",
+              "qa_pairs": [
+                {
+                  "question": "Faites une synthèse de votre analyse.",
+                  "answer": "'La Parure' est une nouvelle efficace qui, à travers une intrigue simple et une chute brutale, dénonce les dangers de la vanité et critique une société où l'être est moins important que le paraître. Le destin tragique de Mathilde Loisel sert de puissante leçon morale."
+                }
+              ]
+            }
+          ]
+        };
+
+        // --- MOTEUR DE GÉNÉRATION DE LA PAGE ---
+        // Cette fonction prend les données JSON et construit le HTML.
+        function populateAnalysis(data) {
+            // Mettre à jour le titre principal
+            const titleElement = document.getElementById('analysis-title');
+            if (titleElement && data.analysisTitle) {
+                titleElement.textContent = data.analysisTitle;
+            }
+
+            // Parcourir chaque section des données
+            data.sections.forEach(sectionData => {
+                const sectionElement = document.getElementById(`section-${sectionData.id}`);
+                if (sectionElement) {
+                    const qaContainer = sectionElement.querySelector('.qa-container');
+                    
+                    // Vider le conteneur placeholder
+                    qaContainer.innerHTML = ''; 
+
+                    // Parcourir les paires de questions/réponses et les créer
+                    sectionData.qa_pairs.forEach(pair => {
+                        const qaPairDiv = document.createElement('div');
+                        qaPairDiv.className = 'qa-pair';
+
+                        const questionDiv = document.createElement('div');
+                        questionDiv.className = 'question';
+                        questionDiv.textContent = pair.question;
+
+                        const answerDiv = document.createElement('div');
+                        answerDiv.className = 'answer';
+                        // Permet d'interpréter les sauts de ligne si l'IA en génère
+                        answerDiv.innerHTML = pair.answer.replace(/\n/g, '<br>'); 
+                        
+                        qaPairDiv.appendChild(questionDiv);
+                        qaPairDiv.appendChild(answerDiv);
+                        qaContainer.appendChild(qaPairDiv);
+                    });
+                }
+            });
+        }
+
+        // Appeler la fonction principale pour peupler la page
+        populateAnalysis(analysisData);
+    });
+    </script>
+</body>
+</html>

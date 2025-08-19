@@ -78,6 +78,16 @@ class ResourceResponse(BaseModel):
     file_size: Optional[int] = None
     file_type: Optional[str] = None
     html_url: Optional[str] = None  # Ajout pour exposer l'URL du HTML généré
+    # Métadonnées Docling / cache IA
+    docling_status: Optional[str] = None
+    docling_md_path: Optional[str] = None
+    docling_tables_path: Optional[str] = None
+    docling_chars: Optional[int] = None
+    docling_sha256: Optional[str] = None
+    docling_version: Optional[str] = None
+    ocr_used: Optional[bool] = None
+    extracted_at: Optional[datetime] = None
+    docling_error: Optional[str] = None
     # Relations chargées
     type: Optional[ResourceTypeSchema] = None
     sub_type: Optional[ResourceSubTypeSchema] = None
@@ -113,6 +123,16 @@ class ResourceRead(ResourceBase):
     id: int
     sessions: List[SessionReadSimple] = []
     objectives: List[ObjectiveIdentifier] = []
+    # Métadonnées Docling / cache IA
+    docling_status: Optional[str] = None
+    docling_md_path: Optional[str] = None
+    docling_tables_path: Optional[str] = None
+    docling_chars: Optional[int] = None
+    docling_sha256: Optional[str] = None
+    docling_version: Optional[str] = None
+    ocr_used: Optional[bool] = None
+    extracted_at: Optional[datetime] = None
+    docling_error: Optional[str] = None
 
     @computed_field(return_type=Optional[str])
     @property

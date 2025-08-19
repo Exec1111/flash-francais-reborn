@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 # Les tables d'association sont maintenant importées depuis models/__init__.py
@@ -52,6 +52,17 @@ class Resource(Base):
     file_name = Column(String, nullable=True, comment='Nom original du fichier uploadé')
     file_size = Column(Integer, nullable=True, comment='Taille du fichier en octets')
     file_type = Column(String, nullable=True, comment='Type MIME du fichier')
+
+    # Métadonnées Docling / cache IA
+    docling_status = Column(String(20), nullable=True, comment='Statut Docling: pending|processing|ready|error')
+    docling_md_path = Column(String, nullable=True, comment='Chemin relatif du markdown extrait (Docling)')
+    docling_tables_path = Column(String, nullable=True, comment='Chemin relatif des tables extraites (Docling)')
+    docling_chars = Column(Integer, nullable=True, comment='Nombre de caractères du markdown Docling')
+    docling_sha256 = Column(String(64), nullable=True, comment="Hash SHA-256 du fichier original au moment de l'extraction")
+    docling_version = Column(String(50), nullable=True, comment='Version de Docling utilisée')
+    ocr_used = Column(Boolean, nullable=True, comment='Extraction avec OCR utilisée')
+    extracted_at = Column(DateTime, nullable=True, comment="Horodatage de fin d'extraction")
+    docling_error = Column(Text, nullable=True, comment='Message d\'erreur Docling')
 
     # Relations
     user = relationship("User", back_populates="resources")

@@ -3,8 +3,10 @@ import json
 import uuid
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
 # --- Configuration --- #
+load_dotenv()  # Charge les variables d'environnement depuis .env (dans backend/)
 BASE_URL = "http://localhost:10000/api/v1"
 HEADERS = {"Content-Type": "application/json"}
 

@@ -4,7 +4,7 @@ services:
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    preDeployCommand: cp .env.production .env && python init_db.py
+    preDeployCommand: alembic upgrade head && python init_db.py
     startCommand: python app.py
     envVars:
       - key: DATABASE_URL

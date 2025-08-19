@@ -100,6 +100,29 @@ const resourceService = {
       throw error;
     }
   },
+
+  // Récupérer le statut Docling (et contenu si ready)
+  getDoclingStatus: async (id) => {
+    try {
+      const response = await api.get(`${RESOURCE_ENDPOINT}/${id}/docling`);
+      return response.data; // { status, document_markdown?, tables?, ... }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Relancer l'extraction Docling (ocr, force)
+  reextractDocling: async (id, { ocr = false, force = false } = {}) => {
+    try {
+      const form = new FormData();
+      form.append('ocr', String(ocr));
+      form.append('force', String(force));
+      const response = await api.post(`${RESOURCE_ENDPOINT}/${id}/reextract`, form);
+      return response.data; // { status: 'pending' | ... }
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default resourceService;

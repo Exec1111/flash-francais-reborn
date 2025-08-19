@@ -46,8 +46,10 @@ async def generate_ai_resource_content(
         if not prompt_name:
             logger.error(f"Aucun prompt trouvé pour {type_key}/{subtype_key} (normalisé: {type_key_lower}/{subtype_key_lower})")
             raise ResourceGenerationError(f"Aucun prompt trouvé pour {type_key}/{subtype_key}")
+        # Supporte le format dict du registre: {"config": "<nom_fichier_yaml>"}
+        prompt_config = prompt_name.get("config") if isinstance(prompt_name, dict) else prompt_name
         # Générateur générique basé sur YAML/Jinja
-        generator = PromptGenerator(prompt_name)
+        generator = PromptGenerator(prompt_config)
         
         # Afficher les variables d'entrée pour débogage
         logger.info(f"DEBUG PROMPT: Variables d'entrée pour {type_key}/{subtype_key}:")
@@ -67,11 +69,28 @@ async def generate_ai_resource_content(
         
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-        raw_model_name = os.getenv("GEMINI_CHAT_MODEL", "gemini-1.5-flash-latest") # Utilisation d'un fallback standard
+        # Sélection dynamique du modèle (flash/pro) selon PROMPT_REGISTRY
+        preferred_model = None
+        if isinstance(prompt_name, dict):
+            try:
+                preferred_model = (prompt_name.get("gemini_model") or "").strip().lower()
+            except Exception:
+                preferred_model = None
+
+        raw_model_name = None
+        if preferred_model == "pro":
+            raw_model_name = os.getenv("GEMINI_PRO_CHAT_MODEL") or os.getenv("GEMINI_FLASH_CHAT_MODEL") or os.getenv("GEMINI_CHAT_MODEL") or "gemini-1.5-flash-latest"
+        elif preferred_model == "flash":
+            raw_model_name = os.getenv("GEMINI_FLASH_CHAT_MODEL") or os.getenv("GEMINI_PRO_CHAT_MODEL") or os.getenv("GEMINI_CHAT_MODEL") or "gemini-1.5-flash-latest"
+        else:
+            # défaut: privilégier Flash si dispo
+            raw_model_name = os.getenv("GEMINI_FLASH_CHAT_MODEL") or os.getenv("GEMINI_PRO_CHAT_MODEL") or os.getenv("GEMINI_CHAT_MODEL") or "gemini-1.5-flash-latest"
+
         if not raw_model_name.startswith("models/"):
             model_name = f"models/{raw_model_name}"
         else:
             model_name = raw_model_name
+        logger.info(f"Modèle Gemini sélectionné: {model_name} (préférence: {preferred_model or 'default'})")
         
         # Initialisation du client google-genai
         client = genai.Client(api_key=api_key)
@@ -87,9 +106,9 @@ async def generate_ai_resource_content(
         effective_schema_for_api = current_schema_from_generator
         
         # Si le schéma est présent, logger l'information plus détaillée
-        if effective_schema_for_api and prompt_name == "session_exercise_suggester":
+        if effective_schema_for_api and prompt_config == "session_exercise_suggester":
             try:
-                logger.info(f"Utilisation du schéma JSON pour contraindre la structure de la réponse pour {prompt_name}")
+                logger.info(f"Utilisation du schéma JSON pour contraindre la structure de la réponse pour {prompt_config}")
                 logger.debug(f"Structure du schéma: {json.dumps(effective_schema_for_api)[:500]}...")
             except Exception as e:
                 logger.error(f"Erreur lors de l'affichage du schéma: {str(e)}")
@@ -151,7 +170,7 @@ async def generate_ai_resource_content(
             log_entry = LLMInteractionLog(
                 api_provider="google_genai",
                 model_name=model_name,
-                prompt_type=prompt_name,
+                prompt_type=prompt_config,
                 input_prompt=prompt_text,
                 input_variables=input_variables,
                 generation_config=config.to_dict() if hasattr(config, 'to_dict') else None,
@@ -225,7 +244,7 @@ async def generate_ai_resource_content(
                         logger.info("Correction JSON réussie avec nettoyage des délimiteurs")
                     except JSONDecodeError:
                         # Dernière tentative: forcer l'encapsulation dans un format approprié
-                        if prompt_name == "session_exercise_suggester":
+                        if prompt_config == "session_exercise_suggester":
                             # Créer un JSON minimal valide pour éviter l'échec complet
                             logger.warning("Création d'un JSON suggester minimal de secours")
                             parsed_content = {"suggestions": []}
@@ -239,9 +258,9 @@ async def generate_ai_resource_content(
         # Si c'était session_exercise_suggester et que le schéma n'a pas été envoyé à l'API,
         # il est possible que l'IA retourne une liste directement au lieu d'un objet {"suggestions": [...]}
         # et utilise des noms de clés légèrement différents.
-        if prompt_name == "session_exercise_suggester" and effective_schema_for_api is None:
+        if prompt_config == "session_exercise_suggester" and effective_schema_for_api is None:
             if isinstance(parsed_content, list):
-                logger.info(f"Sortie brute de l'IA pour {prompt_name} (sans schéma API) est une liste. Transformation en cours...")
+                logger.info(f"Sortie brute de l'IA pour {prompt_config} (sans schéma API) est une liste. Transformation en cours...")
                 transformed_suggestions = []
                 for item_from_ai in parsed_content:
                     type_key_from_ai = item_from_ai.get("type_key")
@@ -261,7 +280,7 @@ async def generate_ai_resource_content(
             elif isinstance(parsed_content, dict) and "suggestions" not in parsed_content:
                 # Gérer le cas où l'IA renvoie un objet mais sans la clé 'suggestions' attendue
                 # Ceci est moins probable que la liste directe, mais c'est une sécurité.
-                logger.warning(f"Sortie brute de l'IA pour {prompt_name} est un dict sans clé 'suggestions'. Tentative d'encapsulation.")
+                logger.warning(f"Sortie brute de l'IA pour {prompt_config} est un dict sans clé 'suggestions'. Tentative d'encapsulation.")
                 # Heuristique : si c'est un dictionnaire et qu'il a type/subtype, c'est probablement une suggestion unique non encapsulée
                 if "type" in parsed_content and "subtype" in parsed_content:
                      transformed_item = {
@@ -272,7 +291,7 @@ async def generate_ai_resource_content(
                     }
                      parsed_content = {"suggestions": [transformed_item]}
                 else:
-                    logger.error(f"Structure inattendue du dict de l'IA pour {prompt_name}: {parsed_content}")
+                    logger.error(f"Structure inattendue du dict de l'IA pour {prompt_config}: {parsed_content}")
             # Si parsed_content est déjà un dict avec "suggestions", aucune transformation n'est nécessaire ici.
 
         # Valider localement selon le schéma du prompt (si un schéma est défini dans le PromptGenerator)
@@ -281,14 +300,14 @@ async def generate_ai_resource_content(
             try:
                 generator.validate(parsed_content) # Valide contre le schéma original du prompt
             except Exception as ve:
-                logger.warning(f"La réponse brute de l'IA ÉCHOUE à la validation locale du schéma pour {prompt_name}: {ve}")
+                logger.warning(f"La réponse brute de l'IA ÉCHOUE à la validation locale du schéma pour {prompt_config}: {ve}")
         else:
-            logger.info(f"Aucun schéma local à valider pour {prompt_name}.")
+            logger.info(f"Aucun schéma local à valider pour {prompt_config}.")
         
         # Post-traitement des valeurs numériques pour les suggestions d'exercices
-        if prompt_name == "session_exercise_suggester":
+        if prompt_config == "session_exercise_suggester":
             try:
-                logger.info(f"Post-traitement des valeurs numériques pour {prompt_name}")
+                logger.info(f"Post-traitement des valeurs numériques pour {prompt_config}")
                 content_before = json.dumps(parsed_content)[:100] + "..." if isinstance(parsed_content, dict) else str(type(parsed_content))
                 logger.info(f"Contenu avant conversion: {content_before}")
                 

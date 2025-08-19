@@ -23,8 +23,8 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [localHtmlContent, setLocalHtmlContent] = useState("");
 
-  // L'URL de base de l'API
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+  // L'URL de base de l'API (alignée sur app.py et render.yaml -> port 10000)
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
   /**
    * Gère la soumission du formulaire
@@ -49,16 +49,123 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         throw new Error("Type de ressource non défini");
       }
 
-      // Préparation des données pour l'API
+      // Si mode PDF + type/subtype supportés, appeler l'orchestrateur PDF (détection insensible à la casse)
+      const sourceModeNorm = (formData.sourceMode || '').toLowerCase();
+      const isPdfMode = sourceModeNorm === 'pdf_resource' || sourceModeNorm === 'pdf_file';
+      const typeKeyNorm = (formData.typeKey || '').toLowerCase();
+      const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
+      const supportsPdfOrchestrator = typeKeyNorm === 'exercice' && subtypeKeyNorm === 'analyse_texte';
+      console.log('[DEBUG][handleSubmit] Mode/Type/Subtype:', {
+        sourceMode: formData.sourceMode,
+        typeKey: formData.typeKey,
+        subtypeKey: formData.subtypeKey,
+        isPdfMode,
+        supportsPdfOrchestrator
+      });
+      if (isPdfMode && supportsPdfOrchestrator) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error("Aucun jeton d'authentification trouvé");
+        }
+
+        // Validations spécifiques PDF
+        if (formData.sourceMode === 'pdf_resource' && !formData.pdfResourceId) {
+          updateProgress("Veuillez sélectionner une ressource PDF.", "error");
+          throw new Error("Ressource PDF manquante");
+        }
+        if (formData.sourceMode === 'pdf_file' && !formData.pdfFile) {
+          updateProgress("Veuillez sélectionner un fichier PDF.", "error");
+          throw new Error("Fichier PDF manquant");
+        }
+
+        updateProgress("Envoi du PDF à l'orchestrateur (extraction + génération)...", "info");
+
+        // Logs de diagnostic côté frontend
+        if (formData.sourceMode === 'pdf_file') {
+          const f = formData.pdfFile;
+          console.log('[DEBUG][PDF][frontend] Fichier sélectionné:', {
+            present: !!f,
+            name: f?.name,
+            type: f?.type,
+            size: f?.size
+          });
+          if (f && (!f.size || f.size === 0)) {
+            updateProgress("Le fichier PDF sélectionné est vide (0 octet).", "error");
+            throw new Error("Fichier PDF vide");
+          }
+        }
+
+        const apiFormData = new FormData();
+        if (formData.sourceMode === 'pdf_resource') {
+          apiFormData.append('resource_id', String(formData.pdfResourceId));
+        } else if (formData.sourceMode === 'pdf_file') {
+          // Ajouter aussi le filename pour être explicite
+          apiFormData.append('file', formData.pdfFile, formData.pdfFile?.name || 'upload.pdf');
+        }
+        apiFormData.append('ocr', String(Boolean(formData.ocr)));
+        apiFormData.append('niveau', formData.niveau || '5ème');
+        apiFormData.append('nombre_questions', String(formData.nombre_questions ?? 6));
+        apiFormData.append('instructions_personnalisees', formData.instructions_personnalisees || '');
+
+        // Trace du contenu de FormData (sans lire le fichier)
+        try {
+          for (const [key, val] of apiFormData.entries()) {
+            if (val instanceof File) {
+              console.log(`[DEBUG][PDF][frontend] FormData entry '${key}':`, { name: val.name, type: val.type, size: val.size });
+            } else {
+              console.log(`[DEBUG][PDF][frontend] FormData entry '${key}':`, String(val));
+            }
+          }
+        } catch (e) {
+          console.warn('[DEBUG][PDF][frontend] Impossible d\'itérer sur FormData.entries():', e);
+        }
+
+        const orchestratorUrl = `${API_BASE_URL}/api/v1/ai/analyse-texte-from-pdf`;
+        console.log('[DEBUG][handleSubmit] Appel orchestrateur PDF:', orchestratorUrl);
+        const response = await fetch(orchestratorUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+            // Laisser le navigateur définir le Content-Type multipart/form-data
+          },
+          body: apiFormData
+        });
+
+        if (!response.ok) {
+          let errorMsg = `Erreur (${response.status}) lors de l'orchestration PDF`;
+          try {
+            const errData = await response.json();
+            errorMsg = errData.detail || errorMsg;
+          } catch (_) {}
+          throw new Error(errorMsg);
+        }
+
+        const result = await response.json();
+        console.log('[DEBUG][handleSubmit][PDF] Résultat orchestrateur:', result);
+
+        if (result && result.content) {
+          setGenerationResults([result.content]);
+          setEditedResults([result.content]);
+          updateProgress("Génération réussie via PDF", "success");
+        } else {
+          throw new Error("Contenu généré vide ou invalide (PDF)");
+        }
+
+        return; // Sortir après branche PDF; finally assurera l'arrêt du chargement
+      }
+      
+      console.log('[DEBUG][handleSubmit] Fallback vers generate-resource', { isPdfMode, supportsPdfOrchestrator, typeKeyNorm, subtypeKeyNorm });
+      // Préparation des données pour l'API JSON (mode texte ou fallback)
       const payload = {
         type_key: formData.typeKey,
         subtype_key: formData.subtypeKey,
         variables: {}
       };
       
-      // Copier toutes les données du formulaire dans les variables, sans inclure typeKey et subtypeKey
+      // Copier toutes les données utiles du formulaire dans les variables, en excluant les clés UI
+      const EXCLUDED_KEYS = ['typeKey', 'subtypeKey', 'sourceMode', 'pdfResourceId', 'pdfResourceTitle', 'pdfFile', 'ocr'];
       Object.keys(formData).forEach(key => {
-        if (key !== 'typeKey' && key !== 'subtypeKey') {
+        if (!EXCLUDED_KEYS.includes(key)) {
           payload.variables[key] = formData[key];
         }
       });

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload, ResourceListResponse
 from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
 from schemas.study_object import StudyObjectReadShort # Import global
@@ -18,6 +18,10 @@ import json # Pour parser session_ids
 from fastapi import status
 from werkzeug.utils import secure_filename # Sécurité: importer depuis werkzeug.utils
 from config import get_settings
+from ai.services.docling_background import run_docling_extraction
+from schemas.docling import DoclingStatusResponse, DoclingTable
+import re
+import hashlib
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
@@ -55,6 +59,7 @@ def read_resource_sub_types(
 async def create_resource_route(
     *, # Force keyword-only args
     db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks,
     current_user: UserModel = Depends(get_current_active_user),
     title: str = Form(...),
     description: Optional[str] = Form(None),
@@ -196,6 +201,20 @@ async def create_resource_route(
             # Ne pas passer 'file_path_url' car absent de la signature actuelle
         )
         logger.info(f"Ressource créée avec ID: {db_resource.id}")
+        # Calculer et stocker le SHA-256 du fichier uploadé si applicable
+        try:
+            if source_type == 'file' and final_file_path_on_disk and final_file_path_on_disk.exists():
+                sha256 = hashlib.sha256()
+                with open(final_file_path_on_disk, 'rb') as f:
+                    for chunk in iter(lambda: f.read(8192), b""):
+                        sha256.update(chunk)
+                db_resource.docling_sha256 = sha256.hexdigest()
+                db.add(db_resource)
+                db.commit()
+                db.refresh(db_resource)
+                logger.info(f"SHA-256 calculé et stocké pour resource_id={db_resource.id}")
+        except Exception as e_sha:
+            logger.warning(f"Impossible de calculer/stockER le SHA-256 pour resource_id={db_resource.id}: {e_sha}")
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
         if source_type == 'ai' and html_path:
@@ -217,6 +236,19 @@ async def create_resource_route(
             db.add(db_resource)
             db.commit()
             db.refresh(db_resource)
+        # Déclencher extraction Docling en tâche de fond si PDF uploadé
+        try:
+            if db_resource and db_resource.source_type == 'file' and (db_resource.file_type == "application/pdf"):
+                # Marquer en attente et sauvegarder avant de lancer la tâche
+                db_resource.docling_status = "pending"
+                db.add(db_resource)
+                db.commit()
+                db.refresh(db_resource)
+                # Lancer la tâche asynchrone
+                background_tasks.add_task(run_docling_extraction, db_resource.id, current_user.id, False)
+                logger.info(f"Extraction Docling planifiée en arrière-plan pour resource_id={db_resource.id}")
+        except Exception as e_bg:
+            logger.error(f"Impossible de planifier l'extraction Docling pour resource_id={getattr(db_resource, 'id', None)}: {e_bg}")
         return db_resource
     except ValueError as e:
         # Si le CRUD lève une ValueError (ex: user/session non trouvé, fichier manquant)
@@ -596,6 +628,114 @@ def delete_resource_route(
     logger.info(f"Ressource {resource_id} supprimée avec succès de la BDD.")
     # Pas de contenu à retourner pour une réponse 204
     return # Ou return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- Endpoints Docling ---
+@resource_router.get("/{resource_id}/docling", response_model=DoclingStatusResponse)
+def get_resource_docling(
+    resource_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user),
+):
+    """Retourne le statut Docling d'une ressource et, si prêt, le contenu (markdown + tables)."""
+    db_resource = crud.resource.get_resource(db, resource_id=resource_id)
+    if db_resource is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    if db_resource.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resource")
+
+    # Statut de base
+    status_value = db_resource.docling_status or "pending"
+    resp: Dict[str, object] = {
+        "status": status_value,
+        "ocr_used": getattr(db_resource, "ocr_used", None),
+        "docling_version": getattr(db_resource, "docling_version", None),
+        "extracted_at": getattr(db_resource, "extracted_at", None),
+        "docling_error": getattr(db_resource, "docling_error", None),
+        "docling_chars": getattr(db_resource, "docling_chars", None),
+    }
+
+    # Si prêt, lire les fichiers cache s'ils existent
+    try:
+        if status_value == "ready":
+            uploads_base = Path(settings.UPLOADS_BASE_DIR)
+            md_rel = (db_resource.docling_md_path or "").lstrip("/")
+            tables_rel = (db_resource.docling_tables_path or "").lstrip("/")
+
+            if md_rel:
+                md_path = uploads_base / md_rel
+                if md_path.exists():
+                    resp["document_markdown"] = md_path.read_text(encoding="utf-8")
+            if tables_rel:
+                tables_path = uploads_base / tables_rel
+                if tables_path.exists():
+                    raw = tables_path.read_text(encoding="utf-8")
+                    parts = re.split(r"\s*<hr\s*/?>\s*", raw, flags=re.I)
+                    tables: List[DoclingTable] = []
+                    for part in parts:
+                        if not part or not part.strip():
+                            continue
+                        m = re.search(r"<h3>\s*Table\s+(\d+)\s*</h3>", part, flags=re.I)
+                        if not m:
+                            continue
+                        idx = int(m.group(1))
+                        html = re.sub(r"^\s*<h3>.*?</h3>\s*", "", part, flags=re.I | re.S)
+                        tables.append(DoclingTable(index=idx, html=html))
+                    resp["tables"] = tables
+    except Exception as e:
+        logger.error(f"Erreur lors de la lecture du cache Docling pour resource_id={resource_id}: {e}", exc_info=True)
+
+    return DoclingStatusResponse(**resp)
+
+
+@resource_router.post("/{resource_id}/reextract", response_model=DoclingStatusResponse)
+async def reextract_resource_docling(
+    resource_id: int,
+    *,
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks,
+    current_user: UserModel = Depends(get_current_active_user),
+    ocr: bool = Form(False),
+    force: bool = Form(False),
+):
+    """Planifie une nouvelle extraction Docling pour la ressource.
+    - ocr: active l'OCR
+    - force: force la ré-extraction même si une extraction est en cours
+    """
+    db_resource = crud.resource.get_resource(db, resource_id=resource_id)
+    if db_resource is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    if db_resource.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resource")
+    if not db_resource.file_path or (db_resource.file_type and db_resource.file_type != "application/pdf"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resource is not a valid PDF")
+
+    # Si déjà en cours et pas de force, retourner le statut actuel
+    if not force and (db_resource.docling_status in ("pending", "processing")):
+        return DoclingStatusResponse(
+            status=db_resource.docling_status or "processing",
+            ocr_used=db_resource.ocr_used,
+            docling_version=db_resource.docling_version,
+            extracted_at=db_resource.extracted_at,
+            docling_error=db_resource.docling_error,
+            docling_chars=db_resource.docling_chars,
+        )
+
+    # Marquer en attente et planifier
+    try:
+        db_resource.docling_status = "pending"
+        db_resource.docling_error = None
+        db.add(db_resource)
+        db.commit()
+        db.refresh(db_resource)
+    except Exception as e:
+        logger.error(f"Erreur lors de la mise à jour du statut Docling (pending) pour resource_id={resource_id}: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la préparation de la ré-extraction Docling")
+
+    background_tasks.add_task(run_docling_extraction, db_resource.id, current_user.id, ocr)
+    logger.info(f"Ré-extraction Docling planifiée pour resource_id={resource_id} (ocr={ocr}, force={force})")
+
+    return DoclingStatusResponse(status="pending")
 
 
 # --- Fin des Routes pour les Ressources ---

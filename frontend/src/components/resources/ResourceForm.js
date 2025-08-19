@@ -27,16 +27,13 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile'; 
-import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
-import fusionService from '../../services/fusionService';
 import studyObjectService from '../../services/studyObjectService';
-import DynamicAIForm from '../DynamicAIForm/index';  // Import mis à jour pour utiliser la version refactorisée
-import api from '../../services/api';
+import configService from '../../services/configService';
+import DynamicAIForm from '../DynamicAIForm/index';  
 import TinyHtmlEditor from '../editors/TinyHtmlEditor';
-import RefreshIcon from '@mui/icons-material/Autorenew';
 
 /**
  * Composant de formulaire réutilisable pour la création et l'édition de ressources
@@ -78,19 +75,42 @@ const ResourceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [resourceTypes, setResourceTypes] = useState([]);
   const [resourceSubTypes, setResourceSubTypes] = useState([]);
-  const { } = useAuth(); 
-  const MAX_FILE_SIZE = 1 * 1024 * 1024; 
-  const ALLOWED_FILE_TYPE = 'application/pdf';
+  const [uploadConfig, setUploadConfig] = useState({
+    max_upload_size_mb: 10,
+    max_upload_size_bytes: 10 * 1024 * 1024,
+    allowed_mime_types: [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'text/plain',
+      'audio/mpeg',
+      'video/mp4',
+    ],
+  });
+  const MAX_UPLOAD_SIZE_MB = uploadConfig.max_upload_size_mb;
+  const MAX_FILE_SIZE = uploadConfig.max_upload_size_bytes; 
+  const ALLOWED_FILE_TYPES = uploadConfig.allowed_mime_types || [];
+  const ALLOWED_FILE_TYPES_LABEL = (() => {
+    const pretty = {
+      'application/pdf': 'PDF',
+      'image/jpeg': 'JPG',
+      'image/png': 'PNG',
+      'image/gif': 'GIF',
+      'text/plain': 'TXT',
+      'audio/mpeg': 'MP3',
+      'video/mp4': 'MP4',
+    };
+    const labels = (ALLOWED_FILE_TYPES || []).map(t => pretty[t] || t);
+    return labels.join(', ');
+  })();
 
-  // --- Animation de chargement pour la génération IA ---
-  const [aiLoading, setAiLoading] = useState(false);
   // Contenu HTML pour l'éditeur
   const [htmlContent, setHtmlContent] = useState('');
 
   const [allStudyObjects, setAllStudyObjects] = useState([]);
   const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
 
-  // (placeholder supprimé)
   // --- Effets --- 
 
   // Debug initialData
@@ -146,6 +166,20 @@ const ResourceForm = ({
         setFormData(prev => ({ ...prev, session_ids: [session.id] }));
     }
   }, [initialData, resourceTypes, session, isEdit, allStudyObjects]);
+
+  // Charger la configuration d'upload depuis le backend
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const cfg = await configService.getUploadConfig();
+        if (!ignore && cfg) setUploadConfig(cfg);
+      } catch (err) {
+        console.warn("[ResourceForm] Impossible de charger la config d'upload, utilisation des valeurs par défaut.", err);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
 
   // Charger le contenu HTML existant le cas échéant
   useEffect(() => {
@@ -256,11 +290,11 @@ const ResourceForm = ({
     const file = e.target.files[0];
     if (file) {
         // Validation côté client
-        if (file.type !== ALLOWED_FILE_TYPE) {
-            setFileError(`Type de fichier non autorisé. Seul ${ALLOWED_FILE_TYPE} est accepté.`);
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+            setFileError(`Type de fichier non autorisé. Types autorisés: ${ALLOWED_FILE_TYPES_LABEL}.`);
             setSelectedFile(null);
         } else if (file.size > MAX_FILE_SIZE) {
-            setFileError(`Fichier trop volumineux (max ${MAX_FILE_SIZE / 1024 / 1024} Mo).`);
+            setFileError(`Fichier trop volumineux (max ${MAX_UPLOAD_SIZE_MB} Mo).`);
             setSelectedFile(null);
         } else {
             setSelectedFile(file);
@@ -288,151 +322,147 @@ const ResourceForm = ({
     setSubmitting(true);
 
     // Vérification spécifique si source_type est 'file'
-    if (sourceType === 'file' && !selectedFile && !isEdit) { 
-        setFileError('Veuillez sélectionner un fichier PDF.');
-        setError('Champ manquant.'); 
-        setSubmitting(false);
-        return;
+    if (sourceType === 'file' && !selectedFile && !isEdit) {
+      setFileError(`Veuillez sélectionner un fichier (${ALLOWED_FILE_TYPES_LABEL}).`);
+      setError('Champ manquant.');
+      setSubmitting(false);
+      return;
     }
-    if (sourceType === 'file' && fileError) { 
-        setError('Veuillez corriger les erreurs du fichier.');
-        setSubmitting(false);
-        return;
+    if (sourceType === 'file' && fileError) {
+      setError('Veuillez corriger les erreurs du fichier.');
+      setSubmitting(false);
+      return;
     }
 
     // Préparation des données à envoyer
     const dataToSend = new FormData();
-    // Ajouter le contenu HTML si présent
-    if (htmlContent) {
+
+    // Champs de base
+    if (formData.title) dataToSend.append('title', formData.title);
+    if (formData.description) dataToSend.append('description', formData.description);
+
+    // Mapping des clés vers celles attendues par le backend
+    if (formData.resource_type_id) {
+      const typeId = Number(formData.resource_type_id);
+      if (!Number.isNaN(typeId)) dataToSend.append('type_id', typeId);
+    }
+    const subTypeId = Number(formData.resource_sub_type_id);
+    if (!Number.isNaN(subTypeId)) dataToSend.append('sub_type_id', subTypeId);
+
+    // Source de la ressource (le backend n'accepte que 'file' ou 'ai')
+    const backendSourceType = sourceType === 'url' ? 'ai' : sourceType;
+    dataToSend.append('source_type', backendSourceType);
+
+    // Sérialisation JSON des listes (conforme au backend)
+    const sessionIds = Array.isArray(formData.session_ids)
+      ? formData.session_ids.map(id => Number(id)).filter(id => !Number.isNaN(id))
+      : [];
+    if (isEdit) {
+      // En mise à jour: n'envoyer que si défini pour éviter d'écraser par inadvertance
+      if (Array.isArray(formData.session_ids)) {
+        dataToSend.append('session_ids_json', JSON.stringify(sessionIds));
+      }
+    } else {
+      dataToSend.append('session_ids_json', JSON.stringify(sessionIds));
+    }
+
+    // Objectifs (optionnels): si fournis dans formData, les envoyer
+    if (Array.isArray(formData.objective_ids)) {
+      const objectiveIds = formData.objective_ids
+        .map(id => Number(id))
+        .filter(id => !Number.isNaN(id));
+      dataToSend.append('objective_ids_json', JSON.stringify(objectiveIds));
+    }
+
+    // Objets d'étude
+    // - En création: envoyer seulement si non vide
+    // - En édition: toujours envoyer (y compris [] pour effacer les associations)
+    const soIds = Array.isArray(selectedStudyObjects)
+      ? selectedStudyObjects.map(obj => Number(obj.id)).filter(id => !Number.isNaN(id))
+      : [];
+    if (isEdit) {
+      dataToSend.append('study_object_ids_json', JSON.stringify(soIds));
+    } else if (soIds.length > 0) {
+      dataToSend.append('study_object_ids_json', JSON.stringify(soIds));
+    }
+
+    // NOTE: Le backend actuel ne supporte pas un champ 'url' pour les ressources.
+    // Si une gestion de ressources par lien est souhaitée, prévoir une évolution backend dédiée.
+
+    // Contenu HTML: uniquement pour l'édition des ressources IA existantes
+    if (isEdit && htmlContent) {
       dataToSend.append('html_content', htmlContent);
     }
-    
-    // Ajout des champs communs à la FormData 
-    Object.keys(formData).forEach(key => {
-        // Ignorer les champs vides ou null/undefined
-        if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') {
-            if (Array.isArray(formData[key]) && key !== 'session_ids') {
-                // Pour les tableaux hors session_ids, on convertit en JSON (ex: tags, etc.)
-                dataToSend.append(key, JSON.stringify(formData[key]));
-            } else if (Array.isArray(formData[key]) && key === 'session_ids') {
-                // Pour session_ids, on les ajoute individuellement avec le même nom de clé
-                formData[key].forEach(id => dataToSend.append('session_ids', id));
-            } else {
-                dataToSend.append(key, formData[key]);
-            }
-        }
-    });
 
-    // Ajouter les IDs des objets d'étude
-    if (selectedStudyObjects && selectedStudyObjects.length > 0) {
-        selectedStudyObjects.forEach(obj => {
-            dataToSend.append('study_object_ids', obj.id);
-        });
-    }
-
-    // Champs spécifiques
-    dataToSend.append('source_type', sourceType);
-    
     // Fichier (si nécessaire)
     if (sourceType === 'file' && selectedFile) {
-        dataToSend.append('file', selectedFile);
+      dataToSend.append('file', selectedFile);
     }
 
     try {
-        let response;
-        
-        if (isEdit) {
-            // Edition d'une ressource existante 
-            response = await resourceService.update(resourceId, dataToSend);
-            setSuccess('Ressource mise à jour avec succès!');
-        } else {
-            // Création d'une nouvelle ressource
-            response = await resourceService.create(dataToSend);
-            setSuccess('Ressource créée avec succès!');
-        }
-        
-        // Appeler la fonction onSuccess si fournie
-        if (onSuccess) {
-            // Attendre la complétion du callback (important si navigation/détachements doivent suivre)
-            await onSuccess(response);
-        }
-        
-        // Réinitialiser les champs du formulaire si création
-        if (!isEdit) {
-            setSourceType('ai');
-            setSelectedFile(null);
-            setFileError('');
-        }
-        
-        // Si on est en mode dialogue, fermer le dialogue
-        if (isDialog && onClose) {
-            onClose();
-        }
+      let response;
 
-        // Redirection automatique uniquement si autorisée
-        if (!disableNavigation && !isDialog) {
-            navigate('/resources');
-        }
-    } catch (err) {
-        console.error("Erreur lors de la sauvegarde de la ressource:", err);
-        
-        // Traitement des erreurs spécifiques API
-        let displayError = "Une erreur est survenue lors de la sauvegarde.";
-        
-        if (err.response?.data?.detail) {
-            // Erreur API détaillée
-            const detail = err.response.data.detail;
-            displayError = detail;
-        } else if (err.message) {
-            // Fallback sur le message d'erreur général d'Axios
-            displayError = err.message;
-        }
-        
-        setError(displayError);
-
-        // Si l'erreur formatée concerne le fichier
-        if (displayError.includes("fichier")) { 
-            setFileError(displayError);
-        } else if (displayError.toLowerCase().includes("file")) { // Gérer le cas où le backend dit "file"
-             setFileError(displayError);
-        }
-    } finally {
-        setSubmitting(false);
-    }
-  };
-
-  // Handler pour la régénération du document IA existant
-  const handleRegenerate = async () => {
-    if (!initialData) return;
-    try {
-      setAiLoading(true);
-      const { type_key: typeKey, subtype_key: subtypeKey, model_path: modelPath, id: userId } = initialData; // Ajuster selon structure réelle
-      if (!typeKey || !subtypeKey) {
-        console.warn('[ResourceForm] Impossible de régénérer : clés type/subtype manquantes');
-        return;
+      if (isEdit) {
+        // Edition d'une ressource existante
+        response = await resourceService.update(resourceId, dataToSend);
+        setSuccess('Ressource mise à jour avec succès!');
+      } else {
+        // Création d'une nouvelle ressource
+        response = await resourceService.create(dataToSend);
+        setSuccess('Ressource créée avec succès!');
       }
-      const dataJson = JSON.stringify(initialData.data_json || {});
-      await fusionService.mergeResource({ typeKey, subtypeKey, dataJson, modelPath, userId });
-      // Après fusion, recharger la page ou notifier succès
-      setSuccess('Document régénéré avec succès');
+
+      // Appeler la fonction onSuccess si fournie
+      if (onSuccess) {
+        // Attendre la complétion du callback (important si navigation/détachements doivent suivre)
+        await onSuccess(response);
+      }
+
+      // Réinitialiser les champs du formulaire si création
+      if (!isEdit) {
+        setSourceType('ai');
+        setSelectedFile(null);
+        setFileError('');
+      }
+
+      // Si on est en mode dialogue, fermer le dialogue
+      if (isDialog && onClose) {
+        onClose();
+      }
+
+      // Redirection automatique uniquement si autorisée
+      if (!disableNavigation && !isDialog) {
+        navigate('/resources');
+      }
     } catch (err) {
-      console.error('[ResourceForm] Erreur lors de la régénération', err);
-      setError(err?.response?.data?.detail || err.message || 'Erreur lors de la régénération');
+      console.error('Erreur lors de la sauvegarde de la ressource:', err);
+
+      // Traitement des erreurs spécifiques API
+      let displayError = 'Une erreur est survenue lors de la sauvegarde.';
+
+      if (err.response?.data?.detail) {
+        // Erreur API détaillée
+        const detail = err.response.data.detail;
+        displayError = detail;
+      } else if (err.message) {
+        // Fallback sur le message d'erreur général d'Axios
+        displayError = err.message;
+      }
+
+      setError(displayError);
+
+      // Si l'erreur formatée concerne le fichier
+      if (displayError.includes('fichier')) {
+        setFileError(displayError);
+      } else if (displayError.toLowerCase().includes('file')) {
+        // Gérer le cas où le backend dit "file"
+        setFileError(displayError);
+      }
     } finally {
-      setAiLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // Gestionnaire de génération IA avec animation
-  const handleAIGenerationWithLoading = async (payload) => {
-    setAiLoading(true);
-    try {
-      // La génération est maintenant gérée dans DynamicAIForm
-    } finally {
-      setAiLoading(false);
-    }
-  };
-  
   // Clé type & sous-type sélectionnés
   const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
@@ -606,7 +636,7 @@ const ResourceForm = ({
                 onChange={handleSourceTypeChange}
               >
                 <FormControlLabel value="ai" control={<Radio />} label="Générée par IA" />
-                <FormControlLabel value="file" control={<Radio />} label="Fichier PDF" />
+                <FormControlLabel value="file" control={<Radio />} label="Fichier" />
                 <FormControlLabel value="url" control={<Radio />} label="URL externe" />
               </RadioGroup>
             </FormControl>
@@ -628,7 +658,6 @@ const ResourceForm = ({
                     Ouvrir le document généré
                   </a>
                 </span>
-
               </Box>
               <span style={{fontStyle: 'italic', color: '#888'}}>Ce document est celui actuellement rattaché à la ressource.</span>
             </Alert>
@@ -640,7 +669,7 @@ const ResourceForm = ({
           <Grid item xs={12}>
             <Box sx={{ border: '1px dashed grey', padding: 2, textAlign: 'center' }}>
               <input
-                accept={ALLOWED_FILE_TYPE}
+                accept={ALLOWED_FILE_TYPES.join(',')}
                 style={{ display: 'none' }}
                 id="raised-button-file"
                 type="file"
@@ -654,7 +683,7 @@ const ResourceForm = ({
                   startIcon={<UploadFileIcon />} 
                   disabled={submitting}
                 >
-                  Choisir un fichier PDF (Max 1 Mo)
+                  Choisir un fichier ({ALLOWED_FILE_TYPES_LABEL}) — Max {MAX_UPLOAD_SIZE_MB} Mo
                 </Button>
               </label>
               {selectedFile && (

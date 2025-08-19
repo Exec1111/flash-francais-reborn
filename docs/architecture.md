@@ -1,0 +1,21 @@
+# Architecture — Vue d'ensemble
+
+- Backend: FastAPI, SQLAlchemy, Pydantic.
+  - Dossier: `backend/`
+  - Points clés:
+    - `backend/app.py`: application FastAPI.
+    - `backend/routers/`: routes (ex: `ai_router.py`, `resource.py`, `docling.py`).
+    - `backend/ai/`: services IA (prompts, génération, fusion).
+    - `backend/models/` et `backend/crud/`: ORM et opérations BDD.
+    - `backend/config.py`: configuration (ex: `UPLOADS_BASE_DIR`).
+- Frontend: React (wizard de génération IA).
+  - Dossier: `frontend/`
+  - Points clés:
+    - `src/components/ai/ResourceGenerationWizard.jsx`: orchèstre le flux en 4 étapes (sélection, génération, édition, fusion).
+    - Étapes: `SuggestionStep.jsx`, `GenerationStep.jsx`, `EditStep.jsx`, `MergeStep.jsx`.
+- Stockage fichiers:
+  - Base: `settings.UPLOADS_BASE_DIR` (voir `backend/config.py`).
+  - Chemins relatifs en BDD sous `uploads/{user_id}/...` (PDF, sorties Docling, HTML généré IA).
+- Déploiement: Render
+  - Fichier: `render.yaml`.
+  - Variables d'environnement: `GOOGLE_API_KEY`, `GEMINI_CHAT_MODEL`, etc.

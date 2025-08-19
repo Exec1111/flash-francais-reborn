@@ -170,7 +170,11 @@ const ConfigurationStep = ({
   
   // Gestionnaire spécifique pour la sélection multiple des types de ressources
   const handleResourceTypesChange = (event) => {
-    const selectedIndices = event.target.value;
+    // event.target.value peut être une string (cas Autofill) ou un tableau
+    const rawValue = event.target.value;
+    const selectedIndices = typeof rawValue === 'string'
+      ? rawValue.split(',').map((v) => Number(v))
+      : rawValue.map((v) => Number(v));
     
     console.log("%cIndices sélectionnés:", "color: #3f51b5; font-weight: bold;", selectedIndices);
     
@@ -201,8 +205,10 @@ const ConfigurationStep = ({
       return [];
     }
     
-    // Maintenant que type_resources contient des objets avec index
-    const indices = config.type_resources.map(item => item.index || -1).filter(index => index !== -1);
+    // Attention: 0 est un index valide, ne pas utiliser '||'
+    const indices = config.type_resources
+      .map(item => (typeof item.index === 'number' ? item.index : -1))
+      .filter(index => index !== -1);
     console.log("%cgetSelectedResourceTypeIndices retourne:", "color: #8bc34a;", indices);
     return indices;
   };
@@ -212,6 +218,13 @@ const ConfigurationStep = ({
     
     // Créer une copie du config
     const configToSubmit = { ...config };
+
+    // Validation: empêcher "analyse_texte" sans support en mode manuel
+    const hasAnalyseTexte = Array.isArray(config.type_resources) && config.type_resources.some(item => item?.type_key === 'exercice' && item?.subtype_key === 'analyse_texte');
+    if (config.selectionMode === 'manual' && hasAnalyseTexte && !config.support_id) {
+      setError("L'exercice 'Analyse de texte' requiert un support pédagogique (œuvre). Veuillez sélectionner un support avant de continuer.");
+      return;
+    }
     
     // Débogage des type_resources sélectionnés
     console.log("%ctype_resources avant envoi:", "background: #3f51b5; color: white; padding: 2px 5px;", {
@@ -391,19 +404,24 @@ const ConfigurationStep = ({
                       Chargement des types de ressources...
                     </MenuItem>
                   ) : (
-                    availableResourceTypes.map((resource, index) => (
-                      <MenuItem key={index} value={index}>
-                        <Checkbox checked={getSelectedResourceTypeIndices().indexOf(index) > -1} />
-                        <ListItemText 
-                          primary={`${resource.type_name}: ${resource.subtype_name}`} 
-                          secondary={resource.description} 
-                        />
-                      </MenuItem>
-                    ))
+                    availableResourceTypes.map((resource, index) => {
+                      const requiresSupport = (resource?.type_key === 'exercice' && resource?.subtype_key === 'analyse_texte');
+                      const isDisabled = requiresSupport && !config.support_id;
+                      return (
+                        <MenuItem key={index} value={index} disabled={isDisabled}>
+                          <Checkbox checked={getSelectedResourceTypeIndices().indexOf(index) > -1} disabled={isDisabled} />
+                          <ListItemText 
+                            primary={`${resource.type_name}: ${resource.subtype_name}`} 
+                            secondary={isDisabled ? "Requiert un support pédagogique" : resource.description} 
+                          />
+                        </MenuItem>
+                      );
+                    })
                   )}
                 </Select>
                 <FormHelperText>
                   Sélectionnez les types d'exercices que vous souhaitez explicitement inclure dans les suggestions.
+                  {!config.support_id ? " Note: 'Analyse de texte' requiert la sélection d'un support (œuvre)." : ''}
                 </FormHelperText>
               </FormControl>
             )}
@@ -435,7 +453,7 @@ const ConfigurationStep = ({
                 )}
               </Select>
               <FormHelperText>
-                Sélectionnez une œuvre comme support pédagogique pour que les exercices générés y fassent référence.
+                Sélectionnez une œuvre comme support pédagogique pour que les exercices générés y fassent référence. Cet élément est requis pour l'exercice "Analyse de texte".
               </FormHelperText>
             </FormControl>
             

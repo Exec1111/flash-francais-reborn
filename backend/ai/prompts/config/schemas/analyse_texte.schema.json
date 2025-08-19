@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fiche d'Analyse de Texte",
+  "description": "Schéma pour les données d'une analyse de texte structurée en six étapes, avec des paires de questions/réponses pour chaque étape.",
+  "type": "object",
+  "required": [
+    "analysisTitle",
+    "sections"
+  ],
+  "properties": {
+    "analysisTitle": {
+      "type": "string",
+      "description": "Le titre principal de la fiche d'analyse, qui inclut généralement le nom de l'œuvre analysée."
+    },
+    "sections": {
+      "type": "array",
+      "description": "Une liste contenant les six sections de la méthodologie d'analyse.",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "qa_pairs"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Identifiant numérique unique pour chaque section (de 1 à 6)."
+          },
+          "title": {
+            "type": "string",
+            "description": "Le titre de l'étape d'analyse (ex: 'J'observe')."
+          },
+          "qa_pairs": {
+            "type": "array",
+            "description": "Une liste des paires de questions et réponses pour cette section.",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "question",
+                "answer"
+              ],
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "description": "La question générée par l'IA pour guider l'analyse."
+                },
+                "answer": {
+                  "type": "string",
+                  "description": "La réponse générée par l'IA à la question posée."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

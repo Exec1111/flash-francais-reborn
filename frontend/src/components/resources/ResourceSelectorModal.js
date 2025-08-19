@@ -26,6 +26,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
 import api from '../../services/api';
+import DoclingStatusChip from '../docling/DoclingStatusChip';
 
 const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], onSave, filterType = null }) => {
     // Log de débogage pour vérifier si filterType est correctement passé
@@ -336,7 +337,16 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
                                                 inputProps={{ 'aria-labelledby': labelId }}
                                             />
                                         </ListItemIcon>
-                                        <ListItemText id={labelId} primary={resource.title} secondary={resource.description || 'Aucune description'} />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                            <ListItemText id={labelId} primary={resource.title} secondary={resource.description || 'Aucune description'} />
+                                            <DoclingStatusChip
+                                                resourceId={resource.id}
+                                                fileType={resource.file_type}
+                                                filePath={resource.file_path}
+                                                size="small"
+                                                autoFetch
+                                            />
+                                        </Box>
                                     </ListItem>
                                 );
                             })

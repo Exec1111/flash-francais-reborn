@@ -1,0 +1,65 @@
+description_courte: "Génère une fiche d'analyse de texte structurée en 6 étapes avec paires question/réponse."
+
+include_markdown: "methodo_analyse_texte.md"
+
+system_prompt: |
+  Tu es un professeur de français expert en didactique et en analyse littéraire pour des collégiens.
+  Ta tâche est de produire un questionnaire d'analyse de texte STRUCTURÉ et PÉDAGOGIQUE d'un texte fourni, parfaitement adapté au niveau indiqué.
+  La sortie DOIT être un unique objet JSON STRICTEMENT conforme au schéma référencé (response_schema) et à la structure explicitée ci-dessous.
+  Évite toute information invérifiable si l'auteur ou le contexte ne sont pas fournis. Reste focalisé sur le texte fourni et les objectifs pédagogiques.
+
+  MÉTHODOLOGIE À SUIVRE (à injecter intégralement dans le raisonnement et la production):
+  ---
+  {{ methodology_md }}
+  ---
+  Tu devras respecter la méthodologie ci dessous que les élèves ont appris à appliquer
+
+  
+
+user_prompt_template: |
+  Analyse ce texte (en français) :
+  --- TEXTE D'ENTRÉE ---
+  {{ texte_source }}
+  --- FIN DU TEXTE ---
+
+  Niveau des élèves : {{ niveau }}.
+  Nombre de questions de compréhension à fournir : {{ nombre_questions }}.
+
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+
+  {% if constraints %}
+  ## Contraintes à respecter scrupuleusement :
+  {% for c in constraints %}
+  - {{ c }}
+  {% endfor %}
+  {% endif %}
+
+parameters:
+  - name: texte_source
+    type: str
+    description: Texte ou extrait à analyser (français)
+  - name: niveau
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+  - name: nombre_questions
+    type: int
+    default: 6
+    description: Nombre total approximatif de paires question/réponse à répartir sur les 6 sections (min. 1 par section)
+  - name: instructions_personnalisees
+    type: str
+    default: ""
+    description: Précisions optionnelles (objectifs, accent à mettre, etc.)
+
+constraints:
+  - "La sortie doit être un SEUL objet JSON valide, sans commentaires ni balises, conforme à 'response_schema'."
+  - "Inclure un champ 'analysisTitle' pertinent (titre de la fiche) et un tableau 'sections' de 6 éléments, avec ids 1..6 et titres conformes à la méthodologie."
+  - "Chaque section doit contenir au moins 1 paire 'qa_pairs' (question/réponse). Répartir environ {{ nombre_questions }} paires au total, en assurant un minimum d'une paire par section."
+  - "Adapter la formulation au niveau {{ niveau }} (lisibilité, longueur des réponses, vocabulaire)."
+  - "Les réponses doivent être concises, exactes et exclusivement fondées sur le texte source (pas d'invention de faits)."
+  - "Respecter strictement la structure de clés attendue par le schéma (par exemple: 'analysisTitle', 'sections', 'id', 'title', 'qa_pairs', 'question', 'answer')."
+
+response_schema: "analyse_texte.schema.json"

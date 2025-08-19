@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from models import Resource, Session as SessionModel, User, ResourceType, ResourceSubType, Objective, StudyObject
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceFileUpload
 from crud.objective import get_objective
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 import logging
 import os
 from pathlib import Path
@@ -85,7 +85,10 @@ def get_resource_sub_types(db: Session, type_id: Optional[int] = None) -> List[R
 
 def count_resources(db: Session, user_id: int) -> int:
     """Compte le nombre total de ressources pour un utilisateur."""
-    return db.query(Resource).filter(Resource.user_id == user_id).count()
+    # IMPORTANT: utiliser func.count(Resource.id) pour éviter de sélectionner toutes
+    # les colonnes mappées (dont les champs Docling récents) dans une sous-requête.
+    # Cela rend l'appel robuste même si la base n'a pas encore les nouvelles colonnes.
+    return db.query(func.count(Resource.id)).filter(Resource.user_id == user_id).scalar() or 0
 
 def get_resources_by_session(db: Session, session_id: int, user_id: int, skip: int = 0, limit: int = 100):
     from models.association_tables import session_resource_association
