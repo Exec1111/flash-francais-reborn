@@ -3,63 +3,66 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+import fitz  # PyMuPDF
+from markdownify import markdownify as mdify
 
 logger = logging.getLogger(__name__)
 
 
-def _build_converter(do_ocr: bool) -> DocumentConverter:
-    pipeline_options = PdfPipelineOptions()
-    pipeline_options.do_ocr = bool(do_ocr)
-    # Extraire la structure des tableaux par défaut
-    pipeline_options.do_table_structure = True
-    # Meilleur matching des cellules si dispo
-    if pipeline_options.table_structure_options:
-        pipeline_options.table_structure_options.do_cell_matching = True
+def _pdf_to_markdown(pdf_path: Path) -> str:
+    """Extrait le contenu d'un PDF en Markdown en deux étapes légères:
+    1) Extraction HTML par page avec PyMuPDF
+    2) Conversion HTML -> Markdown avec markdownify
+    """
+    try:
+        with fitz.open(pdf_path) as doc:
+            html_pages: List[str] = []
+            for page in doc:
+                # Représentation XHTML plus sémantique de la page
+                html_pages.append(page.get_text("xhtml"))
+    except Exception as e:
+        logger.error(f"PyMuPDF: échec d'ouverture/lecture du PDF {pdf_path}: {e}")
+        raise
 
-    converter = DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(
-                pipeline_options=pipeline_options,
-            )
-        }
+    combined_html = "\n<hr/>\n".join(html_pages)
+
+    # Si PyMuPDF ne retourne pas d'HTML (très rare), fallback en texte brut
+    if not combined_html.strip():
+        try:
+            with fitz.open(pdf_path) as doc:
+                text_pages = [page.get_text("text", sort=True) for page in doc]
+            return "\n\n".join(text_pages)
+        except Exception as e:
+            logger.error(f"PyMuPDF: échec de fallback texte pour {pdf_path}: {e}")
+            raise
+
+    # Convertir HTML -> Markdown
+    md = mdify(
+        combined_html,
+        heading_style="ATX",  # #, ##, ###
+        strip=["img"]  # exclure les images base64 pour alléger la conversion Markdown
     )
-    return converter
+    return md
 
 
 def extract_from_pdf_path(pdf_path: Path, do_ocr: bool = False) -> Dict[str, Any]:
     """
-    Traite un PDF via Docling et retourne un dict sérialisable contenant
+    Traite un PDF (légèrement) et retourne un dict sérialisable contenant:
     - document_markdown: str
-    - tables: List[{index:int, html:str}]
+    - tables: List[{index:int, html:str}] (non supporté ici -> liste vide)
     """
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF introuvable: {pdf_path}")
 
-    logger.info(f"Docling: conversion du fichier {pdf_path} (OCR={do_ocr})")
-    converter = _build_converter(do_ocr=do_ocr)
+    if do_ocr:
+        logger.warning("OCR demandé mais non supporté dans l'implémentation légère PyMuPDF; le texte incorporé sera extrait uniquement.")
 
-    conv_res = converter.convert(pdf_path)
-    doc = conv_res.document
-
-    # Export du markdown global du document
-    md = doc.export_to_markdown()
-
-    # Export basique des tableaux en HTML (pas d'utilisation de pandas pour éviter la dépendance)
-    tables_html: List[Dict[str, Any]] = []
-    for idx, table in enumerate(doc.tables):
-        try:
-            html = table.export_to_html(doc=doc)
-        except Exception as e:
-            logger.warning(f"Docling: échec export HTML du tableau {idx}: {e}")
-            html = ""
-        tables_html.append({"index": idx, "html": html})
+    logger.info(f"PyMuPDF: conversion du fichier {pdf_path}")
+    md = _pdf_to_markdown(pdf_path)
 
     return {
         "document_markdown": md,
-        "tables": tables_html,
+        "tables": [],  # Extraction de tables non prise en charge dans cette implémentation légère
     }
 
 

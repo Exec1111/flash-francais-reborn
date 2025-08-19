@@ -101,8 +101,8 @@ const resourceService = {
     }
   },
 
-  // Récupérer le statut Docling (et contenu si ready)
-  getDoclingStatus: async (id) => {
+  // Récupérer le statut d'extraction PDF (et contenu si ready)
+  getPdfExtractionStatus: async (id) => {
     try {
       const response = await api.get(`${RESOURCE_ENDPOINT}/${id}/docling`);
       return response.data; // { status, document_markdown?, tables?, ... }
@@ -111,8 +111,13 @@ const resourceService = {
     }
   },
 
-  // Relancer l'extraction Docling (ocr, force)
-  reextractDocling: async (id, { ocr = false, force = false } = {}) => {
+  // Alias compatibilité: Docling → Extraction PDF
+  getDoclingStatus: async (id) => {
+    return resourceService.getPdfExtractionStatus(id);
+  },
+
+  // Relancer l'extraction PDF (ocr, force)
+  reextractPdfExtraction: async (id, { ocr = false, force = false } = {}) => {
     try {
       const form = new FormData();
       form.append('ocr', String(ocr));
@@ -122,6 +127,11 @@ const resourceService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Alias compatibilité
+  reextractDocling: async (id, opts = {}) => {
+    return resourceService.reextractPdfExtraction(id, opts);
   },
 };
 

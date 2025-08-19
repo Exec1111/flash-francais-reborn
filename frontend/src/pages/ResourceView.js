@@ -41,7 +41,7 @@ function ResourceView() {
     const [doclingLoading, setDoclingLoading] = useState(false);
     const [doclingError, setDoclingError] = useState(null);
     const [polling, setPolling] = useState(false);
-    const [reextractOpts, setReextractOpts] = useState({ ocr: false, force: false });
+    const [reextractOpts, setReextractOpts] = useState({ force: false });
     const intervalRef = useRef(null);
 
     useEffect(() => {
@@ -86,19 +86,19 @@ function ResourceView() {
         }
     };
 
-    // Récupérer le statut Docling
+    // Récupérer le statut d'extraction PDF
     const fetchDoclingStatus = async () => {
         if (!id || !isPdf) return;
         setDoclingLoading(true);
         try {
-            const data = await resourceService.getDoclingStatus(id);
+            const data = await resourceService.getPdfExtractionStatus(id);
             setDoclingStatus(data?.status || null);
             setDoclingMarkdown(data?.document_markdown || '');
             const tables = Array.isArray(data?.tables) ? data.tables : [];
             setDoclingTables(tables);
-            setDoclingError(data?.error || null);
+            setDoclingError(data?.docling_error || null);
         } catch (err) {
-            setDoclingError(err.response?.data?.detail || err.message || 'Erreur lors de la récupération du statut Docling.');
+            setDoclingError(err.response?.data?.detail || err.message || "Erreur lors de la récupération du statut d'extraction PDF.");
         } finally {
             setDoclingLoading(false);
         }
@@ -148,7 +148,7 @@ function ResourceView() {
         if (!id || !isPdf) return;
         setDoclingError(null);
         try {
-            await resourceService.reextractDocling(id, reextractOpts);
+            await resourceService.reextractPdfExtraction(id, reextractOpts);
             setDoclingStatus('pending');
             // Redémarrer le polling si arrêté
             if (!intervalRef.current) {
@@ -321,19 +321,15 @@ function ResourceView() {
 
                 <Divider sx={{ my: 2 }} />
 
-                {/* Section Docling: statut & contenu pour PDF */}
+                {/* Section Extraction PDF: statut & contenu pour PDF */}
                 {isPdf && (
                     <Box sx={{ my: 2 }}>
-                        <Typography variant="h6">Extraction Docling (PDF)</Typography>
+                        <Typography variant="h6">Extraction PDF</Typography>
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ my: 1, flexWrap: 'wrap' }}>
                             <Chip label={`Statut: ${doclingStatus || 'inconnu'}`} color={chipColor(doclingStatus)} variant="outlined" />
                             {polling && <Chip label="Polling..." size="small" />}
                             {doclingLoading && <CircularProgress size={20} />}
                             <Button variant="outlined" onClick={fetchDoclingStatus} disabled={doclingLoading}>Actualiser</Button>
-                            <FormControlLabel
-                                control={<Checkbox checked={reextractOpts.ocr} onChange={(e) => setReextractOpts(o => ({ ...o, ocr: e.target.checked }))} />}
-                                label="OCR"
-                            />
                             <FormControlLabel
                                 control={<Checkbox checked={reextractOpts.force} onChange={(e) => setReextractOpts(o => ({ ...o, force: e.target.checked }))} />}
                                 label="Forcer"
@@ -345,7 +341,21 @@ function ResourceView() {
                         {doclingStatus === 'ready' && (
                             <Box sx={{ mt: 2 }}>
                                 <Typography variant="subtitle1">Markdown extrait</Typography>
-                                <Box component="pre" sx={{ p: 1, bgcolor: 'grey.100', borderRadius: 1, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                                <Box
+                                    component="pre"
+                                    sx={(theme) => ({
+                                        p: 1,
+                                        bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                                        color: theme.palette.mode === 'dark' ? 'grey.100' : 'grey.900',
+                                        borderRadius: 1,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        maxHeight: 300,
+                                        overflow: 'auto',
+                                        whiteSpace: 'pre-wrap',
+                                        fontFamily: 'monospace',
+                                    })}
+                                >
                                     {doclingMarkdown || '—'}
                                 </Box>
                                 {Array.isArray(doclingTables) && doclingTables.length > 0 && (

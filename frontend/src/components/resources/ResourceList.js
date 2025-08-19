@@ -39,7 +39,7 @@ import resourceTypeService from '../../services/resourceTypeService';
 import ResourceDocumentLink from './ResourceDocumentLink';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 import paginationConfig from '../../config/pagination';
-import DoclingStatusChip from '../docling/DoclingStatusChip';
+import PdfExtractionStatusChip from '../pdf/PdfExtractionStatusChip';
 
 const ResourceList = () => {
   const { user } = useAuth();
@@ -113,12 +113,12 @@ const ResourceList = () => {
     },
     {
       field: 'docling',
-      headerName: 'Docling',
+      headerName: 'Extraction PDF',
       width: 140,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <DoclingStatusChip
+        <PdfExtractionStatusChip
           resourceId={params.row.id}
           fileType={params.row.file_type}
           filePath={params.row.file_path}
@@ -534,7 +534,7 @@ const ResourceList = () => {
                           <ResourceDocumentLink resource={resource} />
                         </Box>
                         <Box sx={{ mt: 1 }}>
-                          <DoclingStatusChip
+                          <PdfExtractionStatusChip
                             resourceId={resource.id}
                             fileType={resource.file_type}
                             filePath={resource.file_path}
