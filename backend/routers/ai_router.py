@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form, Body
+from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile, Form, Body, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from config import get_settings
 import time
 import hashlib
 import re
+from urllib.parse import urlparse
 
 settings = get_settings()
 
@@ -337,6 +338,7 @@ async def get_resource_type_schema(
     description="Fusionne un contenu JSON édité avec un modèle HTML (uploadé ou par défaut), génère un HTML via Gemini, sauvegarde le fichier temporaire et retourne l'URL du HTML généré."
 )
 async def merge_resource(
+    request: Request,
     type_key: str = Form(...),
     subtype_key: str = Form(...),
     data_json: str = Form(...),
@@ -427,7 +429,26 @@ async def merge_resource(
             user_id=current_user.id
         )
         logger.info(f"[Fusion][TRACE] Fusion IA terminée pour type_key={type_key}, subtype_key={subtype_key}, html_path={html_path}, html_url={html_url}")
-        return {"html_url": html_url, "html_path": html_path}
+        # Reconstruire une URL absolue fiable basée sur la requête et X-Forwarded-* (utile sur Render)
+        try:
+            # Base par défaut depuis FastAPI
+            base = str(request.base_url).rstrip("/")
+            # Si le proxy fournit X-Forwarded-Host/Proto, les privilégier
+            xf_host = request.headers.get("x-forwarded-host")
+            xf_proto = request.headers.get("x-forwarded-proto")
+            if xf_host:
+                proto = xf_proto or ("https" if request.url.scheme == "https" else "http")
+                base = f"{proto}://{xf_host}".rstrip("/")
+            parsed = urlparse(html_url) if html_url else None
+            path = parsed.path if parsed else None
+            if path:
+                fixed_html_url = f"{base}{path}"
+            else:
+                fixed_html_url = html_url
+        except Exception:
+            fixed_html_url = html_url
+        logger.info(f"[Fusion][TRACE] URL d'aperçu renvoyée au frontend: {fixed_html_url}")
+        return {"html_url": fixed_html_url, "html_path": html_path}
     except Exception as e:
         logger.error(f"[Fusion][ERREUR] Exception lors de la fusion de ressource: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur fusion ressource: {e}")
