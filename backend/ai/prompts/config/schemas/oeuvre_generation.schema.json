@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OeuvreGeneration",
+  "description": "Schéma de sortie pour la génération complète d'une fiche d'œuvre littéraire",
+  "type": "object",
+  "properties": {
+    "titre": {
+      "type": "string",
+      "description": "Titre complet de l'œuvre"
+    },
+    "auteur": {
+      "type": "object",
+      "properties": {
+        "nom": {
+          "type": "string",
+          "description": "Nom de famille de l'auteur"
+        },
+        "prenom": {
+          "type": "string",
+          "description": "Prénom de l'auteur"
+        },
+        "nationalite": {
+          "type": "string",
+          "description": "Nationalité de l'auteur"
+        }
+      },
+      "required": ["nom", "prenom", "nationalite"],
+      "description": "Informations sur l'auteur de l'œuvre"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["roman", "nouvelle", "poème", "théâtre", "essai", "discours", "BD", "conte", "fable"],
+      "description": "Type/catégorie de l'œuvre"
+    },
+    "genre": {
+      "type": "string",
+      "description": "Genre littéraire plus spécifique (tragédie, comédie, fantastique, réalisme, etc.)"
+    },
+    "mouvement_litteraire": {
+      "type": "string",
+      "description": "Mouvement ou courant littéraire auquel appartient l'œuvre"
+    },
+    "langue_originale": {
+      "type": "string",
+      "description": "Langue dans laquelle l'œuvre a été écrite initialement"
+    },
+    "date_publication": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 2030,
+      "description": "Année de première publication"
+    },
+    "extrait": {
+      "type": "boolean",
+      "description": "True si la fiche concerne un extrait, false si elle concerne l'œuvre complète"
+    },
+    "contenu": {
+      "type": "object",
+      "properties": {
+        "resume": {
+          "type": "string",
+          "minLength": 100,
+          "maxLength": 2000,
+          "description": "Résumé de l'œuvre adapté au niveau cible"
+        },
+        "themes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 8,
+          "description": "Liste des thèmes principaux abordés"
+        },
+        "mots_cles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3,
+          "maxItems": 10,
+          "description": "Mots-clés pour l'indexation et la recherche"
+        }
+      },
+      "required": ["resume", "themes", "mots_cles"],
+      "description": "Contenu descriptif de l'œuvre"
+    },
+    "pedagogie": {
+      "type": "object",
+      "properties": {
+        "niveau_mini_recommande": {
+          "type": "string",
+          "enum": ["6e", "5e", "4e", "3e", "2nde", "1re", "Terminale"],
+          "description": "Niveau scolaire minimum recommandé"
+        },
+        "domaines_programme": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "description": "Domaines du programme scolaire français correspondants"
+        },
+        "difficulte": {
+          "type": "string",
+          "enum": ["facile", "intermédiaire", "difficile"],
+          "description": "Niveau de difficulté pour l'élève"
+        }
+      },
+      "required": ["niveau_mini_recommande", "domaines_programme", "difficulte"],
+      "description": "Informations pédagogiques pour l'exploitation en classe"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2,
+      "maxItems": 8,
+      "description": "Tags personnalisés pour organiser et retrouver l'œuvre"
+    }
+  },
+  "required": [
+    "titre",
+    "auteur", 
+    "type",
+    "langue_originale",
+    "date_publication",
+    "extrait",
+    "contenu",
+    "pedagogie",
+    "tags"
+  ]
+}

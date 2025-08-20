@@ -32,6 +32,7 @@ from routers.ai_router import router as ai_api_router  # Importation explicite d
 from routers.config import router as config_router
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
 from routers.study_object import router as study_object_router
+from routers.oeuvre import router as oeuvre_router
 from routers import admin
 from routers.docling import router as docling_router
 
@@ -118,6 +119,10 @@ app = FastAPI(
         {
             "name": "study_objects",
             "description": "Opérations d'étude"
+        },
+        {
+            "name": "oeuvres",
+            "description": "Opérations sur les œuvres littéraires"
         },
         {
             "name": "admin",
@@ -291,6 +296,13 @@ app.include_router(
     study_object_router,
     prefix="/api/v1/study_objects",
     tags=["study_objects"]
+)
+
+# Inclusion des routes d'œuvres
+app.include_router(
+    oeuvre_router,
+    prefix="/api/v1",
+    tags=["oeuvres"]
 )
 
 # Inclusion des routes de configuration

@@ -1,0 +1,84 @@
+description_courte: "Génère une fiche complète d'œuvre littéraire à partir d'un titre ou d'un nom d'auteur en recherchant les informations sur internet."
+
+system_prompt: |
+  Tu es un expert de la littérature française et internationale avec accès à une vaste base de connaissances.
+  Tu dois générer une fiche complète d'œuvre littéraire en recherchant et structurant toutes les informations pertinentes.
+  
+  Tes connaissances incluent :
+  - La littérature française classique et contemporaine
+  - La littérature internationale traduite en français
+  - Les contextes historiques et culturels
+  - Les mouvements littéraires
+  - L'adaptation pédagogique selon les niveaux scolaires
+
+user_prompt_template: |
+  Je souhaite créer une fiche complète pour l'œuvre suivante :
+  
+  {% if titre_ou_auteur %}
+  Recherche : {{ titre_ou_auteur }}
+  {% endif %}
+  
+  {% if type_prefere %}
+  Type d'œuvre préféré : {{ type_prefere }}
+  {% endif %}
+  
+  {% if niveau_cible %}
+  Niveau scolaire cible : {{ niveau_cible }}
+  {% endif %}
+  
+  {% if extrait %}
+  Je souhaite une fiche pour un extrait spécifique de l'œuvre plutôt que l'œuvre complète.
+  {% endif %}
+  
+  Tu dois fournir une fiche complète avec toutes les informations structurées selon le schéma JSON fourni.
+  
+  INSTRUCTIONS IMPORTANTES :
+  - Si plusieurs œuvres correspondent à la recherche, choisis la plus pertinente pour le niveau cible
+  - Assure-toi que toutes les informations sont exactes et vérifiables
+  - Adapte le niveau de difficulté et les domaines programme au niveau scolaire français
+  - Pour les auteurs, fournis nom, prénom et nationalité
+  - Les thèmes doivent être pertinents pour l'étude littéraire
+  - Le résumé doit être complet mais accessible au niveau cible
+  - Les mots-clés doivent faciliter la recherche et le classement
+  - Les domaines programme doivent correspondre aux programmes officiels français
+
+parameters:
+  - name: titre_ou_auteur
+    type: str
+    label: Titre de l'œuvre ou nom de l'auteur
+    description: Titre de l'œuvre ou nom de l'auteur à rechercher
+    required: true
+  - name: type_prefere
+    type: str
+    label: Type d'œuvre préféré
+    enum: [roman, nouvelle, poème, théâtre, essai, discours, BD, conte, fable]
+    description: Type d'œuvre préféré si plusieurs possibilités
+    default: ""
+  - name: niveau_cible
+    type: str
+    label: Niveau scolaire cible
+    enum: [6e, 5e, 4e, 3e, 2nde, 1re, Terminale]
+    description: Niveau scolaire pour lequel adapter la fiche
+    default: "3e"
+  - name: extrait
+    type: bool
+    label: Extrait d'œuvre
+    description: Générer une fiche pour un extrait plutôt que l'œuvre complète
+    default: false
+
+constraints:
+  - Les informations sur l'auteur (nom, prénom, nationalité) doivent être exactes
+  - Le type d'œuvre doit correspondre à une catégorie littéraire reconnue
+  - Le genre et mouvement littéraire doivent être précis et documentés
+  - La langue originale doit être indiquée si l'œuvre est traduite
+  - La date de publication doit être l'année de première publication
+  - Le résumé doit être informatif sans révéler tous les détails de l'intrigue
+  - Les thèmes doivent être des concepts littéraires ou sociaux identifiables
+  - Les mots-clés doivent être pertinents pour la recherche pédagogique
+  - Le niveau minimum recommandé doit correspondre aux programmes scolaires français
+  - Les domaines programme doivent être issus des programmes officiels
+  - La difficulté doit être évaluée selon les critères pédagogiques français
+  - Tous les champs obligatoires du schéma doivent être remplis
+  - Les informations doivent être cohérentes entre elles
+
+response_schema: "oeuvre_generation.schema.json"

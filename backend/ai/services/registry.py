@@ -30,6 +30,7 @@ PROMPT_REGISTRY = {
     ("exercice", "analyse_texte"): "analyse_texte",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
+    ("oeuvre", "generation"): {"config": "oeuvre_generation", "gemini_model": "flash"},
     ("seance", "generator"): "session_generator",
     ("meta", "exercise_suggester"): "session_exercise_suggester",
     ("lecon", "leconcomplete1"): "lecon_complete1",

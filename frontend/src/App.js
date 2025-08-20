@@ -64,6 +64,10 @@ import NewStudyObject from './pages/studyObjects/NewStudyObject';
 import EditStudyObject from './pages/studyObjects/EditStudyObject';
 import StudyObjectDetail from './pages/studyObjects/StudyObjectDetail';
 import ProposeWorks from './pages/studyObjects/ProposeWorks';
+import OeuvresList from './pages/oeuvres/OeuvresList';
+import NewOeuvre from './pages/oeuvres/NewOeuvre';
+import EditOeuvre from './pages/oeuvres/EditOeuvre';
+import OeuvreDetail from './pages/oeuvres/OeuvreDetail';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -398,6 +402,20 @@ function App() {
         <Route path="edit/:id" element={<EditStudyObject />} />
         <Route path=":id" element={<StudyObjectDetail />} />
         <Route path=":id/propose-works" element={<ProposeWorks />} />
+      </Route>
+
+      <Route
+        path="/oeuvres"
+        element={
+          <ProtectedRoute>
+            <ProtectedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<OeuvresList />} />
+        <Route path="new" element={<NewOeuvre />} />
+        <Route path="edit/:id" element={<EditOeuvre />} />
+        <Route path=":id" element={<OeuvreDetail />} />
       </Route>
 
       {/* Redirection par défaut */}

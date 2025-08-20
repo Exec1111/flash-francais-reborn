@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button } from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon } from '@mui/icons-material';
+import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTreeData } from '../../contexts/TreeDataContext';
@@ -499,6 +499,17 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
           sx={{ justifyContent: 'flex-start' }}
         >
           Objets d'étude
+        </Button>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<MenuBookIcon />}
+          component={RouterLink}
+          to="/oeuvres"
+          fullWidth
+          sx={{ justifyContent: 'flex-start' }}
+        >
+          Œuvres
         </Button>
       </Box>
 

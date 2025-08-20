@@ -19,6 +19,7 @@ from models.session import Session
 from models.resource import Resource, ResourceType, ResourceSubType
 from models.objective import Objective
 from models.study_object import StudyObject
+from models.oeuvre import Oeuvre
 
 # Vous pouvez définir __all__ pour contrôler ce qui est importé avec 'from models import *'
 __all__ = [
@@ -37,4 +38,5 @@ __all__ = [
     "StudyObject",
     "progression_study_object",
     "study_object_resource",
+    "Oeuvre",
 ]
