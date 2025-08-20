@@ -218,13 +218,25 @@ async def create_resource_route(
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
         if source_type == 'ai' and html_path:
-            # Localiser le fichier généré (chemin local ou URL)
-            if html_path.startswith('http'):
+            # Localiser le fichier généré (chemin local, URL absolue ou chemin web relatif '/static/...')
+            # Normaliser les séparateurs (Windows '\\' -> '/')
+            norm_html_path = str(html_path).replace('\\', '/')
+            if norm_html_path.startswith('http'):
                 # extraire le chemin relatif public après '/static/'
-                rel_public = html_path.split('/static/')[-1]
+                rel_public = norm_html_path.split('/static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            elif norm_html_path.startswith('/static/'):
+                # Supporter l'URL relative renvoyée par /ai/merge-resource (ex: '/static/tmp/...')
+                rel_public = norm_html_path.split('/static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            elif norm_html_path.startswith('static/'):
+                # Cas rare: chemin relatif sans slash initial
+                rel_public = norm_html_path.split('static/')[-1]
                 src = Path(__file__).resolve().parent.parent / 'static' / rel_public
             else:
+                # Chemin disque absolu
                 src = Path(html_path)
+            logger.info(f"[AI->Resource] html_path reçu='{html_path}', normalisé='{norm_html_path}', src_resolu='{src}'")
             # Préparer destination
             filename = src.name
             rel_path = get_upload_path(current_user.id, filename)

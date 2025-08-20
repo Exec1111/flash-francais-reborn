@@ -24,6 +24,19 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
+// Base URL du backend pour construire des URLs absolues vers /static
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
+const buildPreviewUrl = (url) => {
+  if (!url) return url;
+  const u = typeof url === 'string' ? url : String(url);
+  // Si déjà absolu (http/https) ou data URI, ne pas modifier
+  if (/^(https?:|data:)/i.test(u)) return u;
+  // Si commence par '/', préfixer par la base API
+  if (u.startsWith('/')) return `${API_BASE_URL}${u}`;
+  // Sinon, concaténer proprement
+  return `${API_BASE_URL}/${u.replace(/^\/+/,'')}`;
+};
+
 const MergeStep = ({
   resourcesToMerge,
   currentMergeIndex,
@@ -86,6 +99,8 @@ const MergeStep = ({
           const mergeStatus = finalMergedResources[index]?.mergeStatus;
           const isConserved = finalMergedResources[index]?.conserved !== false; // Par défaut, conserver
           const htmlUrl = finalMergedResources[index]?.html_url;
+          const rawHref = finalMergedResources[index]?.mergedHtml || htmlUrl;
+          const previewHref = buildPreviewUrl(rawHref);
           
           return (
             <ListItemButton 
@@ -149,7 +164,7 @@ const MergeStep = ({
                   size="small"
                   color="primary"
                   startIcon={<OpenInNewIcon />}
-                  href={finalMergedResources[index]?.mergedHtml || finalMergedResources[index]?.html_url}
+                  href={previewHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{ mt: 1, alignSelf: 'flex-end' }}

@@ -429,22 +429,24 @@ async def merge_resource(
             user_id=current_user.id
         )
         logger.info(f"[Fusion][TRACE] Fusion IA terminée pour type_key={type_key}, subtype_key={subtype_key}, html_path={html_path}, html_url={html_url}")
-        # Reconstruire une URL absolue fiable basée sur la requête et X-Forwarded-* (utile sur Render)
+        # Préférer retourner une URL relative si le service la fournit déjà (simplifie le frontend)
         try:
-            # Base par défaut depuis FastAPI
-            base = str(request.base_url).rstrip("/")
-            # Si le proxy fournit X-Forwarded-Host/Proto, les privilégier
-            xf_host = request.headers.get("x-forwarded-host")
-            xf_proto = request.headers.get("x-forwarded-proto")
-            if xf_host:
-                proto = xf_proto or ("https" if request.url.scheme == "https" else "http")
-                base = f"{proto}://{xf_host}".rstrip("/")
-            parsed = urlparse(html_url) if html_url else None
-            path = parsed.path if parsed else None
-            if path:
-                fixed_html_url = f"{base}{path}"
-            else:
+            if isinstance(html_url, str) and html_url.startswith("/"):
                 fixed_html_url = html_url
+            else:
+                # Reconstruire une URL absolue fiable basée sur la requête et X-Forwarded-*
+                base = str(request.base_url).rstrip("/")
+                xf_host = request.headers.get("x-forwarded-host")
+                xf_proto = request.headers.get("x-forwarded-proto")
+                if xf_host:
+                    proto = xf_proto or ("https" if request.url.scheme == "https" else "http")
+                    base = f"{proto}://{xf_host}".rstrip("/")
+                parsed = urlparse(html_url) if html_url else None
+                path = parsed.path if parsed else None
+                if path:
+                    fixed_html_url = f"{base}{path}"
+                else:
+                    fixed_html_url = html_url
         except Exception:
             fixed_html_url = html_url
         logger.info(f"[Fusion][TRACE] URL d'aperçu renvoyée au frontend: {fixed_html_url}")

@@ -11,6 +11,19 @@ import {
 } from '@mui/material';
 import { Launch as LaunchIcon } from '@mui/icons-material';
 
+// Base URL du backend pour construire des URLs absolues vers /static
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
+const buildPreviewUrl = (url) => {
+  if (!url) return url;
+  const u = typeof url === 'string' ? url : String(url);
+  // Si déjà absolu (http/https) ou data URI, ne pas modifier
+  if (/^(https?:|data:)/i.test(u)) return u;
+  // Si commence par '/', préfixer par la base API
+  if (u.startsWith('/')) return `${API_BASE_URL}${u}`;
+  // Sinon, concaténer proprement
+  return `${API_BASE_URL}/${u.replace(/^\/+/,'')}`;
+};
+
 /**
  * Composant pour l'étape de fusion des résultats
  * 
@@ -57,6 +70,7 @@ const MergeStep = ({
 
   // Récupérer l'URL de prévisualisation HTML depuis les résultats fusionnés
   const htmlPreviewUrl = mergedResults?.html_url || null;
+  const previewHref = buildPreviewUrl(htmlPreviewUrl);
 
   return (
     <Box sx={{ mt: 3, mb: 3 }}>
@@ -102,7 +116,7 @@ const MergeStep = ({
             variant="outlined"
             color="primary"
             component="a"
-            href={htmlPreviewUrl}
+            href={previewHref}
             target="_blank"
             rel="noopener noreferrer"
             startIcon={<LaunchIcon />}
