@@ -127,7 +127,7 @@ const NewStudyObject = () => {
             {/* Section des ressources associées */}
             <Box sx={{ mt: 2, mb: 1 }}>
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Ressources associées (œuvres)
+                Oeuvres associées
               </Typography>
               <Button
                 variant="outlined"
