@@ -10,7 +10,7 @@ import {
   CircularProgress,
   Chip
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
 
@@ -26,6 +26,44 @@ const NewStudyObject = () => {
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const DRAFT_KEY = 'newSO_draft';
+
+  // Charger un brouillon s'il existe (au premier montage)
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft && typeof draft === 'object') {
+        if (typeof draft.title === 'string') setTitle(draft.title);
+        if (typeof draft.description === 'string') setDescription(draft.description);
+        if (Array.isArray(draft.associatedResources)) setAssociatedResources(draft.associatedResources);
+      }
+    } catch (_) {}
+  }, []);
+
+  // Gérer le retour depuis /resources/new avec une ressource créée
+  React.useEffect(() => {
+    const st = location.state;
+    if (st && st.createdResource) {
+      setAssociatedResources(prev => {
+        const exists = prev.some(r => String(r.id) === String(st.createdResource.id));
+        const next = exists ? prev : [...prev, st.createdResource];
+        // Mettre à jour le brouillon pour persister l'association
+        try {
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources: next }));
+        } catch (_) {}
+        return next;
+      });
+      if (st.messageSuccess) {
+        setSuccess(st.messageSuccess);
+      }
+      // Nettoyer l'état pour éviter répétition
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,12 +77,14 @@ const NewStudyObject = () => {
       const data = {
         title,
         description,
-        resourceIds: resourceIds // Ajouter les identifiants des ressources associées
+        resource_ids: resourceIds // Aligner avec le schéma backend
       };
       
       console.log('Création d\'objet d\'étude avec les ressources:', resourceIds);
       await studyObjectService.createStudyObject(data);
       setSuccess('Objet d\'étude créé avec succès !');
+      // Nettoyer le brouillon après succès
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
       setTimeout(() => navigate('/study-objects'), 1000);
     } catch (err) {
       setError(err.detail || err.message || "Erreur inconnue");
@@ -97,6 +137,22 @@ const NewStudyObject = () => {
               >
                 Associer une œuvre existante
               </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  // Sauvegarder un brouillon avant de naviguer
+                  try {
+                    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources }));
+                  } catch (_) {}
+                  const returnTo = encodeURIComponent(location.pathname);
+                  const url = `/resources/new?source=file&hideSO=1&presetTypeKey=OEUVRE&lockType=1&pdfOnly=1&returnTo=${returnTo}`;
+                  navigate(url);
+                }}
+                sx={{ mb: 1, ml: 1 }}
+              >
+                Créer la ressource à partir d'un PDF
+              </Button>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 {associatedResources.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
@@ -120,7 +176,10 @@ const NewStudyObject = () => {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
               <Button
                 variant="outlined"
-                onClick={() => navigate('/study-objects')}
+                onClick={() => {
+                  try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
+                  navigate('/study-objects');
+                }}
                 disabled={loading}
               >
                 Annuler

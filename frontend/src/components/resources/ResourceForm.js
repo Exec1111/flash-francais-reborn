@@ -54,6 +54,9 @@ const ResourceForm = ({
   hideStudyObjectSelection = false,
   forcedType = null,
   disableNavigation = false,
+  initialSourceType = 'ai',
+  lockTypeSelection = false,
+  allowedMimeTypesOverride = null,
 }) => {
   // --- Utiliser useNavigate pour la redirection ---
   const navigate = useNavigate(); 
@@ -90,7 +93,9 @@ const ResourceForm = ({
   });
   const MAX_UPLOAD_SIZE_MB = uploadConfig.max_upload_size_mb;
   const MAX_FILE_SIZE = uploadConfig.max_upload_size_bytes; 
-  const ALLOWED_FILE_TYPES = uploadConfig.allowed_mime_types || [];
+  const ALLOWED_FILE_TYPES = (allowedMimeTypesOverride && Array.isArray(allowedMimeTypesOverride) && allowedMimeTypesOverride.length > 0)
+    ? allowedMimeTypesOverride
+    : (uploadConfig.allowed_mime_types || []);
   const ALLOWED_FILE_TYPES_LABEL = (() => {
     const pretty = {
       'application/pdf': 'PDF',
@@ -119,16 +124,23 @@ const ResourceForm = ({
       console.log('[DEBUG ResourceForm] initialData transmis au formulaire :', initialData);
     }
 
-    // Si un type forcé est fourni, le définir
-    if (forcedType && forcedType.typeId && forcedType.subtypeId) {
+    // Si un type forcé est fourni, l'appliquer (même sans sous-type)
+    if (forcedType && forcedType.typeId) {
       console.log('[DEBUG ResourceForm] Type forcé détecté:', forcedType);
       setFormData(prev => ({
         ...prev,
-        resource_type_id: forcedType.typeId,
-        resource_sub_type_id: forcedType.subtypeId
+        resource_type_id: String(forcedType.typeId),
+        resource_sub_type_id: forcedType.subtypeId ? String(forcedType.subtypeId) : ''
       }));
     }
   }, [isEdit, initialData, forcedType]);
+
+  // Appliquer la source initiale (ai/file/url) fournie par le parent
+  useEffect(() => {
+    if (initialSourceType && sourceType !== initialSourceType) {
+      setSourceType(initialSourceType);
+    }
+  }, [initialSourceType]);
 
   // Initialisation du formulaire avec les données existantes
   useEffect(() => {
@@ -138,19 +150,28 @@ const ResourceForm = ({
         const initialTypeId = initialData.type_id ? String(initialData.type_id) : '';
         const initialSubTypeId = initialData.sub_type_id ? String(initialData.sub_type_id) : '';
 
-        // Créer un nouvel objet formData avec TOUS les champs d'initialData
-        const newFormData = {
-            ...initialData, // Copier TOUS les champs d'initialData d'abord
-            title: initialData.title || '',
-            description: initialData.description || '',
-            resource_type_id: initialTypeId,       // Clé correcte pour l'état
-            resource_sub_type_id: initialSubTypeId, // Clé correcte pour l'état
-            session_ids: initialData.session_ids || (session ? [session.id] : []), // Utiliser session_ids de ResourceEdit
-            url: initialData.url || '', // Inclure l'URL si elle fait partie des initialData
-        };
-        
-        setFormData(newFormData); // Utiliser le nouvel objet complet
-        setSourceType(initialData.source_type || 'ai'); // Mettre à jour aussi l'état sourceType
+        // Fusion prudente: ne pas écraser un type déjà défini (ex: via forcedType)
+        setFormData(prev => {
+          const merged = {
+            ...prev,
+            ...initialData,
+            title: initialData.title || prev.title || '',
+            description: initialData.description || prev.description || '',
+            session_ids: initialData.session_ids || (session ? [session.id] : (prev.session_ids || [])),
+            url: initialData.url || prev.url || '',
+          };
+          if (initialTypeId) {
+            merged.resource_type_id = initialTypeId;
+          }
+          if (initialSubTypeId) {
+            merged.resource_sub_type_id = initialSubTypeId;
+          }
+          return merged;
+        });
+        // Ne pas écraser la source en mode création: n'appliquer que si une source explicite existe (cas édition)
+        if (initialData.source_type) {
+          setSourceType(initialData.source_type);
+        }
         if (Array.isArray(initialData.study_objects)) {
           setSelectedStudyObjects(initialData.study_objects);
         } else if (Array.isArray(initialData.study_object_ids) && Array.isArray(allStudyObjects) && allStudyObjects.length > 0) {
@@ -315,6 +336,36 @@ const ResourceForm = ({
     }
   };
 
+  // Helper: normaliser toutes les formes d'erreurs en chaîne exploitable
+  const formatError = (val) => {
+    try {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (Array.isArray(val)) {
+        // FastAPI/Pydantic: liste d'objets {type, loc, msg, input}
+        const parts = val.map((item) => {
+          if (!item) return '';
+          if (typeof item === 'string') return item;
+          if (item.msg) {
+            const loc = Array.isArray(item.loc) ? item.loc.join('.') : (item.loc || '');
+            return loc ? `${item.msg} (${loc})` : String(item.msg);
+          }
+          if (item.detail) return formatError(item.detail);
+          return JSON.stringify(item);
+        }).filter(Boolean);
+        return parts.join(' | ');
+      }
+      if (typeof val === 'object') {
+        if (val.detail) return formatError(val.detail);
+        if (val.msg) return String(val.msg);
+        return JSON.stringify(val);
+      }
+      return String(val);
+    } catch (_) {
+      return 'Une erreur est survenue.';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -438,24 +489,13 @@ const ResourceForm = ({
       console.error('Erreur lors de la sauvegarde de la ressource:', err);
 
       // Traitement des erreurs spécifiques API
-      let displayError = 'Une erreur est survenue lors de la sauvegarde.';
-
-      if (err.response?.data?.detail) {
-        // Erreur API détaillée
-        const detail = err.response.data.detail;
-        displayError = detail;
-      } else if (err.message) {
-        // Fallback sur le message d'erreur général d'Axios
-        displayError = err.message;
-      }
-
+      const raw = err?.response?.data?.detail ?? err?.response?.data ?? err?.message ?? 'Une erreur est survenue lors de la sauvegarde.';
+      const displayError = formatError(raw);
       setError(displayError);
 
       // Si l'erreur formatée concerne le fichier
-      if (displayError.includes('fichier')) {
-        setFileError(displayError);
-      } else if (displayError.toLowerCase().includes('file')) {
-        // Gérer le cas où le backend dit "file"
+      const lower = (displayError || '').toLowerCase();
+      if (lower.includes('fichier') || lower.includes('file')) {
         setFileError(displayError);
       }
     } finally {
@@ -583,7 +623,7 @@ const ResourceForm = ({
                   value={formData.resource_type_id || ''}
                   onChange={handleInputChange}
                   label="Type"
-                  disabled={loadingTypes || resourceTypes.length === 0 || submitting}
+                  disabled={lockTypeSelection || loadingTypes || resourceTypes.length === 0 || submitting}
                 >
                   {resourceTypes.map((type) => (
                     <MenuItem key={type.id} value={String(type.id)}>

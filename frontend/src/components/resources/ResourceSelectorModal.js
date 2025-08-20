@@ -72,7 +72,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         setLoadingFilters(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await api.get('/resources/types', {
+            const response = await api.get('/resource-types/types', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setAvailableTypes(response.data || []);
@@ -84,6 +84,21 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         }
     };
 
+    // Quand les types sont disponibles et qu'un filterType est fourni, présélectionner le type correspondant
+    useEffect(() => {
+        if (!filterType || !availableTypes || availableTypes.length === 0) return;
+        const ft = String(filterType).toLowerCase();
+        const match = availableTypes.find(t =>
+            (t.key && String(t.key).toLowerCase() === ft) ||
+            (t.value && String(t.value).toLowerCase() === ft)
+        );
+        if (match && match.id !== selectedTypeId) {
+            setSelectedTypeId(match.id);
+            setSelectedSubTypeId('');
+            fetchResourceSubTypes(match.id);
+        }
+    }, [filterType, availableTypes]);
+
     // Charger les sous-types en fonction du type sélectionné
     const fetchResourceSubTypes = async (typeId) => {
         if (!typeId) {
@@ -93,7 +108,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         setLoadingFilters(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await api.get('/resources/sub-types', {
+            const response = await api.get('/resource-types/subtypes', {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { type_id: typeId }
             });

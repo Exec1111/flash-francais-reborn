@@ -595,14 +595,29 @@ def delete_resource_route(
         logger.error(f"Accès non autorisé pour la suppression de la ressource {resource_id} par l'utilisateur {current_user.id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this resource")
 
-    # Garder une trace du chemin du fichier avant de supprimer l'enregistrement BDD
+    # Garder une trace des chemins des fichiers à supprimer avant de supprimer l'enregistrement BDD
+    uploads_base = Path(settings.UPLOADS_BASE_DIR)
     file_path_to_delete: Optional[Path] = None
-    if db_resource_check.file_path:
-        # Reconstruire le chemin absolu basé sur UPLOADS_BASE_DIR
-        # Note: db_resource_check.file_path devrait contenir le chemin relatif incluant le nom sécurisé
-        relative_path = Path(db_resource_check.file_path)
-        file_path_to_delete = settings.UPLOADS_BASE_DIR / "uploads" / str(current_user.id) / relative_path.name
-        logger.info(f"Chemin du fichier à supprimer identifié : {file_path_to_delete}")
+    md_path_to_delete: Optional[Path] = None
+    tables_path_to_delete: Optional[Path] = None
+
+    # Fichier source (ex: PDF uploadé)
+    if getattr(db_resource_check, "file_path", None):
+        rel = str(db_resource_check.file_path).lstrip("/")
+        file_path_to_delete = uploads_base / rel
+        logger.info(f"Chemin du fichier source à supprimer identifié : {file_path_to_delete}")
+
+    # Fichier markdown extrait
+    if getattr(db_resource_check, "docling_md_path", None):
+        md_rel = str(db_resource_check.docling_md_path).lstrip("/")
+        md_path_to_delete = uploads_base / md_rel
+        logger.info(f"Chemin du fichier markdown à supprimer identifié : {md_path_to_delete}")
+
+    # Fichier tables extrait (HTML concaténé)
+    if getattr(db_resource_check, "docling_tables_path", None):
+        tables_rel = str(db_resource_check.docling_tables_path).lstrip("/")
+        tables_path_to_delete = uploads_base / tables_rel
+        logger.info(f"Chemin du fichier tables à supprimer identifié : {tables_path_to_delete}")
 
     # Appeler la fonction CRUD pour supprimer l'enregistrement en BDD
     deleted = crud.resource.delete_resource(db=db, resource_id=resource_id)
@@ -612,24 +627,36 @@ def delete_resource_route(
         logger.error(f"Échec de la suppression de la ressource {resource_id} en BDD après vérification.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found during delete process")
     
-    # Si la suppression en BDD a réussi, supprimer le fichier physique s'il existait
-    if file_path_to_delete and file_path_to_delete.exists():
-        try:
-            os.remove(file_path_to_delete)
-            logger.info(f"Fichier physique {file_path_to_delete} supprimé avec succès pour la ressource {resource_id}.")
-        except OSError as e:
-            # Si la suppression échoue, on loggue l'erreur mais on ne lève pas d'exception HTTP
-            # Car la ressource BDD est déjà supprimée. C'est un état potentiellement incohérent
-            # mais lever une 500 ici serait trompeur pour le client.
-            logger.error(f"Erreur lors de la suppression du fichier physique {file_path_to_delete}: {e}")
-    elif file_path_to_delete:
-         logger.warning(f"Le fichier physique {file_path_to_delete} associé à la ressource {resource_id} n'a pas été trouvé sur le disque pour suppression.")
+    # Si la suppression en BDD a réussi, supprimer les fichiers physiques s'ils existent
+    for target_path in [file_path_to_delete, md_path_to_delete, tables_path_to_delete]:
+        if target_path:
+            if target_path.exists():
+                try:
+                    os.remove(target_path)
+                    logger.info(f"Fichier supprimé: {target_path}")
+                except OSError as e:
+                    logger.error(f"Erreur lors de la suppression du fichier {target_path}: {e}")
+            else:
+                logger.warning(f"Fichier à supprimer introuvable: {target_path}")
+
+    # Tentative de nettoyage du dossier 'docling' s'il est vide
+    try:
+        for p in [md_path_to_delete, tables_path_to_delete]:
+            if p and p.parent.exists():
+                # Ne supprimer que le répertoire 'docling' potentiel, pas le dossier utilisateur
+                if p.parent.name.lower() == "docling":
+                    try:
+                        p.parent.rmdir()  # échoue si non vide
+                        logger.info(f"Dossier vide supprimé: {p.parent}")
+                    except OSError:
+                        # Dossier non vide ou autre erreur: ignorer
+                        pass
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des dossiers docling: {e}")
 
     logger.info(f"Ressource {resource_id} supprimée avec succès de la BDD.")
     # Pas de contenu à retourner pour une réponse 204
     return # Ou return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 # --- Endpoints Docling ---
 @resource_router.get("/{resource_id}/docling", response_model=DoclingStatusResponse)
 def get_resource_docling(

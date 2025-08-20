@@ -60,7 +60,7 @@ const PdfExtractionStatusChip = ({ resourceId, fileType, filePath, size = 'small
   return (
     <Stack direction="row" spacing={0.5} alignItems="center">
       <Tooltip title={error ? String(error) : ''} disableHoverListener={!error} arrow>
-        <Chip size={size} label={`Extraction PDF: ${status || 'inconnu'}`} color={chipColor(status)} variant="outlined" />
+        <Chip size={size} label={`${status || 'inconnu'}`} color={chipColor(status)} variant="outlined" />
       </Tooltip>
       <IconButton size="small" onClick={(e) => { e.stopPropagation(); fetchStatus(); }} disabled={loading} aria-label="actualiser statut extraction pdf">
         {loading ? <CircularProgress size={16} /> : <RefreshIcon fontSize="inherit" />}

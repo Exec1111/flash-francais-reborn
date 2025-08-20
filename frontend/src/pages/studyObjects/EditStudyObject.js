@@ -32,19 +32,37 @@ const EditStudyObject = () => {
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   const navigate = useNavigate();
+  const DRAFT_KEY = `editSO_draft_${id}`;
 
   // Vérifier si on revient d'une autre page avec une demande de rafraîchissement
   useEffect(() => {
-    if (location.state?.refresh) {
-      fetchData();
-      
-      // Afficher le message de succès si présent
-      if (location.state.messageSuccess) {
-        setSuccessMessage(location.state.messageSuccess);
+    const st = location.state;
+    if (!st) return;
+    // Cas 1: retour depuis /resources/new avec une ressource créée
+    if (st.createdResource) {
+      setAssociatedResources(prev => {
+        const exists = prev.some(r => String(r.id) === String(st.createdResource.id));
+        const next = exists ? prev : [...prev, st.createdResource];
+        // Mettre à jour le brouillon si présent
+        try {
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources: next }));
+        } catch (_) {}
+        return next;
+      });
+      if (st.messageSuccess) {
+        setSuccessMessage(st.messageSuccess);
         setSnackbarOpen(true);
       }
-      
-      // Nettoyer l'état de l'URL pour éviter des rafraîchissements répétés
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    // Cas 2: logique existante de refresh explicite
+    if (st.refresh) {
+      fetchData();
+      if (st.messageSuccess) {
+        setSuccessMessage(st.messageSuccess);
+        setSnackbarOpen(true);
+      }
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -73,8 +91,23 @@ const EditStudyObject = () => {
     }
   };
 
+  // Charger un brouillon s'il existe, sinon charger depuis l'API
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && typeof draft === 'object') {
+          if (typeof draft.title === 'string') setTitle(draft.title);
+          if (typeof draft.description === 'string') setDescription(draft.description);
+          if (Array.isArray(draft.associatedResources)) setAssociatedResources(draft.associatedResources);
+          setLoading(false);
+          return; // Ne pas appeler l'API si brouillon présent
+        }
+      }
+    } catch (_) {}
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleSubmit = async (e) => {
@@ -89,6 +122,8 @@ const EditStudyObject = () => {
         resource_ids: associatedResources.map(r => r.id)
       });
       setSuccess("Objet d'étude mis à jour avec succès !");
+      // Nettoyer le brouillon après succès
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
       setTimeout(() => navigate('/study-objects'), 1000);
     } catch (err) {
       setError(err.detail || err.message || "Erreur inconnue");
@@ -146,6 +181,23 @@ const EditStudyObject = () => {
               >
                 Associer une ressource existante
               </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  // Sauvegarder un brouillon avant de naviguer vers la création de ressource
+                  try {
+                    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources }));
+                  } catch (_) {}
+                  const returnTo = encodeURIComponent(location.pathname);
+                  // Forcer Type=OEUVRE (verrouillé) et source=fichier (PDF uniquement), masquer SO
+                  const url = `/resources/new?source=file&hideSO=1&presetTypeKey=OEUVRE&lockType=1&pdfOnly=1&returnTo=${returnTo}`;
+                  navigate(url);
+                }}
+                sx={{ mb: 1, ml: 1 }}
+              >
+                Créer la ressource à partir d'un PDF
+              </Button>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 {associatedResources.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
@@ -187,7 +239,7 @@ const EditStudyObject = () => {
                 variant="outlined"
                 color="secondary"
                 sx={{ ml: 2 }}
-                onClick={() => navigate('/study-objects')}
+                onClick={() => { try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}; navigate('/study-objects'); }}
                 disabled={loading}
               >
                 Annuler

@@ -6,7 +6,7 @@ import {
     Box, Typography, CircularProgress, Alert, Button, Link, Divider, List, ListItem,
     Container, Card, CardContent, IconButton, Chip, Stack, FormControlLabel, Checkbox
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon, PictureAsPdf as PictureAsPdfIcon, Description as DescriptionIcon, InsertDriveFile as InsertDriveFileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import StudyObjectChips from '../components/studyObjects/StudyObjectChips';
 
 // Fonction pour formater les dates (peut être centralisée)
@@ -144,6 +144,22 @@ function ResourceView() {
         }
     }, [doclingStatus]);
 
+    // Quand l'extraction devient "ready", recharger la ressource pour récupérer docling_md_path actualisé
+    useEffect(() => {
+        const s = (doclingStatus || '').toLowerCase();
+        if (s === 'ready' && id) {
+            (async () => {
+                try {
+                    const latest = await resourceService.getResourceById(id);
+                    setResource(latest);
+                } catch (e) {
+                    // journaliser silencieusement, garder l'UI fonctionnelle
+                    console.warn('Impossible de rafraîchir la ressource après extraction ready:', e);
+                }
+            })();
+        }
+    }, [doclingStatus, id]);
+
     const handleReextract = async () => {
         if (!id || !isPdf) return;
         setDoclingError(null);
@@ -245,9 +261,12 @@ function ResourceView() {
          );
     }
 
-    // Construire l'URL du fichier si applicable (upload ou IA)
+    // Construire l'URL du fichier associé et du markdown extrait
     const fileUrl = resource.file_path
                     ? `${API_BASE_URL}/media/uploads/${resource.file_path.startsWith('/') ? resource.file_path.substring(1) : resource.file_path}`
+                    : null;
+    const mdUrl = resource.docling_md_path
+                    ? `${API_BASE_URL}/media/uploads/${resource.docling_md_path.startsWith('/') ? resource.docling_md_path.substring(1) : resource.docling_md_path}`
                     : null;
 
     return (
@@ -293,85 +312,44 @@ function ResourceView() {
 
                 <Divider sx={{ my: 2 }} />
 
-                {resource.source_type === 'file' && (
-                    <Box>
-                        <Typography variant="h6">Fichier Associé</Typography>
+                {/* Section Fichiers (compacte) */}
+                <Box sx={{ my: 2 }}>
+                    <Typography variant="h6">Fichiers</Typography>
+                    <Stack spacing={1} sx={{ my: 1 }}>
+                        {/* Ligne 1: fichier associé (PDF ou autre) */}
                         {fileUrl ? (
-                            <Link href={fileUrl} target="_blank" rel="noopener noreferrer">
-                                Ouvrir le fichier ({resource.file_path.split('/').pop()}) {/* Affiche juste le nom du fichier */}
-                            </Link>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                {isPdf ? <PictureAsPdfIcon color="action" /> : <InsertDriveFileIcon color="action" />}
+                                <Link href={fileUrl} target="_blank" rel="noopener noreferrer">ouvrir le document</Link>
+                                <OpenInNewIcon fontSize="small" color="action" />
+                            </Stack>
                         ) : (
-                            <Typography color="textSecondary">Aucun fichier associé ou chemin invalide.</Typography>
+                            <Typography color="textSecondary">Aucun fichier associé.</Typography>
                         )}
-                    </Box>
-                )}
 
-                {resource.source_type.toLowerCase() === 'ai' && (
-                    <Box>
-                        <Typography variant="h6">Fichier généré par IA</Typography>
-                        {fileUrl ? (
-                            <Link href={fileUrl} target="_blank" rel="noopener noreferrer">
-                                Ouvrir le fichier généré ({resource.file_path.split('/').pop()})
-                            </Link>
-                        ) : (
-                            <Typography color="textSecondary">Aucun fichier généré disponible.</Typography>
-                        )}
-                    </Box>
-                )}
-
-                <Divider sx={{ my: 2 }} />
-
-                {/* Section Extraction PDF: statut & contenu pour PDF */}
-                {isPdf && (
-                    <Box sx={{ my: 2 }}>
-                        <Typography variant="h6">Extraction PDF</Typography>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ my: 1, flexWrap: 'wrap' }}>
-                            <Chip label={`Statut: ${doclingStatus || 'inconnu'}`} color={chipColor(doclingStatus)} variant="outlined" />
-                            {polling && <Chip label="Polling..." size="small" />}
-                            {doclingLoading && <CircularProgress size={20} />}
-                            <Button variant="outlined" onClick={fetchDoclingStatus} disabled={doclingLoading}>Actualiser</Button>
-                            <FormControlLabel
-                                control={<Checkbox checked={reextractOpts.force} onChange={(e) => setReextractOpts(o => ({ ...o, force: e.target.checked }))} />}
-                                label="Forcer"
-                            />
-                            <Button variant="contained" onClick={handleReextract} disabled={doclingLoading}>Relancer l'extraction</Button>
-                        </Stack>
-                        {doclingError && <Alert severity="error" sx={{ my: 1 }}>{doclingError}</Alert>}
-
-                        {doclingStatus === 'ready' && (
-                            <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle1">Markdown extrait</Typography>
-                                <Box
-                                    component="pre"
-                                    sx={(theme) => ({
-                                        p: 1,
-                                        bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
-                                        color: theme.palette.mode === 'dark' ? 'grey.100' : 'grey.900',
-                                        borderRadius: 1,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        maxHeight: 300,
-                                        overflow: 'auto',
-                                        whiteSpace: 'pre-wrap',
-                                        fontFamily: 'monospace',
-                                    })}
-                                >
-                                    {doclingMarkdown || '—'}
-                                </Box>
-                                {Array.isArray(doclingTables) && doclingTables.length > 0 && (
-                                    <Box sx={{ mt: 2 }}>
-                                        <Typography variant="subtitle1">Tables détectées</Typography>
-                                        {doclingTables.map((tbl, idx) => (
-                                            <Box key={idx} sx={{ my: 1, p: 1, border: '1px solid', borderColor: 'grey.300', borderRadius: 1, overflow: 'auto' }}
-                                                dangerouslySetInnerHTML={{ __html: typeof tbl === 'string' ? tbl : (tbl?.html || '') }}
-                                            />
-                                        ))}
-                                    </Box>
+                        {/* Ligne 2: Markdown + statut + actions (visible seulement pour PDF) */}
+                        {isPdf && (
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                                <DescriptionIcon color={mdUrl ? 'action' : 'disabled'} />
+                                {mdUrl ? (
+                                    <Link href={mdUrl} target="_blank" rel="noopener noreferrer">Ouvrir le Markdown</Link>
+                                ) : (
+                                    <Typography color="textSecondary">Markdown indisponible</Typography>
                                 )}
-                            </Box>
+                                <Chip label={`${doclingStatus || 'inconnu'}`} color={chipColor(doclingStatus)} variant="outlined" />
+                                {polling && <Chip label="Polling..." size="small" />}
+                                {doclingLoading && <CircularProgress size={20} />}
+                                <Button variant="outlined" onClick={fetchDoclingStatus} disabled={doclingLoading}>Actualiser</Button>
+                                <FormControlLabel
+                                    control={<Checkbox checked={reextractOpts.force} onChange={(e) => setReextractOpts(o => ({ ...o, force: e.target.checked }))} />}
+                                    label="Forcer"
+                                />
+                                <Button variant="contained" onClick={handleReextract} disabled={doclingLoading}>Relancer l'extraction</Button>
+                            </Stack>
                         )}
-                    </Box>
-                )}
+                        {doclingError && <Alert severity="error" sx={{ my: 1 }}>{doclingError}</Alert>}
+                    </Stack>
+                </Box>
 
                 <Typography variant="h6">Objets d'étude associés</Typography>
                 {loadingStudyObjects ? (

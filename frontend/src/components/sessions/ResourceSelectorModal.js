@@ -27,7 +27,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
 import api from '../../services/api';
 
-const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], onSave }) => {
+const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], onSave, filterType = null }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedResources, setSelectedResources] = useState([]);
@@ -65,7 +65,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         setLoadingFilters(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await api.get('/resources/types', {
+            const response = await api.get('/resource-types/types', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setAvailableTypes(response.data || []);
@@ -77,6 +77,21 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         }
     };
 
+    // Quand les types sont disponibles et qu'un filterType est fourni, présélectionner le type correspondant
+    useEffect(() => {
+        if (!filterType || !availableTypes || availableTypes.length === 0) return;
+        const ft = String(filterType).toLowerCase();
+        const match = availableTypes.find(t =>
+            (t.key && String(t.key).toLowerCase() === ft) ||
+            (t.value && String(t.value).toLowerCase() === ft)
+        );
+        if (match && match.id !== selectedTypeId) {
+            setSelectedTypeId(match.id);
+            setSelectedSubTypeId('');
+            fetchResourceSubTypes(match.id);
+        }
+    }, [filterType, availableTypes]);
+
     // Charger les sous-types en fonction du type sélectionné
     const fetchResourceSubTypes = async (typeId) => {
         if (!typeId) {
@@ -86,7 +101,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         setLoadingFilters(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await api.get('/resources/sub-types', {
+            const response = await api.get('/resource-types/subtypes', {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { type_id: typeId }
             });
@@ -110,9 +125,13 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
                 page: page,
                 limit: resourcesPerPage,
                 search: term || undefined, // N'envoyer que si non vide
-                typeId: typeId || undefined,
-                subTypeId: subTypeId || undefined,
             };
+            if (filterType) {
+                params.typeKey = filterType; // Priorité au filtre par clé (backend supporte typeKey)
+            } else {
+                params.typeId = typeId || undefined;
+                params.subTypeId = subTypeId || undefined;
+            }
             const response = await api.get('/resources/', {
                 headers: { Authorization: `Bearer ${token}` },
                 params: params
@@ -127,7 +146,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
         } finally {
             setLoading(false);
         }
-    }, [resourcesPerPage]); // Dépendances : seulement resourcesPerPage car les autres sont passés en arguments
+    }, [resourcesPerPage, filterType]); // Inclure filterType pour relancer en cas de changement
 
     // Appliquer le debounce spécifiquement à l'appel déclenché par la recherche textuelle
     const debouncedFetchResources = useMemo(() => _debounce(fetchResources, 500), [fetchResources]);
@@ -139,7 +158,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
              // Pas besoin de debounce pour les changements de page/filtres
              fetchResources(currentPage, searchTerm, selectedTypeId, selectedSubTypeId);
         }
-    }, [currentPage, selectedTypeId, selectedSubTypeId, open]); // Ne pas inclure searchTerm ici pour utiliser le debounce
+    }, [currentPage, selectedTypeId, selectedSubTypeId, open, filterType]); // inclure filterType
 
     // Gérer le changement du terme de recherche
     const handleSearchChange = (event) => {
