@@ -372,6 +372,18 @@ const ResourceForm = ({
     setSuccess('');
     setSubmitting(true);
 
+    // Sécurité: exiger un sous-type en mode création (même si le bouton est désactivé, la touche Entrée pourrait tenter une soumission)
+    try {
+      const isCreateModeLocal = !isEdit;
+      const hasForcedSubtypeLocal = Boolean(forcedType && forcedType.subtypeId);
+      const hasFormSubtypeLocal = Boolean(formData.resource_sub_type_id && String(formData.resource_sub_type_id).trim() !== '');
+      if (isCreateModeLocal && !(hasForcedSubtypeLocal || hasFormSubtypeLocal)) {
+        setError('Veuillez sélectionner un sous-type avant de créer.');
+        setSubmitting(false);
+        return;
+      }
+    } catch (_) {}
+
     // Vérification spécifique si source_type est 'file'
     if (sourceType === 'file' && !selectedFile && !isEdit) {
       setFileError(`Veuillez sélectionner un fichier (${ALLOWED_FILE_TYPES_LABEL}).`);
@@ -507,9 +519,16 @@ const ResourceForm = ({
   const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
 
-  // Détermine si les types sont disponibles soit par sélection soit par forçage
-  const hasSelectedType = selectedType || (hideTypeSelection && forcedType);
-  const hasSelectedSubType = selectedSubType || (hideTypeSelection && forcedType);
+  // Détermine si les types sont disponibles soit par sélection soit par forçage (exiger des IDs réels)
+  const hasSelectedType = Boolean(selectedType) || Boolean(hideTypeSelection && forcedType && forcedType.typeId);
+  const hasSelectedSubType = Boolean(selectedSubType) || Boolean(hideTypeSelection && forcedType && forcedType.subtypeId);
+  
+  // Désactiver la soumission en création si aucun sous-type n'est positionné
+  const isCreateMode = !isEdit;
+  const hasForcedSubtype = Boolean(forcedType && forcedType.subtypeId);
+  const hasFormSubtype = Boolean(formData.resource_sub_type_id && String(formData.resource_sub_type_id).trim() !== '');
+  const mustHaveSubtype = isCreateMode; // règle demandée : seulement en création
+  const missingSubtype = mustHaveSubtype && !(hasFormSubtype || hasForcedSubtype);
   
   // Afficher le formulaire IA si on est en mode IA et que les types sont définis (soit par sélection, soit par forçage)
   // Afficher le formulaire de génération IA seulement en mode création
@@ -551,7 +570,7 @@ const ResourceForm = ({
         type="submit" 
         variant="contained" 
         color="primary" 
-        disabled={submitting}
+        disabled={submitting || missingSubtype}
         onClick={handleSubmit}
       >
         {submitting ? <CircularProgress size={24} /> : (isEdit ? 'Mettre à jour' : 'Créer')}

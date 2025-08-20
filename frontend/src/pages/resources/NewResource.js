@@ -18,6 +18,8 @@ const NewResource = () => {
   const returnTo = decodeURIComponent(searchParams.get('returnTo') || '/resources');
   const lockType = searchParams.get('lockType') === '1' || searchParams.get('lockType') === 'true';
   const pdfOnly = searchParams.get('pdfOnly') === '1' || searchParams.get('pdfOnly') === 'true';
+  const attachSOIdRaw = searchParams.get('attachSOId');
+  const attachSOId = attachSOIdRaw ? Number(attachSOIdRaw) : null;
 
   const [forcedType, setForcedType] = useState(null);
 
@@ -28,7 +30,9 @@ const NewResource = () => {
     type_id: '',
     sub_type_id: '',
     content: '',
-    user_id: userId || undefined
+    user_id: userId || undefined,
+    // Pré-remplir l'association à l'objet d'étude quand on vient de l'édition d'un SO
+    ...(attachSOId && !Number.isNaN(attachSOId) ? { study_object_ids: [attachSOId] } : {})
   };
 
   // Résoudre le type/subtype à partir des types REST standards si demandé

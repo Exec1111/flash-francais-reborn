@@ -34,21 +34,45 @@ const EditStudyObject = () => {
   const navigate = useNavigate();
   const DRAFT_KEY = `editSO_draft_${id}`;
 
+  // Autosauvegarde du brouillon à chaque modification (avec garde contre l'écrasement par des valeurs vides)
+  useEffect(() => {
+    try {
+      const isAllEmpty = (!title || title === '') && (!description || description === '') && (!associatedResources || associatedResources.length === 0);
+      if (isAllEmpty) return; // ne pas écraser un brouillon existant par des valeurs vides au premier rendu
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources }));
+    } catch (_) {}
+  }, [title, description, associatedResources, DRAFT_KEY]);
+
   // Vérifier si on revient d'une autre page avec une demande de rafraîchissement
   useEffect(() => {
     const st = location.state;
     if (!st) return;
     // Cas 1: retour depuis /resources/new avec une ressource créée
     if (st.createdResource) {
-      setAssociatedResources(prev => {
-        const exists = prev.some(r => String(r.id) === String(st.createdResource.id));
-        const next = exists ? prev : [...prev, st.createdResource];
-        // Mettre à jour le brouillon si présent
-        try {
-          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources: next }));
-        } catch (_) {}
-        return next;
-      });
+      // Fusionner la ressource créée avec les ressources déjà sélectionnées
+      const exists = associatedResources.some(r => String(r.id) === String(st.createdResource.id));
+      const nextResources = exists ? associatedResources : [...associatedResources, st.createdResource];
+
+      // Préserver le brouillon existant (titre/description) saisi avant la navigation
+      let prevDraft = null;
+      try {
+        const rawDraft = sessionStorage.getItem(DRAFT_KEY);
+        prevDraft = rawDraft ? JSON.parse(rawDraft) : null;
+      } catch (_) {}
+
+      const draftTitle = (prevDraft && typeof prevDraft.title === 'string') ? prevDraft.title : title;
+      const draftDescription = (prevDraft && typeof prevDraft.description === 'string') ? prevDraft.description : description;
+
+      // Mettre à jour l'état et appliquer le brouillon en priorité
+      setAssociatedResources(nextResources);
+      setTitle(draftTitle);
+      setDescription(draftDescription);
+
+      // Mettre à jour le brouillon fusionné
+      try {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title: draftTitle, description: draftDescription, associatedResources: nextResources }));
+      } catch (_) {}
+
       if (st.messageSuccess) {
         setSuccessMessage(st.messageSuccess);
         setSnackbarOpen(true);
@@ -191,7 +215,7 @@ const EditStudyObject = () => {
                   } catch (_) {}
                   const returnTo = encodeURIComponent(location.pathname);
                   // Forcer Type=OEUVRE (verrouillé) et source=fichier (PDF uniquement), masquer SO
-                  const url = `/resources/new?source=file&hideSO=1&presetTypeKey=OEUVRE&lockType=1&pdfOnly=1&returnTo=${returnTo}`;
+                  const url = `/resources/new?source=file&hideSO=1&presetTypeKey=OEUVRE&lockType=1&pdfOnly=1&attachSOId=${id}&returnTo=${returnTo}`;
                   navigate(url);
                 }}
                 sx={{ mb: 1, ml: 1 }}
