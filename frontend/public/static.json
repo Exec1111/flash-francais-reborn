@@ -1,0 +1,11 @@
+{
+  "redirects": [
+    { "source": "/api/*", "destination": "/api/:splat", "statusCode": 200 },
+    { "source": "/static/*", "destination": "/static/:splat", "statusCode": 200 },
+    { "source": "/media/*", "destination": "/media/:splat", "statusCode": 200 },
+    { "source": "/favicon.ico", "destination": "/favicon.ico", "statusCode": 200 },
+    { "source": "/manifest.json", "destination": "/manifest.json", "statusCode": 200 },
+    { "source": "/robots.txt", "destination": "/robots.txt", "statusCode": 200 },
+    { "source": "/(.*)", "destination": "/index.html", "statusCode": 200 }
+  ]
+}

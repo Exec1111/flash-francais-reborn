@@ -30,12 +30,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   
 
+  // Déterminer la page d'origine (fallback sur /dashboard)
+  const from = location.state?.from?.pathname || '/dashboard';
+
   // Redirection automatique lorsque l'utilisateur est authentifié
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   // Pré-remplissage des champs en mode développement
   useEffect(() => {

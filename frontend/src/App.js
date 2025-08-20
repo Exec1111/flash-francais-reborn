@@ -5,6 +5,7 @@ import {
   Navigate,
   Outlet,
   useNavigate,
+  useLocation,
 } from 'react-router-dom';
 import { 
   Box, 
@@ -68,6 +69,7 @@ import ProposeWorks from './pages/studyObjects/ProposeWorks';
 function ProtectedLayout() {
   const { user, token, logout } = useAuth(); // Ajouter token ici si nécessaire pour le fetch initial
   const navigate = useNavigate(); // Hook de navigation React Router
+  const location = useLocation(); // Hook de localisation React Router
   // État pour la barre latérale principale (TreeView)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   // État pour la chatbox latérale
@@ -130,9 +132,7 @@ function ProtectedLayout() {
   }, [user, token, refreshTreeData]);
 
   console.log('USER:', user);
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  // Ne pas rediriger ici pour éviter un retour au login pendant la restauration de session
 
   // Handlers pour la chatbox (simplifiés)
   const handleToggleChatbox = () => setIsChatboxOpen(!isChatboxOpen);
@@ -266,9 +266,10 @@ function ProtectedLayout() {
 // --- Composant de Route Protégée ---
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   
   if (!isAuthenticated) { 
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return children;
 }
