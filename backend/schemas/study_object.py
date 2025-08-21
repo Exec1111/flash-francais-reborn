@@ -3,6 +3,15 @@ from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .resource import ResourceShort # Import du nouveau schéma
+    from .oeuvre import OeuvreReadShort
+
+# Imports d'exécution pour résoudre les références croisées lors de la validation/rebuild
+try:
+    from .resource import ResourceShort  # type: ignore
+    from .oeuvre import OeuvreReadShort  # type: ignore
+except Exception:
+    # Laisser schemas/__init__.py gérer la reconstruction globale si nécessaire
+    pass
 
 class StudyObjectBase(BaseModel):
     title: str
@@ -11,16 +20,20 @@ class StudyObjectBase(BaseModel):
 class StudyObjectCreate(StudyObjectBase):
     progression_ids: Optional[List[int]] = []
     resource_ids: Optional[List[int]] = []
+    oeuvre_ids: Optional[List[int]] = []
 
 class StudyObjectUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     resource_ids: Optional[List[int]] = None
+    oeuvre_ids: Optional[List[int]] = None
 
 class StudyObjectRead(StudyObjectBase):
     id: int
     progression_ids: List[int] = []
     resource_ids: List[int] = []
+    oeuvre_ids: List[int] = []
+    oeuvres: Optional[List["OeuvreReadShort"]] = []
     user_id: int | None = None
 
     class Config:
@@ -34,6 +47,8 @@ class StudyObjectRead(StudyObjectBase):
             description=orm_obj.description,
             progression_ids=[p.id for p in getattr(orm_obj, 'progressions', [])],
             resource_ids=[r.id for r in getattr(orm_obj, 'resources', [])],
+            oeuvre_ids=[o.id for o in getattr(orm_obj, 'oeuvres', [])],
+            oeuvres=getattr(orm_obj, 'oeuvres', []),
             user_id=getattr(orm_obj, 'user_id', None)
         )
 
@@ -60,11 +75,11 @@ class StudyObjectWithResources(StudyObjectBase):
     # mais pour l'instant, on suppose que la relation `resources` sur l'objet ORM `orm_obj`
     # sera une liste d'objets ORM Resource, et Pydantic les convertira en ResourceShort.
 
-# Importer explicitement les types requis pour model_rebuild()
-# afin qu'ils soient dans le scope global lors de l'évaluation des chaînes de caractères.
-if not TYPE_CHECKING:
-    from .resource import ResourceShort
+# Reconstruction locale des modèles pour résoudre les forward refs si nécessaire
+try:
+    StudyObjectRead.model_rebuild()
+    StudyObjectWithResources.model_rebuild()
+except Exception:
+    pass
 
-StudyObjectRead.model_rebuild()
-StudyObjectReadShort.model_rebuild()
-StudyObjectWithResources.model_rebuild()
+# Les model_rebuild() sont également gérés dans schemas/__init__.py pour éviter les imports circulaires

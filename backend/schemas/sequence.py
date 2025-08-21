@@ -70,12 +70,7 @@ class SequenceRead(BaseModel):
 # from schemas.session import SessionRead
 # from schemas.study_object import StudyObjectWithResources # Non plus nécessaire ici
 
-# Importer explicitement les types requis pour model_rebuild()
-if not TYPE_CHECKING:
-    from .study_object import StudyObjectWithResources, StudyObjectReadShort
-    from .objective import ObjectiveRead
-    from .session import SessionRead
-    from .resource import ResourceRead  # Ajout pour SequenceWithObjects
+# Les imports sont gérés dans schemas/__init__.py pour éviter les imports circulaires
 
 # Schéma pour récupérer une séquence avec tous ses objets pour la génération de résumé
 class SequenceWithObjects(BaseModel):
@@ -93,6 +88,4 @@ class SequenceWithObjects(BaseModel):
     class Config:
         from_attributes = True
 
-# Résoudre les références forward
-SequenceRead.model_rebuild()
-SequenceWithObjects.model_rebuild()
+# Les model_rebuild() sont gérés dans schemas/__init__.py pour éviter les imports circulaires

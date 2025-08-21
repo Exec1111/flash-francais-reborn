@@ -55,3 +55,19 @@ sequence_study_object = Table(
     Column('sequence_id', Integer, ForeignKey('sequences.id', ondelete='CASCADE'), primary_key=True),
     Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True)
 )
+
+# Table d'association Many-to-Many entre StudyObject et Oeuvre
+study_object_oeuvre = Table(
+    'study_object_oeuvre',
+    Base.metadata,
+    Column('study_object_id', Integer, ForeignKey('study_objects.id', ondelete='CASCADE'), primary_key=True),
+    Column('oeuvre_id', Integer, ForeignKey('oeuvres.id', ondelete='CASCADE'), primary_key=True)
+)
+
+# Table d'association Many-to-Many entre Oeuvre et Resource
+oeuvre_resource_association = Table(
+    'oeuvre_resource_association',
+    Base.metadata,
+    Column('oeuvre_id', Integer, ForeignKey('oeuvres.id', ondelete='CASCADE'), primary_key=True),
+    Column('resource_id', Integer, ForeignKey('resources.id', ondelete='CASCADE'), primary_key=True)
+)

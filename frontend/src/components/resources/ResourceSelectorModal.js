@@ -55,17 +55,13 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
     useEffect(() => {
         if (open) {
             setSelectedResources(initialSelectedResources || []);
-            
-            // Afficher dans la console si un filtre de type est spécifié
-            if (filterType) {
-                console.log(`%cModal ouvert avec filtre de type: ${filterType}`, 'background: #ff9800; color: white; padding: 2px 5px;');
-            }
-            
-            // Charger la première page avec le filtre de type si spécifié
-            fetchResources(1, searchTerm, selectedTypeId, selectedSubTypeId);
+            setCurrentPage(1);
+            setSearchTerm('');
+            setSelectedTypeId('');
+            setSelectedSubTypeId('');
             fetchResourceTypes();
         }
-    }, [open, initialSelectedResources, filterType]);
+    }, [open]);
 
     // Charger les types de ressources
     const fetchResourceTypes = async () => {
@@ -97,7 +93,7 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
             setSelectedSubTypeId('');
             fetchResourceSubTypes(match.id);
         }
-    }, [filterType, availableTypes]);
+    }, [filterType, availableTypes, selectedTypeId]);
 
     // Charger les sous-types en fonction du type sélectionné
     const fetchResourceSubTypes = async (typeId) => {
@@ -178,21 +174,19 @@ const ResourceSelectorModal = ({ open, onClose, initialSelectedResources = [], o
     // Appliquer le debounce spécifiquement à l'appel déclenché par la recherche textuelle
     const debouncedFetchResources = useMemo(() => _debounce(fetchResources, 500), [fetchResources]);
 
-    // Effet pour recharger les ressources quand les filtres ou la page changent
+    // Effet pour charger les ressources initiales quand la modale s'ouvre
     useEffect(() => {
-        // Éviter l'appel initial redondant si 'open' le gère déjà
-        if (open) {
-            console.log("%cRechargement des ressources avec filtres changés:", "background: #673ab7; color: white;", {
-                page: currentPage,
-                searchTerm,
-                typeId: selectedTypeId,
-                subTypeId: selectedSubTypeId,
-                typeFilter: filterType
-            });
-            // Pas besoin de debounce pour les changements de page/filtres
+        if (open && availableTypes.length > 0 && !loading) {
+            fetchResources(1, '', selectedTypeId, selectedSubTypeId);
+        }
+    }, [open, availableTypes.length]);
+
+    // Effet pour recharger quand les filtres changent (sauf à l'ouverture)
+    useEffect(() => {
+        if (open && availableTypes.length > 0 && (currentPage > 1 || selectedTypeId || selectedSubTypeId)) {
             fetchResources(currentPage, searchTerm, selectedTypeId, selectedSubTypeId);
         }
-    }, [open, currentPage, selectedTypeId, selectedSubTypeId, fetchResources, filterType]); // Ne pas inclure searchTerm ici pour utiliser le debounce
+    }, [currentPage, selectedTypeId, selectedSubTypeId]);
 
     // Gérer le changement du terme de recherche
     const handleSearchChange = (event) => {

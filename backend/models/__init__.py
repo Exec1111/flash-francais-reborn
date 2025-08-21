@@ -8,7 +8,9 @@ from models.association_tables import (
     objective_resource_association,
     progression_study_object,
     study_object_resource,
-    sequence_study_object
+    sequence_study_object,
+    study_object_oeuvre,
+    oeuvre_resource_association
 )
 
 # Ensuite, importer les modèles

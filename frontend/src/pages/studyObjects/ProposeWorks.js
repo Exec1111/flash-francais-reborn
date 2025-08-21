@@ -288,8 +288,7 @@ const ProposeWorks = () => {
         formData.append('source_type', 'ai');
         formData.append('session_ids_json', JSON.stringify([]));
         formData.append('objective_ids_json', JSON.stringify([]));
-        console.log('Vérification ID objet étude avant envoi:', id, typeof id); // Ajout du console.log
-        formData.append('study_object_ids_json', JSON.stringify([id]));
+        // NOTE: Ne plus envoyer "study_object_ids_json" depuis le frontend.
         await axios.post(`${API_BASE_URL}/api/v1/resources/`, formData, { headers:{ Authorization:`Bearer ${token}` } });
       }
       

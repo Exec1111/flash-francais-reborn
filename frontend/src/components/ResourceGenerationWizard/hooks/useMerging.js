@@ -21,11 +21,30 @@ export const useMerging = (activeStep) => {
   const mergingInProgressRef = useRef(false);
   const mergingTriggeredRef = useRef(false);
 
+  // Logs d'observation des états de fusion
+  useEffect(() => {
+    try {
+      const counts = finalMergedResources.reduce((acc, r) => {
+        const key = r.mergeStatus || 'unknown';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('[useMerging] Changement finalMergedResources', {
+        total: finalMergedResources.length,
+        counts,
+        isMerging,
+      });
+    } catch (e) {
+      console.warn('[useMerging] Impossible de logger finalMergedResources', e);
+    }
+  }, [finalMergedResources, isMerging]);
+
   /**
    * Initialiser les ressources à fusionner
    * @param {Array} resources - Ressources éditées prêtes pour la fusion
    */
   const initializeMerging = useCallback((resources) => {
+    console.log('[useMerging] initializeMerging', { count: Array.isArray(resources) ? resources.length : 0 });
     setResourcesToMerge(resources);
     setFinalMergedResources(resources);
     setCurrentMergeIndex(0);
@@ -55,12 +74,28 @@ export const useMerging = (activeStep) => {
     
     mergeAllResources(
       finalMergedResources,
-      (updatedResources) => setFinalMergedResources(updatedResources),
-      (previewHtml) => setMergedHtmlPreview(previewHtml),
+      (updatedResources) => {
+        try {
+          const counts = updatedResources.reduce((acc, r) => {
+            const key = r.mergeStatus || 'unknown';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('[useMerging] Statut de fusion mis à jour', { total: updatedResources.length, counts });
+        } catch (e) {
+          console.warn('[useMerging] Impossible de logger updatedResources', e);
+        }
+        setFinalMergedResources(updatedResources);
+      },
+      (previewHtml) => {
+        console.log('[useMerging] Mise à jour de la prévisualisation HTML (taille)', previewHtml ? previewHtml.length : 0);
+        setMergedHtmlPreview(previewHtml);
+      },
       () => {
         setIsMerging(false);
         setHtmlMergeError(null);
         mergingInProgressRef.current = false;
+        console.log('[useMerging] Fusion terminée');
       }
     ).catch(err => {
       console.error("[useMerging] Erreur lors de la fusion:", err);
@@ -168,6 +203,7 @@ export const useMerging = (activeStep) => {
    */
   const validateMergingForNextStep = useCallback(() => {
     if (isMerging) {
+      console.log('[useMerging] Validation next step refusée: fusion en cours');
       return {
         valid: false,
         message: "Veuillez attendre la fin de toutes les fusions HTML."
@@ -175,6 +211,12 @@ export const useMerging = (activeStep) => {
     }
     
     if (!areAllMergesAttempted()) {
+      const counts = finalMergedResources.reduce((acc, r) => {
+        const key = r.mergeStatus || 'unknown';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('[useMerging] Validation next step refusée: fusions incomplètes', { counts });
       return {
         valid: false,
         message: "Certaines fusions n'ont pas encore été tentées ou sont en erreur. Veuillez vérifier."
@@ -184,12 +226,14 @@ export const useMerging = (activeStep) => {
     const resourcesForSave = getResourcesReadyForSave();
     
     if (resourcesForSave.length === 0) {
+      console.log('[useMerging] Validation next step refusée: aucune ressource prête à sauvegarder');
       return {
         valid: false,
         message: "Aucune ressource n'est prête pour la sauvegarde. Veuillez vérifier que des ressources ont été fusionnées avec succès et conservées."
       };
     }
     
+    console.log('[useMerging] Validation next step OK', { count: resourcesForSave.length });
     return {
       valid: true,
       resources: resourcesForSave

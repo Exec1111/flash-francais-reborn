@@ -10,10 +10,10 @@ import { resourceTypeService } from '../../../services/resourceTypeService';
  * @param {Object} resource - La ressource à sauvegarder
  * @param {string} htmlContent - Le contenu HTML de la ressource
  * @param {string|number} sessionId - ID de la session
- * @param {string|number} userId - ID de l'utilisateur
+ * @param {string|number} [supportId] - ID de l'œuvre sélectionnée à l'étape de configuration (optionnel)
  * @returns {Promise<Object>} - Résultat de la sauvegarde
  */
-export const saveResource = async (resource, htmlContent, sessionId, userId) => {
+export const saveResource = async (resource, htmlContent, sessionId, supportId) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error("Token d'authentification manquant");
 
@@ -57,7 +57,21 @@ export const saveResource = async (resource, htmlContent, sessionId, userId) => 
   params.append('session_id', sessionId);
   params.append('session_ids_json', `[${sessionId}]`);
   params.append('objective_ids_json', '[]');
-  params.append('study_object_ids_json', '[]');
+  // Lier la ressource à l'œuvre sélectionnée si présente
+  if (supportId) {
+    try {
+      const normalized = Array.isArray(supportId) ? supportId : [supportId];
+      const ids = normalized
+        .map((id) => Number(id))
+        .filter((id) => !Number.isNaN(id));
+      if (ids.length > 0) {
+        params.append('oeuvre_ids_json', JSON.stringify(ids));
+      }
+    } catch (_) {
+      // En cas d'erreur de normalisation, ne rien envoyer
+    }
+  }
+  // NOTE: Ne plus envoyer "study_object_ids_json" depuis le frontend.
   
   console.log(`[saveResource] Données préparées pour l'envoi:`, {
     title: params.get('title'),
@@ -68,7 +82,7 @@ export const saveResource = async (resource, htmlContent, sessionId, userId) => 
     source_type: params.get('source_type'),
     session_ids_json: params.get('session_ids_json'),
     objective_ids_json: params.get('objective_ids_json'),
-    study_object_ids_json: params.get('study_object_ids_json')
+    oeuvre_ids_json: params.get('oeuvre_ids_json'),
   });
 
   console.log(`[saveResource] Envoi des données en x-www-form-urlencoded`);
@@ -81,7 +95,9 @@ export const saveResource = async (resource, htmlContent, sessionId, userId) => 
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/x-www-form-urlencoded'
-      } 
+      },
+      // Timeout de sécurité pour éviter un blocage indéfini côté UI
+      timeout: 60000
     }
   );
 
@@ -98,7 +114,7 @@ export const saveResource = async (resource, htmlContent, sessionId, userId) => 
  * @param {Function} onComplete - Callback appelé à la fin de la sauvegarde
  * @returns {Promise<Array>} - Liste des ressources sauvegardées
  */
-export const saveAllResources = async (resources, sessionId, onStatusUpdate, onComplete) => {
+export const saveAllResources = async (resources, sessionId, onStatusUpdate, onComplete, supportId) => {
   console.log("[saveAllResources] Début de la sauvegarde de toutes les ressources");
   console.log("[saveAllResources] Type de resources:", typeof resources);
   console.log("[saveAllResources] Resources reçues:", resources);
@@ -134,8 +150,13 @@ export const saveAllResources = async (resources, sessionId, onStatusUpdate, onC
         console.error(`[saveAllResources] Chemin HTML manquant pour la ressource:`, resource);
         continue; // Passer à la ressource suivante
       }
-      const savedResource = await saveResource(resource, htmlPath, sessionId);
-      createdResources.push(savedResource);
+      const savedResource = await saveResource(resource, htmlPath, sessionId, supportId);
+      // Ne conserver que les résultats valides pour éviter les valeurs nulles dans la suite
+      if (savedResource) {
+        createdResources.push(savedResource);
+      } else {
+        console.warn('[saveAllResources] saveResource a retourné une valeur nulle/undefined, ressource ignorée');
+      }
     } catch (err) {
       console.error(`[saveAllResources] Erreur lors de la sauvegarde de ${resource?.suggestion?.type_key || 'inconnu'}/${resource?.suggestion?.subtype_key || 'inconnu'}:`, err);
       // Gérer l'erreur mais continuer avec les autres ressources

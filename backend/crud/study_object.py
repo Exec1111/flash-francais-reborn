@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session, selectinload
-from models import StudyObject, Progression, Resource
+from models import StudyObject, Progression, Resource, Oeuvre
 from models.user import User
 from schemas.study_object import StudyObjectCreate, StudyObjectUpdate
 
@@ -8,14 +8,16 @@ from schemas.study_object import StudyObjectCreate, StudyObjectUpdate
 def get_study_object(db: Session, study_object_id: int, user: User) -> Optional[StudyObject]:
     return db.query(StudyObject).options(
         selectinload(StudyObject.progressions),
-        selectinload(StudyObject.resources)
+        selectinload(StudyObject.resources),
+        selectinload(StudyObject.oeuvres)
     ).filter(StudyObject.id == study_object_id, StudyObject.user_id == user.id).first()
 
 
 def get_study_objects(db: Session, user: User, skip: int = 0, limit: int = 100):
     query = db.query(StudyObject).options(
         selectinload(StudyObject.progressions), 
-        selectinload(StudyObject.resources)
+        selectinload(StudyObject.resources),
+        selectinload(StudyObject.oeuvres)
     ).filter(StudyObject.user_id == user.id)
     total = query.count()
     items = query.offset(skip).limit(limit).all()
@@ -39,6 +41,9 @@ def create_study_object(db: Session, obj_in: StudyObjectCreate, user: User) -> S
     if obj_in.resource_ids:
         db_resources = db.query(Resource).filter(Resource.id.in_(obj_in.resource_ids)).all()
         db_obj.resources = db_resources
+    if obj_in.oeuvre_ids:
+        db_oeuvres = db.query(Oeuvre).filter(Oeuvre.id.in_(obj_in.oeuvre_ids)).all()
+        db_obj.oeuvres = db_oeuvres
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -57,6 +62,9 @@ def update_study_object(db: Session, study_object_id: int, obj_update: StudyObje
     if "resource_ids" in update_data and update_data["resource_ids"] is not None:
         db_resources = db.query(Resource).filter(Resource.id.in_(update_data["resource_ids"])).all()
         db_obj.resources = db_resources
+    if "oeuvre_ids" in update_data and update_data["oeuvre_ids"] is not None:
+        db_oeuvres = db.query(Oeuvre).filter(Oeuvre.id.in_(update_data["oeuvre_ids"])).all()
+        db_obj.oeuvres = db_oeuvres
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -111,3 +119,33 @@ def detach_resource(db: Session, study_object_id: int, resource_id: int) -> Stud
     db_obj.resources = [r for r in db_obj.resources if r.id != resource_id]
     db.commit()
     return db_obj
+
+
+def attach_oeuvre(db: Session, study_object_id: int, oeuvre_id: int, user: User) -> StudyObject:
+    """Associe une œuvre à un objet d'étude"""
+    db_obj = get_study_object(db, study_object_id, user)
+    db_oeuvre = db.query(Oeuvre).filter(Oeuvre.id == oeuvre_id).first()
+    if not db_obj or not db_oeuvre:
+        raise ValueError("StudyObject or Oeuvre not found")
+    if db_oeuvre not in db_obj.oeuvres:
+        db_obj.oeuvres.append(db_oeuvre)
+        db.commit()
+    return db_obj
+
+
+def detach_oeuvre(db: Session, study_object_id: int, oeuvre_id: int, user: User) -> StudyObject:
+    """Dissocie une œuvre d'un objet d'étude"""
+    db_obj = get_study_object(db, study_object_id, user)
+    if not db_obj:
+        raise ValueError("StudyObject not found")
+    db_obj.oeuvres = [o for o in db_obj.oeuvres if o.id != oeuvre_id]
+    db.commit()
+    return db_obj
+
+
+def get_study_objects_by_oeuvre(db: Session, oeuvre_id: int, user: User) -> List[StudyObject]:
+    """Récupère tous les objets d'étude associés à une œuvre donnée"""
+    return db.query(StudyObject).join(StudyObject.oeuvres).filter(
+        Oeuvre.id == oeuvre_id,
+        StudyObject.user_id == user.id
+    ).all()

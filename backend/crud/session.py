@@ -102,6 +102,12 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
     update_data = session_update.model_dump(exclude_unset=True)
     new_objective_ids = update_data.pop('objective_ids', None) # Récupérer et retirer objective_ids
     new_resource_ids = update_data.pop('resource_ids', None) # Récupérer et retirer resource_ids
+    # Règle métier: fiche_resource_id ne doit JAMAIS être modifié via update_session
+    # (seules set_fiche_resource/remove_fiche_resource sont autorisées à le faire)
+    ignored_fiche_resource = update_data.pop('fiche_resource_id', None)
+    if ignored_fiche_resource is not None:
+        # Journaliser discrètement pour débogage sans interrompre le flux
+        print("[update_session] fiche_resource_id ignoré dans update_session; utilisez set_fiche_resource() pour le modifier.")
 
     # Gérer la mise à jour de la relation many-to-many avec les objectifs
     if new_objective_ids is not None: # Si une liste (même vide) est fournie
@@ -134,7 +140,7 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
         db_session.resources = new_resources
 
     # Mise à jour des autres champs fournis dans session_update via setattr
-    for key, value in update_data.items(): # update_data ne contient plus objective_ids ni resource_ids
+    for key, value in update_data.items(): # update_data ne contient plus objective_ids, resource_ids, ni fiche_resource_id
         setattr(db_session, key, value)
 
     db.add(db_session)

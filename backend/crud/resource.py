@@ -10,6 +10,7 @@ from pathlib import Path
 from config import get_settings
 settings = get_settings()
 logger = logging.getLogger(__name__)
+from models.oeuvre import Oeuvre
 
 def get_upload_path(user_id: int, file_name: str) -> str:
     # Crée le chemin RELATIF pour la BDD (ex: uploads/19/mon_fichier.html)
@@ -22,7 +23,8 @@ def get_resource(db: Session, resource_id: int):
         joinedload(Resource.sub_type),
         joinedload(Resource.sessions),
         joinedload(Resource.objectives), # Charger aussi les objectifs associés
-        joinedload(Resource.study_objects) # Charger aussi les objets d'étude associés
+        joinedload(Resource.study_objects), # Charger aussi les objets d'étude associés
+        joinedload(Resource.oeuvres) # Charger aussi les oeuvres associées
     ).filter(Resource.id == resource_id).first()
     return resource
 
@@ -36,7 +38,8 @@ def get_resources(db: Session, user_id: int, skip: int = 0, limit: int = 100,
         joinedload(Resource.sessions),
         joinedload(Resource.type),
         joinedload(Resource.sub_type),
-        joinedload(Resource.objectives) # Charger aussi les objectifs
+        joinedload(Resource.objectives), # Charger aussi les objectifs
+        joinedload(Resource.oeuvres) # Charger aussi les oeuvres
     ).filter(Resource.user_id == user_id)
 
     if search_term:
@@ -174,6 +177,81 @@ def get_resources_by_session_and_type(db: Session, session_id: int, type_key: st
         logger.error(f"Erreur lors de la recherche des ressources par type pour la session {session_id}: {str(e)}")
         raise 
 
+def get_available_supports_for_session(db: Session, session_id: int) -> List["Resource"]:
+    """
+    Retourne la liste des ressources de type 'OEUVRE' disponibles pour une session.
+    Cela inclut:
+    - Les ressources de type 'OEUVRE' liées directement à la session
+    - Les ressources de type 'OEUVRE' liées à tous les objets d'étude de la séquence parente de la session
+
+    Args:
+        db: Session SQLAlchemy
+        session_id: ID de la session ciblée
+
+    Returns:
+        Liste d'objets Resource
+    """
+    try:
+        logger.info(f"[CRUD] get_available_supports_for_session(session_id={session_id})")
+
+        # 1) Récupérer la session pour obtenir la sequence_id
+        session_obj = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+        if not session_obj:
+            logger.warning(f"[CRUD] Session {session_id} non trouvée")
+            return []
+
+        sequence_id = getattr(session_obj, 'sequence_id', None)
+        if not sequence_id:
+            logger.warning(f"[CRUD] Session {session_id} sans sequence_id")
+            return []
+
+        # 2) Construire les 2 ensembles d'IDs de ressources
+        from models.association_tables import session_resource_association, sequence_study_object, study_object_resource
+
+        # a) Ressources liées directement à la session
+        direct_resource_ids = [row[0] for row in db.query(session_resource_association.c.resource_id)
+                               .filter(session_resource_association.c.session_id == session_id)
+                               .all()]
+
+        # b) Ressources liées via les objets d'étude de la séquence parente
+        study_object_ids = [row[0] for row in db.query(sequence_study_object.c.study_object_id)
+                            .filter(sequence_study_object.c.sequence_id == sequence_id)
+                            .all()]
+
+        via_so_resource_ids: List[int] = []
+        if study_object_ids:
+            via_so_resource_ids = [row[0] for row in db.query(study_object_resource.c.resource_id)
+                                   .filter(study_object_resource.c.study_object_id.in_(study_object_ids))
+                                   .all()]
+
+        # Union des IDs (éliminer les doublons)
+        all_resource_ids = list(set(direct_resource_ids) | set(via_so_resource_ids))
+        if not all_resource_ids:
+            logger.info(f"[CRUD] Aucun ID de ressource trouvé pour session {session_id} (direct + via SO)")
+            return []
+
+        # 3) Récupérer les ressources filtrées par type 'OEUVRE'
+        resources = (
+            db.query(Resource)
+            .join(ResourceType, Resource.type_id == ResourceType.id)
+            .filter(Resource.id.in_(all_resource_ids), ResourceType.key == "OEUVRE")
+            .options(
+                joinedload(Resource.type),
+                joinedload(Resource.sub_type),
+                joinedload(Resource.sessions),
+                joinedload(Resource.objectives),
+                joinedload(Resource.oeuvres)
+            )
+            .order_by(Resource.title)
+            .all()
+        )
+
+        logger.info(f"[CRUD] Supports disponibles (OEUVRE) pour session {session_id}: {len(resources)} trouvés")
+        return resources
+    except Exception as e:
+        logger.error(f"[CRUD] Erreur get_available_supports_for_session(session_id={session_id}): {e}", exc_info=True)
+        raise
+
 def get_resources_standalone(db: Session, skip: int = 0, limit: int = 100):
     """Récupère les ressources qui ne sont liées à aucune session."""
     # Attention: Cette fonction ne filtre pas par user_id actuellement.
@@ -197,6 +275,7 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
     session_ids = resource_data.pop('session_ids', [])
     objective_ids = resource_data.pop('objective_ids', []) # Extraire les objective_ids
     study_object_ids = resource_data.pop('study_object_ids', []) # Extraire les study_object_ids
+    oeuvre_ids = resource_data.pop('oeuvre_ids', []) # Extraire les oeuvre_ids
     resource_data.pop('user_id', None) # Retirer user_id du dict car il est passé explicitement
     #
     # Récupérer et retirer source_type, définir par défaut 'ai' si absent
@@ -247,10 +326,23 @@ def create_resource(db: Session, resource: ResourceCreate, user_id: int, file_up
             logger.warning(f"Certains StudyObjects avec les IDs {missing_ids} n'ont pas été trouvés lors de la création de la ressource, ils seront ignorés.")
         db_resource.study_objects = study_objects
 
+    # Lier les oeuvres initiales
+    if oeuvre_ids:
+        logger.debug(f"[create_resource] Tentative de liaison des oeuvres: input_ids={oeuvre_ids}")
+        oeuvres = db.query(Oeuvre).filter(Oeuvre.id.in_(oeuvre_ids)).all()
+        if len(oeuvres) != len(set(oeuvre_ids)):
+            found_ids = {ov.id for ov in oeuvres}
+            missing_ids = set(oeuvre_ids) - found_ids
+            logger.warning(f"Certaines Oeuvres avec les IDs {missing_ids} n'ont pas été trouvées lors de la création de la ressource, elles seront ignorées.")
+        db_resource.oeuvres = oeuvres
+        logger.info(f"[create_resource] Oeuvres liées à la ressource en création: {[ov.id for ov in oeuvres]}")
+
     db.add(db_resource)
     db.commit()
     db.refresh(db_resource)
-    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects']) # Recharger les relations
+    # Recharger explicitement toutes les relations pertinentes, y compris 'oeuvres'
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects', 'oeuvres'])
+    logger.debug(f"[create_resource] Relations rechargées post-commit: sessions={len(getattr(db_resource, 'sessions', []))}, objectives={len(getattr(db_resource, 'objectives', []))}, study_objects={len(getattr(db_resource, 'study_objects', []))}, oeuvres={len(getattr(db_resource, 'oeuvres', []))}")
     return db_resource
 
 def update_resource(db: Session, resource_id: int, resource_update: ResourceUpdate, file_upload: Optional[ResourceFileUpload] = None):
@@ -263,10 +355,12 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
     new_session_ids_provided = 'session_ids' in update_data
     new_objective_ids_provided = 'objective_ids' in update_data # Vérifier si la clé est présente
     new_study_object_ids_provided = 'study_object_ids' in update_data
+    new_oeuvre_ids_provided = 'oeuvre_ids' in update_data
 
     new_session_ids = update_data.pop('session_ids', None) if new_session_ids_provided else None
     new_objective_ids = update_data.pop('objective_ids', None) if new_objective_ids_provided else None # Pop seulement si présente
     new_study_object_ids = update_data.pop('study_object_ids', None) if new_study_object_ids_provided else None
+    new_oeuvre_ids = update_data.pop('oeuvre_ids', None) if new_oeuvre_ids_provided else None
 
     new_file_provided = file_upload is not None
 
@@ -360,10 +454,18 @@ def update_resource(db: Session, resource_id: int, resource_update: ResourceUpda
             db_resource.study_objects = []
         logger.info(f"Objets d'étude mis à jour pour la ressource {resource_id}: {new_study_object_ids}")
 
+    # Gestion des oeuvres associées
+    if new_oeuvre_ids_provided:
+        if new_oeuvre_ids is not None:
+            db_resource.oeuvres = db.query(Oeuvre).filter(Oeuvre.id.in_(new_oeuvre_ids)).all()
+        else:
+            db_resource.oeuvres = []
+        logger.info(f"Oeuvres mises à jour pour la ressource {resource_id}: {new_oeuvre_ids}")
+
     db.add(db_resource) 
     db.commit()
     db.refresh(db_resource)
-    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects']) # Recharger les relations
+    db.refresh(db_resource, attribute_names=['sessions', 'objectives', 'study_objects', 'oeuvres']) # Recharger les relations
 
     # Recharger explicitement après refresh pour être sûr d'avoir l'état à jour
     # db_resource_loaded = get_resource(db, db_resource.id)

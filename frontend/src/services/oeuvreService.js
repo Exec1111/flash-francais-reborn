@@ -100,11 +100,27 @@ const oeuvreService = {
     return response.data;
   },
 
-  // Générer une œuvre via l'IA
-  generateOeuvreAI: async (generateData) => {
-    const response = await api.post('/oeuvres/generate', generateData);
+  // Génération d'œuvre par IA
+  generateOeuvreAI: async (data) => {
+    const response = await api.post('/oeuvres/generate', data);
     return response.data;
-  }
+  },
+
+  // Gestion des ressources liées aux œuvres
+  addResourceToOeuvre: async (oeuvreId, resourceId) => {
+    const response = await api.post(`/oeuvres/${oeuvreId}/resources/${resourceId}`);
+    return response.data;
+  },
+
+  removeResourceFromOeuvre: async (oeuvreId, resourceId) => {
+    const response = await api.delete(`/oeuvres/${oeuvreId}/resources/${resourceId}`);
+    return response.data;
+  },
+
+  getOeuvresByResource: async (resourceId) => {
+    const response = await api.get(`/oeuvres/by-resource/${resourceId}`);
+    return response.data;
+  },
 };
 
 export default oeuvreService;

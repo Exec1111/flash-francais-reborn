@@ -19,6 +19,27 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
   const generationInProgressRef = useRef(false);
   const generationTriggeredRef = useRef(false);
 
+  // Logs d'observation des états
+  useEffect(() => {
+    try {
+      const counts = generationStatus.reduce((acc, s) => {
+        acc[s.status] = (acc[s.status] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('[useGeneration] Changement generationStatus', {
+        total: generationStatus.length,
+        counts,
+        isGenerating
+      });
+    } catch (e) {
+      console.warn('[useGeneration] Impossible de logger generationStatus', e);
+    }
+  }, [generationStatus, isGenerating]);
+
+  useEffect(() => {
+    console.log('[useGeneration] isGenerating =', isGenerating);
+  }, [isGenerating]);
+
   /**
    * Initialiser le statut de génération pour les suggestions sélectionnées
    * @param {Array} suggestions - Suggestions sélectionnées
@@ -58,10 +79,22 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
       generationStatus,
       sessionId,
       configParams,
-      (updatedStatus) => setGenerationStatus(updatedStatus),
+      (updatedStatus) => {
+        try {
+          const counts = updatedStatus.reduce((acc, s) => {
+            acc[s.status] = (acc[s.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('[useGeneration] Statut de génération mis à jour', { total: updatedStatus.length, counts });
+        } catch (e) {
+          console.warn('[useGeneration] Impossible de logger updatedStatus', e);
+        }
+        setGenerationStatus(updatedStatus);
+      },
       () => {
         setIsGenerating(false);
         generationInProgressRef.current = false;
+        console.log('[useGeneration] Génération terminée');
       }
     );
   }, [generationStatus, sessionId, configParams]);
@@ -143,6 +176,10 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
    */
   const validateGenerationForNextStep = useCallback(() => {
     if (isGenerating || generationStatus.some(s => s.status === 'loading')) {
+      console.log('[useGeneration] Validation next step refusée: générations en cours', {
+        isGenerating,
+        loadingCount: generationStatus.filter(s => s.status === 'loading').length,
+      });
       return { 
         valid: false, 
         message: "Veuillez attendre la fin de toutes les générations en cours."
@@ -152,12 +189,14 @@ export const useGeneration = (activeStep, sessionId, configParams) => {
     const successfulGenerations = getSuccessfulGenerations();
     
     if (successfulGenerations.length === 0) {
+      console.log('[useGeneration] Validation next step refusée: aucune génération réussie avec données valides');
       return { 
         valid: false, 
         message: "Aucun exercice n'a été généré avec succès ou les données générées sont vides. Vous ne pouvez pas passer à l'étape d'édition."
       };
     }
     
+    console.log('[useGeneration] Validation next step OK', { count: successfulGenerations.length });
     return { valid: true, generations: successfulGenerations };
   }, [isGenerating, generationStatus, getSuccessfulGenerations]);
 

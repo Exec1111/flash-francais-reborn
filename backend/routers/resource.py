@@ -69,6 +69,7 @@ async def create_resource_route(
     session_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs
     objective_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objectifs
     study_object_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objets d'étude
+    oeuvre_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'oeuvres
     file: Optional[UploadFile] = File(None), # Le fichier uploadé
     html_path: Optional[str] = Form(None) # Chemin HTML généré pour IA
 ):
@@ -115,6 +116,16 @@ async def create_resource_route(
         logger.error(f"Erreur de parsing JSON pour study_object_ids: {e}")
         raise HTTPException(status_code=400, detail=f"Format invalide pour study_object_ids_json: {e}")
 
+    # Parser les IDs d'oeuvres depuis la string JSON
+    try:
+        oeuvre_ids = json.loads(oeuvre_ids_json) if oeuvre_ids_json else []
+        if not isinstance(oeuvre_ids, list):
+            raise ValueError("oeuvre_ids_json doit être une liste JSON.")
+        oeuvre_ids = [int(oid) for oid in oeuvre_ids if oid is not None]
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"Erreur de parsing JSON pour oeuvre_ids: {e}")
+        raise HTTPException(status_code=400, detail=f"Format invalide pour oeuvre_ids_json: {e}")
+
     # --- Validation du fichier uploadé ---
     if source_type == 'file':
         if file is None:
@@ -147,6 +158,7 @@ async def create_resource_route(
         session_ids=session_ids, 
         objective_ids=objective_ids, # Passer la liste parsée
         study_object_ids=study_object_ids, # Passer la liste parsée des IDs d'objets d'étude
+        oeuvre_ids=oeuvre_ids, # Passer la liste parsée des IDs d'oeuvres
         user_id=current_user.id
     )
 
@@ -403,6 +415,7 @@ async def update_resource_route(
     session_ids_json: Optional[str] = Form(None),
     objective_ids_json: Optional[str] = Form(None), # Ajout pour les objectifs
     study_object_ids_json: Optional[str] = Form(None), # Ajout pour les objets d'étude
+    oeuvre_ids_json: Optional[str] = Form(None), # Ajout pour les oeuvres
     source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
     html_content: Optional[str] = Form(None),  # Contenu HTML modifié envoyé par le frontend
     file: Optional[UploadFile] = File(None)
@@ -485,6 +498,19 @@ async def update_resource_route(
             logger.error(f"Erreur parsing JSON pour study_object_ids dans MAJ: {e}")
             raise HTTPException(status_code=400, detail=f"Format invalide pour study_object_ids_json: {e}")
 
+    # --- Parsing des IDs d'oeuvres --- 
+    oeuvre_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
+    if oeuvre_ids_json is not None:
+        try:
+            parsed_ids = json.loads(oeuvre_ids_json) # Peut être une liste vide []
+            if not isinstance(parsed_ids, list):
+                raise ValueError("oeuvre_ids_json doit être une liste JSON.")
+            oeuvre_ids = [int(oid) for oid in parsed_ids if oid is not None]
+            logger.info(f"Oeuvre IDs parsés pour MAJ: {oeuvre_ids}")
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Erreur parsing JSON pour oeuvre_ids dans MAJ: {e}")
+            raise HTTPException(status_code=400, detail=f"Format invalide pour oeuvre_ids_json: {e}")
+
     # --- Gestion de l'upload de fichier --- 
     file_upload_data: Optional[ResourceFileUpload] = None
     temp_saved_file_path: Optional[Path] = None
@@ -533,6 +559,8 @@ async def update_resource_route(
         update_data_dict["objective_ids"] = objective_ids
     if study_object_ids_json is not None:
         update_data_dict["study_object_ids"] = study_object_ids
+    if oeuvre_ids_json is not None:
+        update_data_dict["oeuvre_ids"] = oeuvre_ids
         
     # Filtrer les clés dont la valeur est None pour ne pas écraser les valeurs existantes par None
     update_data_filtered = {k: v for k, v in update_data_dict.items() if v is not None}
@@ -544,6 +572,8 @@ async def update_resource_route(
          update_data_filtered["objective_ids"] = update_data_dict["objective_ids"] # Peut être []
     if "study_object_ids" in update_data_dict:
          update_data_filtered["study_object_ids"] = update_data_dict["study_object_ids"] # Peut être []
+    if "oeuvre_ids" in update_data_dict:
+         update_data_filtered["oeuvre_ids"] = update_data_dict["oeuvre_ids"] # Peut être []
 
     resource_update_schema = ResourceUpdate(**update_data_filtered)
     logger.debug(f"Schéma ResourceUpdate préparé: {resource_update_schema.model_dump_json(exclude_none=True)}")

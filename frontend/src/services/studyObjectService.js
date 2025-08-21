@@ -71,24 +71,6 @@ const studyObjectService = {
     }
   },
 
-  attachResource: async (objId, resId) => {
-    try {
-      const response = await api.post(`${STUDY_OBJECTS_ENDPOINT}/${objId}/resources/${resId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { detail: 'Erreur lors de l\'association à la ressource' };
-    }
-  },
-
-  detachResource: async (objId, resId) => {
-    try {
-      const response = await api.delete(`${STUDY_OBJECTS_ENDPOINT}/${objId}/resources/${resId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { detail: 'Erreur lors de la dissociation de la ressource' };
-    }
-  },
-
   // Nouvel endpoint : objets d'étude par progression
   getStudyObjectsByProgression: async (progressionId) => {
     try {

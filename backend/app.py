@@ -351,14 +351,69 @@ def test_sequence_route():
 def root():
     return {"message": "Bienvenue sur l'API Flash Français"}
 
-# --- Résoudre les Forward References dans les modèles Pydantic ---
-# Doit être appelé APRÈS l'import des modules contenant les modèles
-
+# --- Reconstruction manuelle des modèles Pydantic ---
 print("Rebuilding Pydantic models...")
-SequenceRead.model_rebuild()
-ObjectiveRead.model_rebuild()
-# Appeler model_rebuild() pour d'autres modèles si nécessaire
-print("Pydantic models rebuilt.")
+
+# Fonction pour reconstruire les modèles de manière différée
+def rebuild_models_deferred():
+    try:
+        # Import de tous les schémas nécessaires
+        from schemas.common import ObjectiveIdentifier, SequenceIdentifier, SessionIdentifier, ResourceIdentifier
+        from schemas.objective import ObjectiveRead
+        from schemas.session import SessionRead, SessionReadSimple
+        from schemas.resource import ResourceRead, ResourceShort, ResourceResponse, ResourceReadShort
+        from schemas.study_object import StudyObjectRead, StudyObjectReadShort, StudyObjectWithResources
+        from schemas.oeuvre import OeuvreRead, OeuvreReadShort
+        from schemas.sequence import SequenceRead, SequenceWithObjects
+        from schemas.progression import ProgressionRead
+        
+        # Reconstruction dans l'ordre strict des dépendances
+        # 1. Schémas de base sans dépendances
+        ObjectiveIdentifier.model_rebuild()
+        SequenceIdentifier.model_rebuild()
+        SessionIdentifier.model_rebuild()
+        ResourceIdentifier.model_rebuild()
+        
+        # 2. Schémas avec dépendances simples
+        ObjectiveRead.model_rebuild()
+        SessionRead.model_rebuild()
+        SessionReadSimple.model_rebuild()
+        
+        # 3. Schémas de ressources
+        ResourceRead.model_rebuild()
+        ResourceShort.model_rebuild()
+        ResourceReadShort.model_rebuild()
+        ResourceResponse.model_rebuild()
+        
+        # 4. Schémas d'œuvres
+        OeuvreRead.model_rebuild()
+        OeuvreReadShort.model_rebuild()
+        
+        # 5. Schémas d'objets d'étude
+        StudyObjectRead.model_rebuild()
+        StudyObjectReadShort.model_rebuild()
+        StudyObjectWithResources.model_rebuild()
+        
+        # 6. Schémas de séquences (qui dépendent d'ObjectiveRead)
+        SequenceRead.model_rebuild()
+        SequenceWithObjects.model_rebuild()
+        
+        # 7. Schémas de progression (qui dépendent de SequenceRead)
+        ProgressionRead.model_rebuild()
+        
+        print("Pydantic models rebuilt successfully.")
+        return True
+    except Exception as e:
+        print(f"Warning: Error rebuilding models: {e}")
+        print("Some forward references may not be resolved.")
+        return False
+
+# Gestionnaire d'événement de démarrage pour reconstruire les modèles
+@app.on_event("startup")
+async def startup_event():
+    """Reconstruit les modèles Pydantic au démarrage de l'application"""
+    print("Application startup: rebuilding Pydantic models...")
+    rebuild_models_deferred()
 
 if __name__ == "__main__":
     import uvicorn

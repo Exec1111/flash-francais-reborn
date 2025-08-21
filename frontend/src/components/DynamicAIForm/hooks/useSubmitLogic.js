@@ -700,7 +700,7 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       apiFormData.append('html_path', mergedResults.html_url);
       
       // Ajouter les IDs d'associations (vides si non fournis)
-      apiFormData.append('study_object_ids_json', JSON.stringify(mergedResults.study_object_ids || []));
+      // (Retiré) Ne plus envoyer d'association aux objets d'étude
       apiFormData.append('session_ids_json', JSON.stringify(mergedResults.session_ids || []));
       apiFormData.append('objective_ids_json', JSON.stringify(mergedResults.objective_ids || []));
       

@@ -127,12 +127,15 @@ const SessionSummaryResourceGenerator = ({
       return;
     }
     try {
-      await sessionService.attachFiche(sessionId, id);
-      setAlert({ type: 'success', message: 'Fiche générée et attachée avec succès.' });
+      // Dans ce flux, on ne met PAS à jour fiche_resource_id automatisch.
+      setAlert({
+        type: 'success',
+        message: 'Ressource de fiche générée. Vous pourrez l’attacher comme fiche depuis la page de séance.'
+      });
       if (onSuccess) onSuccess();
       else if (isPage) navigate(`/sessions/${sessionId}`);
     } catch (e) {
-      setAlert({ type: 'error', message: 'Erreur lors de l\'attachement de la fiche.' });
+      setAlert({ type: 'error', message: 'Une erreur est survenue après la création de la ressource.' });
     }
   };
 

@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Enum as SQLEnum
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from datetime import datetime
 from database import Base
-# Les tables d'association sont maintenant importées depuis models/__init__.py
-from models import session_resource_association, objective_resource_association, study_object_resource
+from models.association_tables import session_resource_association, objective_resource_association, study_object_resource, oeuvre_resource_association
 
 # --- Modèle pour les Types de Ressources ---
 class ResourceType(Base):
@@ -83,5 +84,12 @@ class Resource(Base):
     study_objects = relationship(
         "StudyObject",
         secondary=study_object_resource,
+        back_populates="resources"
+    )
+
+    # Relation Many-to-Many avec Oeuvre
+    oeuvres = relationship(
+        "Oeuvre",
+        secondary=oeuvre_resource_association,
         back_populates="resources"
     )

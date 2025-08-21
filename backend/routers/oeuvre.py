@@ -92,7 +92,7 @@ def get_oeuvre(
     current_user: Optional[User] = Depends(get_current_user)
 ):
     """Récupère une œuvre par son ID"""
-    db_obj = crud.get_oeuvre(db, oeuvre_id, current_user)
+    db_obj = crud.get_oeuvre(db, oeuvre_id, current_user, include_relations=True)
     if not db_obj:
         raise HTTPException(status_code=404, detail="Œuvre non trouvée")
     return OeuvreRead.from_orm(db_obj)
@@ -211,3 +211,42 @@ async def generate_oeuvre_ai(
             status_code=500, 
             detail=f"Erreur lors de la génération IA de l'œuvre: {str(e)}"
         )
+
+
+@router.post("/{oeuvre_id}/resources/{resource_id}")
+async def add_resource_to_oeuvre(
+    oeuvre_id: int,
+    resource_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Associe une ressource à une œuvre"""
+    success = crud.add_resource_to_oeuvre(db, oeuvre_id, resource_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="Œuvre ou ressource non trouvée")
+    return {"message": "Ressource associée avec succès"}
+
+
+@router.delete("/{oeuvre_id}/resources/{resource_id}")
+async def remove_resource_from_oeuvre(
+    oeuvre_id: int,
+    resource_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Dissocie une ressource d'une œuvre"""
+    success = crud.remove_resource_from_oeuvre(db, oeuvre_id, resource_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="Œuvre ou ressource non trouvée")
+    return {"message": "Ressource dissociée avec succès"}
+
+
+@router.get("/by-resource/{resource_id}")
+async def get_oeuvres_by_resource(
+    resource_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Récupère les œuvres associées à une ressource"""
+    oeuvres = crud.get_oeuvres_by_resource(db, resource_id, current_user)
+    return [OeuvreReadShort.from_orm(oeuvre) for oeuvre in oeuvres]

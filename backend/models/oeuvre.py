@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
 from datetime import datetime
+from database import Base
+from models.association_tables import oeuvre_resource_association
 
 
 class Oeuvre(Base):
@@ -39,6 +40,18 @@ class Oeuvre(Base):
     # Relation avec l'utilisateur (pour les œuvres créées par un utilisateur spécifique)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     user = relationship("User", back_populates="oeuvres")
+    
+    # Relations Many-to-Many
+    resources = relationship(
+        "Resource",
+        secondary=oeuvre_resource_association,
+        back_populates="oeuvres"
+    )
+    study_objects = relationship(
+        "StudyObject",
+        secondary="study_object_oeuvre",
+        back_populates="oeuvres"
+    )
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

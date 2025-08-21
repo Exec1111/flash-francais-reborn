@@ -158,6 +158,7 @@ const SessionDetailPage = () => {
   };
 
   const handleWizardClose = (needsRefresh = false) => {
+    console.log('[SessionDetailPage] handleWizardClose appelé', { needsRefresh });
     setWizardOpen(false);
     if (needsRefresh) {
       fetchSessionDetails(); // Recharger les détails de la session pour afficher les nouvelles ressources
@@ -166,16 +167,11 @@ const SessionDetailPage = () => {
 
   // Fonction appelée lorsque des ressources sont générées avec succès
   const handleResourcesGenerated = async (newResources) => {
-    console.log("[SessionDetailPage] Ressources générées avec succès:", newResources);
-  // Si une ressource a été générée, l'attacher comme fiche de séance
-  if (newResources && newResources.length > 0) {
-    try {
-      await sessionService.attachFiche(session.id, newResources[0].id);
-    } catch (err) {
-      console.error('Erreur lors de l\'attachement de la fiche:', err);
-    }
-  }
-    // Rafraîchir les détails de la session pour afficher la fiche attachée
+    console.log("[SessionDetailPage] Ressources générées (brut):", newResources);
+    const safeResources = Array.isArray(newResources) ? newResources.filter(r => r && r.id) : [];
+    console.log('[SessionDetailPage] Ressources générées (filtrées):', safeResources);
+    // Ne plus attacher automatiquement de fiche ici; laisser l'utilisateur décider explicitement
+    // Rafraîchir les détails de la session pour afficher d'éventuelles nouvelles ressources
     fetchSessionDetails();
   };
 

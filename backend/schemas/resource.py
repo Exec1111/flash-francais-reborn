@@ -8,6 +8,16 @@ from .common import ObjectiveIdentifier
 
 if TYPE_CHECKING:
     from schemas.study_object import StudyObjectReadShort
+    from schemas.oeuvre import OeuvreReadShort
+
+# Imports d'exécution facultatifs pour rendre disponibles les noms utilisés dans les annotations
+# Cela aide Pydantic v2 à résoudre les références en avant lors de model_validate/model_rebuild
+try:  # Ces imports peuvent échouer temporairement lors du chargement initial (imports croisés)
+    from .oeuvre import OeuvreReadShort  # type: ignore
+    from .study_object import StudyObjectReadShort  # type: ignore
+except Exception:
+    # Laisser Pydantic utiliser model_rebuild() plus tard avec __init__ du package
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +49,7 @@ class ResourceBase(BaseModel):
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
     study_object_ids: Optional[List[int]] = None
+    oeuvre_ids: Optional[List[int]] = None
 
     @field_validator('source_type')
     def check_source_type(cls, v):
@@ -95,6 +106,7 @@ class ResourceResponse(BaseModel):
     objectives: List[ObjectiveIdentifier] = []
     study_objects: Optional[List['StudyObjectReadShort']] = None  # Correction: utiliser le schéma Pydantic
     study_object_ids: Optional[List[int]] = None  # Ajout pour faciliter le pré-remplissage frontend
+    oeuvres: Optional[List['OeuvreReadShort']] = []  # Exposer les œuvres associées dans la réponse
 
     class Config:
         from_attributes = True
@@ -108,6 +120,7 @@ class ResourceUpdate(BaseModel):
     session_ids: Optional[List[int]] = None
     objective_ids: Optional[List[int]] = None
     study_object_ids: Optional[List[int]] = None  # Ajout pour la gestion des objets d'étude associés
+    oeuvre_ids: Optional[List[int]] = None
     html_content: Optional[str] = None  # Contenu HTML envoyé pour écraser le fichier existant
     # Pas de mise à jour de source_type ici, c'est généralement fixé à la création
     # Pas de file_* ici, la mise à jour de fichier est gérée séparément dans la route/CRUD
@@ -123,6 +136,7 @@ class ResourceRead(ResourceBase):
     id: int
     sessions: List[SessionReadSimple] = []
     objectives: List[ObjectiveIdentifier] = []
+    oeuvres: Optional[List["OeuvreReadShort"]] = []
     # Métadonnées Docling / cache IA
     docling_status: Optional[str] = None
     docling_md_path: Optional[str] = None
@@ -157,6 +171,12 @@ class ResourceListResponse(BaseModel):
 
 # Appeler model_rebuild pour résoudre les références en avant (forward references)
 # après que tous les modèles ont été définis.
+try:
+    ResourceRead.model_rebuild()
+    ResourceResponse.model_rebuild()
+except Exception:
+    # La reconstruction globale sera gérée dans schemas/__init__.py si nécessaire
+    pass
 
 class ResourceShort(BaseModel):
     id: int
@@ -166,12 +186,17 @@ class ResourceShort(BaseModel):
     class Config:
         from_attributes = True
 
-# Importer explicitement les types requis pour model_rebuild()
-if not TYPE_CHECKING:
-    from .study_object import StudyObjectReadShort
-    from .session import SessionReadSimple # Au cas où
 
-ResourceResponse.model_rebuild()
-ResourceRead.model_rebuild()
-ResourceShort.model_rebuild()
+class ResourceReadShort(BaseModel):
+    """Version courte d'une ressource pour les listes et références"""
+    id: int
+    title: str
+    description: Optional[str] = None
+    type_id: int
+    sub_type_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# Les model_rebuild() sont gérés dans schemas/__init__.py pour éviter les imports circulaires
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Stepper, Step, StepLabel, Paper } from '@mui/material';
 import FicheResourceSelector from './FicheResourceSelector';
 import FicheEditor from './FicheEditor';
+import sessionService from '../../services/sessionService';
 
 const steps = ['Sélection des ressources', 'Édition de la fiche'];
 
@@ -104,7 +105,18 @@ const SessionFicheWizard = ({ sessionId, onFinish }) => {
             sessionId={sessionId}
             blocs={resourcesConfig}
             onBack={back}
-            onFinish={onFinish}
+            onFinish={async (resourceId) => {
+              try {
+                // Cas particulier: le flux "Générer la fiche" doit TOUJOURS mettre à jour fiche_resource_id
+                if (resourceId) {
+                  await sessionService.attachFiche(sessionId, resourceId);
+                }
+              } catch (e) {
+                console.error('Erreur lors de l\'attachement de la fiche', e);
+              } finally {
+                if (onFinish) onFinish();
+              }
+            }}
           />
         );
       default:

@@ -27,8 +27,8 @@ from backend.models import User as UserModel
 from backend.schemas.session import SessionCreate
 from backend.schemas.ai_suggestion import AISuggestionResponse
 from models import ResourceType, ResourceSubType
-from backend.crud.resource import get_resources_by_session_and_type, get_resource
-from backend.schemas.resource import ResourceRead
+from backend.crud.resource import get_resources_by_session_and_type, get_resource, get_available_supports_for_session
+from backend.schemas.resource import ResourceRead, ResourceResponse
 from backend.crud.sequence import get_sequence
 from backend.crud.session import create_session_with_user, get_session_by_id
 import logging
@@ -595,7 +595,7 @@ async def generate_sessions(
 
 @router.get(
     "/sessions/{session_id}/available-supports",
-    response_model=List[ResourceRead],
+    response_model=List[ResourceResponse],
     summary="Récupère les œuvres disponibles dans une session comme supports potentiels",
     description="Retourne la liste des ressources de type 'oeuvre' associées à la session spécifiée."
 )
@@ -610,15 +610,21 @@ async def get_available_supports(
     logger.info(f"[TRACE] API GET /ai/sessions/{session_id}/available-supports appelé par user_id={current_user.id} email={current_user.email}")
     
     try:
-        # Récupérer les ressources de type 'OEUVRE' pour cette session (clé en majuscules dans la BDD)
-        resources = get_resources_by_session_and_type(db, session_id=session_id, type_key="OEUVRE")
-        
+        # Récupérer les ressources 'OEUVRE' liées directement à la session
+        # ET celles liées aux objets d'étude de la séquence parente
+        resources = get_available_supports_for_session(db, session_id=session_id)
+
         if not resources:
-            logger.info(f"Aucune ressource de type 'oeuvre' trouvée pour la session {session_id}")
+            logger.info(f"Aucun support 'OEUVRE' disponible pour la session {session_id}")
             return []
-        
-        # Convertir en schéma Pydantic pour la réponse
-        return [ResourceRead.model_validate(resource) for resource in resources]
+
+        # S'assurer que les références Pydantic sont résolues (au cas où le module schemas/__init__ n'a pas été importé)
+        try:
+            ResourceResponse.model_rebuild()
+        except Exception:
+            pass
+        # Convertir en schéma Pydantic pour la réponse (inclut type/sub_type et oeuvres)
+        return [ResourceResponse.model_validate(resource, from_attributes=True) for resource in resources]
         
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des supports pour la session {session_id}: {e}", exc_info=True)

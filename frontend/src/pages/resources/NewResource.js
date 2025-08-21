@@ -107,7 +107,7 @@ const NewResource = () => {
       isEdit={false}
       // Préconfigurations selon query params
       hideTypeSelection={effectiveHideType}
-      hideStudyObjectSelection={hideSO}
+      hideStudyObjectSelection={true}
       forcedType={forcedType}
       lockTypeSelection={effectiveLockType}
       disableSourceSelection={initialSource === 'file'}

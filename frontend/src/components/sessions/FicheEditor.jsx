@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import TinyHtmlEditor from '../editors/TinyHtmlEditor';
 import { Box, Button, CircularProgress } from '@mui/material';
 import resourceService from '../../services/resourceService';
-import sessionService from '../../services/sessionService';
 import { resourceTypeService } from '../../services/resourceTypeService';
 
 /**
@@ -95,8 +94,8 @@ ${content}
       form.append('session_ids_json', JSON.stringify([sessionId]));
 
       const resp = await resourceService.create(form);
-      await sessionService.attachFiche(sessionId, resp.id);
-      onFinish();
+      // Remonter l'ID de la ressource créée au parent pour une décision explicite d'attachement
+      onFinish(resp?.id);
     } catch (err) {
       console.error(err);
       alert('Erreur lors de la sauvegarde');

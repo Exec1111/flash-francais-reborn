@@ -31,7 +31,21 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
   const generation = useGeneration(activeStep, sessionId, configParams);
   const editing = useEditing();
   const merging = useMerging(activeStep);
-  const saving = useSaving(sessionId, onResourcesGenerated, onClose);
+  const saving = useSaving(sessionId, onResourcesGenerated, onClose, configParams.support_id);
+
+  // Log des changements d'étape
+  useEffect(() => {
+    try {
+      const stepName = steps[activeStep] || `Unknown(${activeStep})`;
+      console.log(`[useWizard] Changement d'étape -> index=${activeStep}, nom="${stepName}"`, {
+        sessionId,
+        support_id: configParams?.support_id,
+        type_resources_count: Array.isArray(configParams?.type_resources) ? configParams.type_resources.length : 0,
+      });
+    } catch (e) {
+      console.warn('[useWizard] Impossible de logger le changement d\'étape', e);
+    }
+  }, [activeStep, steps, sessionId, configParams]);
 
   // Charger les mappings de types de ressources au montage du hook
   useEffect(() => {
@@ -47,6 +61,11 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
    * @param {Object} config - Configuration initiale
    */
   const handleConfigSubmit = useCallback((config) => {
+    console.log('[useWizard] handleConfigSubmit reçu', {
+      sessionId,
+      support_id: config?.support_id,
+      type_resources_count: Array.isArray(config?.type_resources) ? config.type_resources.length : 0,
+    });
     setConfigParams(config);
     setActiveStep(1); // Passer à l'étape des suggestions
   }, []);
@@ -133,6 +152,11 @@ export const useWizard = (sessionId, onResourcesGenerated, onClose) => {
       console.log("[handleNextStep] Ressources prêtes pour la sauvegarde:", validationResult.resources);
       
       // Sauvegarder les ressources
+      console.log('[useWizard] Déclenchement de la sauvegarde', {
+        resources_count: validationResult.resources.length,
+        sessionId,
+        support_id: configParams?.support_id,
+      });
       saving.handleSaveResources(validationResult.resources);
     }
   }, [

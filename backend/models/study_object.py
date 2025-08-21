@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from sqlalchemy.sql import func
 from datetime import datetime
-# Les tables d'association sont maintenant importées depuis models/__init__.py
-from models import progression_study_object, study_object_resource, sequence_study_object
+from database import Base
+from models.association_tables import progression_study_object, study_object_resource, sequence_study_object, study_object_oeuvre
 
 class StudyObject(Base):
     __tablename__ = "study_objects"
@@ -31,5 +31,10 @@ class StudyObject(Base):
     sequences = relationship(
         "Sequence",
         secondary=sequence_study_object,
+        back_populates="study_objects"
+    )
+    oeuvres = relationship(
+        "Oeuvre",
+        secondary=study_object_oeuvre,
         back_populates="study_objects"
     )

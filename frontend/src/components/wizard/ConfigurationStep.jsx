@@ -41,6 +41,11 @@ const ConfigurationStep = ({
   const [loadingResourceTypes, setLoadingResourceTypes] = useState(false);
   const [availableSupports, setAvailableSupports] = useState([]);
   const [loadingSupports, setLoadingSupports] = useState(false);
+  // Maps pour retrouver les libellés des types/sous-types à partir de leurs IDs
+  const [typeNameById, setTypeNameById] = useState({});
+  const [subtypeNameById, setSubtypeNameById] = useState({});
+  const [typeKeyById, setTypeKeyById] = useState({});
+  const [subtypeKeyById, setSubtypeKeyById] = useState({});
 
   // Charger les types de ressources disponibles
   useEffect(() => {
@@ -58,9 +63,27 @@ const ConfigurationStep = ({
 
         if (response.data && Array.isArray(response.data.types)) { 
           const flattenedResourceTypes = [];
+          const typeMap = {};
+          const subtypeMap = {};
+          const typeKeyMap = {};
+          const subtypeKeyMap = {};
           response.data.types.forEach(typeObject => { 
+            // Enregistrer le nom du type quel que soit l'existence de sous-types
+            if (typeof typeObject.id !== 'undefined' && typeof typeObject.value !== 'undefined') {
+              typeMap[typeObject.id] = typeObject.value;
+            }
+            if (typeof typeObject.id !== 'undefined' && typeof typeObject.key !== 'undefined') {
+              typeKeyMap[typeObject.id] = typeObject.key;
+            }
             if (typeObject.subtypes && typeObject.subtypes.length > 0) {
               typeObject.subtypes.forEach(subtypeObject => { 
+                // Enregistrer le nom du sous-type
+                if (typeof subtypeObject.id !== 'undefined' && typeof subtypeObject.value !== 'undefined') {
+                  subtypeMap[subtypeObject.id] = subtypeObject.value;
+                }
+                if (typeof subtypeObject.id !== 'undefined' && typeof subtypeObject.key !== 'undefined') {
+                  subtypeKeyMap[subtypeObject.id] = subtypeObject.key;
+                }
                 flattenedResourceTypes.push({
                   type_id: typeObject.id,
                   type_key: typeObject.key,
@@ -79,6 +102,10 @@ const ConfigurationStep = ({
           
           console.log('Types de ressources disponibles (transformés):', flattenedResourceTypes);
           setAvailableResourceTypes(flattenedResourceTypes);
+          setTypeNameById(typeMap);
+          setSubtypeNameById(subtypeMap);
+          setTypeKeyById(typeKeyMap);
+          setSubtypeKeyById(subtypeKeyMap);
         }
       } catch (err) {
         console.error("Erreur lors du chargement des types de ressources:", err);
@@ -445,11 +472,40 @@ const ConfigurationStep = ({
                     Chargement des supports disponibles...
                   </MenuItem>
                 ) : (
-                  availableSupports.map((support) => (
-                    <MenuItem key={support.id} value={support.id}>
-                      {support.title}
-                    </MenuItem>
-                  ))
+                  availableSupports.map((support) => {
+                    const oeuvreTitle = (support?.oeuvres && support.oeuvres.length > 0)
+                      ? (support.oeuvres[0]?.titre || '')
+                      : '';
+                    const resourceTitle = support?.title || '';
+                    // Fallbacks: utiliser aussi les valeurs imbriquées si présentes côté backend
+                    const typeName = (
+                      (support?.type && support.type?.value) ||
+                      (typeof support?.type_id !== 'undefined' ? (typeNameById?.[support.type_id] || '') : '')
+                    );
+                    const subtypeName = (
+                      (support?.sub_type && support.sub_type?.value) ||
+                      ((typeof support?.sub_type_id !== 'undefined' && support?.sub_type_id !== null)
+                        ? (subtypeNameById?.[support.sub_type_id] || '')
+                        : '')
+                    );
+                    // Niveaux supplémentaires de fallback: utiliser keys ou ID si noms absents
+                    const typeFallback = typeName || (
+                      (typeof support?.type_id !== 'undefined' && typeKeyById?.[support.type_id]) ||
+                      (typeof support?.type_id !== 'undefined' ? `type#${support.type_id}` : '')
+                    );
+                    const subtypeFallback = subtypeName || (
+                      (typeof support?.sub_type_id !== 'undefined' && support?.sub_type_id !== null && subtypeKeyById?.[support.sub_type_id]) ||
+                      (typeof support?.sub_type_id !== 'undefined' && support?.sub_type_id !== null ? `subtype#${support.sub_type_id}` : '')
+                    );
+                    const labelParts = [oeuvreTitle, resourceTitle, typeFallback, subtypeFallback].filter(Boolean);
+                    const label = labelParts.join(' - ');
+                    console.log('[Support label]', { support, oeuvreTitle, resourceTitle, typeName, subtypeName, label });
+                    return (
+                      <MenuItem key={support.id} value={support.id}>
+                        {label || resourceTitle || `Support ${support.id}`}
+                      </MenuItem>
+                    );
+                  })
                 )}
               </Select>
               <FormHelperText>

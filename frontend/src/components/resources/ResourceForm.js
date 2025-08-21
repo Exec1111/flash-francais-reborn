@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
 import studyObjectService from '../../services/studyObjectService';
+import oeuvreService from '../../services/oeuvreService';
 import configService from '../../services/configService';
 import DynamicAIForm from '../DynamicAIForm/index';  
 import TinyHtmlEditor from '../editors/TinyHtmlEditor';
@@ -115,6 +116,8 @@ const ResourceForm = ({
 
   const [allStudyObjects, setAllStudyObjects] = useState([]);
   const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
+  const [allOeuvres, setAllOeuvres] = useState([]);
+  const [selectedOeuvres, setSelectedOeuvres] = useState([]);
 
   // --- Effets --- 
 
@@ -178,6 +181,12 @@ const ResourceForm = ({
           // fallback si study_objects absent mais study_object_ids présent
           setSelectedStudyObjects(allStudyObjects.filter(obj => initialData.study_object_ids.includes(obj.id)));
         }
+        if (Array.isArray(initialData.oeuvres)) {
+          setSelectedOeuvres(initialData.oeuvres);
+        } else if (Array.isArray(initialData.oeuvre_ids) && Array.isArray(allOeuvres) && allOeuvres.length > 0) {
+          // fallback si oeuvres absent mais oeuvre_ids présent
+          setSelectedOeuvres(allOeuvres.filter(o => initialData.oeuvre_ids.includes(o.id)));
+        }
         // Charger les sous-types correspondants si un type est sélectionné
         if (initialTypeId) {
             fetchSubTypes(initialTypeId);
@@ -186,7 +195,7 @@ const ResourceForm = ({
         // Cas création simple avec session pré-remplie
         setFormData(prev => ({ ...prev, session_ids: [session.id] }));
     }
-  }, [initialData, resourceTypes, session, isEdit, allStudyObjects]);
+  }, [initialData, resourceTypes, session, isEdit, allStudyObjects, allOeuvres]);
 
   // Charger la configuration d'upload depuis le backend
   useEffect(() => {
@@ -291,6 +300,19 @@ const ResourceForm = ({
       }
     };
     fetchStudyObjects();
+  }, []);
+
+  // Charger les œuvres pour l'autocomplete
+  useEffect(() => {
+    const fetchOeuvres = async () => {
+      try {
+        const data = await oeuvreService.getOeuvres({ skip: 0, limit: 100 });
+        setAllOeuvres(data.items || data);
+      } catch (err) {
+        setAllOeuvres([]);
+      }
+    };
+    fetchOeuvres();
   }, []);
 
   // --- Gestionnaires d'événements ---
@@ -438,15 +460,18 @@ const ResourceForm = ({
     }
 
     // Objets d'étude
-    // - En création: envoyer seulement si non vide
-    // - En édition: toujours envoyer (y compris [] pour effacer les associations)
-    const soIds = Array.isArray(selectedStudyObjects)
-      ? selectedStudyObjects.map(obj => Number(obj.id)).filter(id => !Number.isNaN(id))
+    // NOTE: L'association directe des ressources aux objets d'étude est désormais gérée ailleurs.
+    // Ne plus envoyer "study_object_ids_json" côté frontend lors de la création/édition.
+    // (Sélecteur conservé pour l'UI mais non soumis ici.)
+
+    // Œuvres associées
+    const oeuvreIds = Array.isArray(selectedOeuvres)
+      ? selectedOeuvres.map(o => Number(o.id)).filter(id => !Number.isNaN(id))
       : [];
     if (isEdit) {
-      dataToSend.append('study_object_ids_json', JSON.stringify(soIds));
-    } else if (soIds.length > 0) {
-      dataToSend.append('study_object_ids_json', JSON.stringify(soIds));
+      dataToSend.append('oeuvre_ids_json', JSON.stringify(oeuvreIds));
+    } else if (oeuvreIds.length > 0) {
+      dataToSend.append('oeuvre_ids_json', JSON.stringify(oeuvreIds));
     }
 
     // NOTE: Le backend actuel ne supporte pas un champ 'url' pour les ressources.
@@ -629,6 +654,30 @@ const ResourceForm = ({
             />
           </Grid>
         )}
+
+        {/* Sélecteur des œuvres */}
+        <Grid item xs={12}>
+          <Autocomplete
+            multiple
+            id="oeuvre-autocomplete"
+            options={allOeuvres}
+            getOptionLabel={(option) => option.titre || ''}
+            value={selectedOeuvres}
+            onChange={(_event, newValue) => setSelectedOeuvres(newValue)}
+            filterSelectedOptions
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            disabled={submitting}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                label="Œuvres associées"
+                placeholder="Ajouter une œuvre"
+                fullWidth
+              />
+            )}
+          />
+        </Grid>
 
         {/* Sélecteur Type / Sous-type - caché si hideTypeSelection=true */}
         {!hideTypeSelection ? (

@@ -8,13 +8,10 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Chip,
   Snackbar
 } from '@mui/material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
-import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
-import resourceService from '../../services/resourceService';
 
 const EditStudyObject = () => {
   const { id } = useParams();
@@ -27,9 +24,7 @@ const EditStudyObject = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
-  // Gestion des ressources associées
-  const [associatedResources, setAssociatedResources] = useState([]);
-  const [resourceModalOpen, setResourceModalOpen] = useState(false);
+  // Plus d'association directe avec des ressources
 
   const navigate = useNavigate();
   const DRAFT_KEY = `editSO_draft_${id}`;
@@ -37,50 +32,17 @@ const EditStudyObject = () => {
   // Autosauvegarde du brouillon à chaque modification (avec garde contre l'écrasement par des valeurs vides)
   useEffect(() => {
     try {
-      const isAllEmpty = (!title || title === '') && (!description || description === '') && (!associatedResources || associatedResources.length === 0);
+      const isAllEmpty = (!title || title === '') && (!description || description === '');
       if (isAllEmpty) return; // ne pas écraser un brouillon existant par des valeurs vides au premier rendu
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources }));
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description }));
     } catch (_) {}
-  }, [title, description, associatedResources, DRAFT_KEY]);
+  }, [title, description, DRAFT_KEY]);
 
   // Vérifier si on revient d'une autre page avec une demande de rafraîchissement
   useEffect(() => {
     const st = location.state;
     if (!st) return;
-    // Cas 1: retour depuis /resources/new avec une ressource créée
-    if (st.createdResource) {
-      // Fusionner la ressource créée avec les ressources déjà sélectionnées
-      const exists = associatedResources.some(r => String(r.id) === String(st.createdResource.id));
-      const nextResources = exists ? associatedResources : [...associatedResources, st.createdResource];
-
-      // Préserver le brouillon existant (titre/description) saisi avant la navigation
-      let prevDraft = null;
-      try {
-        const rawDraft = sessionStorage.getItem(DRAFT_KEY);
-        prevDraft = rawDraft ? JSON.parse(rawDraft) : null;
-      } catch (_) {}
-
-      const draftTitle = (prevDraft && typeof prevDraft.title === 'string') ? prevDraft.title : title;
-      const draftDescription = (prevDraft && typeof prevDraft.description === 'string') ? prevDraft.description : description;
-
-      // Mettre à jour l'état et appliquer le brouillon en priorité
-      setAssociatedResources(nextResources);
-      setTitle(draftTitle);
-      setDescription(draftDescription);
-
-      // Mettre à jour le brouillon fusionné
-      try {
-        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title: draftTitle, description: draftDescription, associatedResources: nextResources }));
-      } catch (_) {}
-
-      if (st.messageSuccess) {
-        setSuccessMessage(st.messageSuccess);
-        setSnackbarOpen(true);
-      }
-      window.history.replaceState({}, document.title);
-      return;
-    }
-    // Cas 2: logique existante de refresh explicite
+    // Logique de refresh explicite
     if (st.refresh) {
       fetchData();
       if (st.messageSuccess) {
@@ -98,16 +60,6 @@ const EditStudyObject = () => {
       const data = await studyObjectService.getStudyObjectById(id);
       setTitle(data.title);
       setDescription(data.description || '');
-      // Charger les ressources associées si présentes
-      if (data.resource_ids && data.resource_ids.length > 0) {
-        // Récupérer les objets complets pour affichage
-        const resObjs = await Promise.all(
-          data.resource_ids.map(rid => resourceService.getResourceById(rid))
-        );
-        setAssociatedResources(resObjs);
-      } else {
-        setAssociatedResources([]);
-      }
     } catch (err) {
       setError(err.detail || err.message || 'Erreur inconnue');
     } finally {
@@ -124,7 +76,6 @@ const EditStudyObject = () => {
         if (draft && typeof draft === 'object') {
           if (typeof draft.title === 'string') setTitle(draft.title);
           if (typeof draft.description === 'string') setDescription(draft.description);
-          if (Array.isArray(draft.associatedResources)) setAssociatedResources(draft.associatedResources);
           setLoading(false);
           return; // Ne pas appeler l'API si brouillon présent
         }
@@ -142,8 +93,7 @@ const EditStudyObject = () => {
     try {
       await studyObjectService.updateStudyObject(id, {
         title,
-        description,
-        resource_ids: associatedResources.map(r => r.id)
+        description
       });
       setSuccess("Objet d'étude mis à jour avec succès !");
       // Nettoyer le brouillon après succès
@@ -154,10 +104,6 @@ const EditStudyObject = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRemoveResource = (rid) => {
-    setAssociatedResources(associatedResources.filter(r => r.id !== rid));
   };
 
   if (loading && !success) {
@@ -193,52 +139,6 @@ const EditStudyObject = () => {
               multiline
               minRows={3}
             />
-            <Box sx={{ mt: 2, mb: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Oeuvres associées
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => setResourceModalOpen(true)}
-                sx={{ mb: 1 }}
-              >
-                Associer une ressource existante
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  // Sauvegarder un brouillon avant de naviguer vers la création de ressource
-                  try {
-                    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, associatedResources }));
-                  } catch (_) {}
-                  const returnTo = encodeURIComponent(location.pathname);
-                  // Forcer Type=OEUVRE (verrouillé) et source=fichier (PDF uniquement), masquer SO
-                  const url = `/resources/new?source=file&hideSO=1&presetTypeKey=OEUVRE&lockType=1&pdfOnly=1&attachSOId=${id}&returnTo=${returnTo}`;
-                  navigate(url);
-                }}
-                sx={{ mb: 1, ml: 1 }}
-              >
-                Créer la ressource à partir d'un PDF
-              </Button>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {associatedResources.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    Aucune ressource associée.
-                  </Typography>
-                ) : (
-                  associatedResources.map(res => (
-                    <Chip
-                      key={res.id}
-                      label={res.title || res.name || `Ressource ${res.id}`}
-                      onDelete={() => handleRemoveResource(res.id)}
-                      sx={{ maxWidth: 220 }}
-                    />
-                  ))
-                )}
-              </Box>
-            </Box>
             {error && (
               <Alert severity="error" sx={{ my: 2 }} onClose={() => setError(null)}>
                 {error}
@@ -272,14 +172,6 @@ const EditStudyObject = () => {
           </form>
         </CardContent>
       </Card>
-      <ResourceSelectorModal
-        open={resourceModalOpen}
-        onClose={() => setResourceModalOpen(false)}
-        initialSelectedResources={associatedResources}
-        onSave={setAssociatedResources}
-        filterType="OEUVRE" // Filtre pour n'afficher que les ressources de type "oeuvre"
-      />
-      
       {/* Notification de succès */}
       <Snackbar
         open={snackbarOpen}

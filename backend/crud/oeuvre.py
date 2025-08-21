@@ -1,14 +1,21 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
-from models import Oeuvre
+from models import Oeuvre, Resource
 from models.user import User
 from schemas.oeuvre import OeuvreCreate, OeuvreUpdate
 
 
-def get_oeuvre(db: Session, oeuvre_id: int, user: Optional[User] = None) -> Optional[Oeuvre]:
+def get_oeuvre(db: Session, oeuvre_id: int, user: Optional[User] = None, include_relations: bool = False) -> Optional[Oeuvre]:
     """Récupère une œuvre par son ID, en tenant compte des permissions"""
     query = db.query(Oeuvre).filter(Oeuvre.id == oeuvre_id)
+    
+    # Chargement des relations si demandé
+    if include_relations:
+        query = query.options(
+            joinedload(Oeuvre.resources),
+            joinedload(Oeuvre.study_objects)
+        )
     
     if user:
         # L'utilisateur peut voir ses propres œuvres + les œuvres publiques
@@ -253,3 +260,89 @@ def search_oeuvres(db: Session, query_text: str, user: Optional[User] = None, li
         query = query.filter(Oeuvre.cree_par == "SYSTEME")
     
     return query.limit(limit).all()
+
+
+def add_resource_to_oeuvre(db: Session, oeuvre_id: int, resource_id: int, user: User) -> bool:
+    """Associe une ressource à une œuvre"""
+    print(f"[DEBUG] Tentative d'ajout de ressource {resource_id} à l'œuvre {oeuvre_id} pour l'utilisateur {user.id}")
+    
+    # D'abord vérifier si l'œuvre existe sans filtrage de permissions
+    oeuvre_exists = db.query(Oeuvre).filter(Oeuvre.id == oeuvre_id).first()
+    if not oeuvre_exists:
+        print(f"[DEBUG] Œuvre {oeuvre_id} n'existe pas du tout")
+        return False
+    
+    print(f"[DEBUG] Œuvre trouvée: ID={oeuvre_exists.id}, user_id={oeuvre_exists.user_id}, cree_par={oeuvre_exists.cree_par}")
+    
+    # Vérifier que l'œuvre existe et appartient à l'utilisateur
+    oeuvre = db.query(Oeuvre).filter(
+        and_(
+            Oeuvre.id == oeuvre_id,
+            or_(
+                Oeuvre.cree_par == "SYSTEME",
+                Oeuvre.user_id == user.id
+            )
+        )
+    ).first()
+    
+    if not oeuvre:
+        print(f"[DEBUG] Œuvre {oeuvre_id} existe mais l'utilisateur {user.id} n'a pas les permissions")
+        return False
+    
+    # Vérifier que la ressource existe
+    resource = db.query(Resource).filter(Resource.id == resource_id).first()
+    if not resource:
+        return False
+    
+    # Ajouter la relation si elle n'existe pas déjà
+    if resource not in oeuvre.resources:
+        oeuvre.resources.append(resource)
+        db.commit()
+    
+    return True
+
+
+def remove_resource_from_oeuvre(db: Session, oeuvre_id: int, resource_id: int, user: User) -> bool:
+    """Dissocie une ressource d'une œuvre"""
+    # Vérifier que l'œuvre existe et appartient à l'utilisateur
+    oeuvre = db.query(Oeuvre).filter(
+        and_(
+            Oeuvre.id == oeuvre_id,
+            or_(
+                Oeuvre.cree_par == "SYSTEME",
+                Oeuvre.user_id == user.id
+            )
+        )
+    ).first()
+    
+    if not oeuvre:
+        return False
+    
+    # Vérifier que la ressource existe
+    resource = db.query(Resource).filter(Resource.id == resource_id).first()
+    if not resource:
+        return False
+    
+    # Supprimer la relation si elle existe
+    if resource in oeuvre.resources:
+        oeuvre.resources.remove(resource)
+        db.commit()
+    
+    return True
+
+
+def get_oeuvres_by_resource(db: Session, resource_id: int, user: Optional[User] = None) -> List[Oeuvre]:
+    """Récupère les œuvres associées à une ressource"""
+    query = db.query(Oeuvre).join(Oeuvre.resources).filter(Resource.id == resource_id)
+    
+    if user:
+        query = query.filter(
+            or_(
+                Oeuvre.cree_par == "SYSTEME",
+                Oeuvre.user_id == user.id
+            )
+        )
+    else:
+        query = query.filter(Oeuvre.cree_par == "SYSTEME")
+    
+    return query.all()

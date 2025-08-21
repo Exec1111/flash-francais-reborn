@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import oeuvreService from '../../services/oeuvreService';
+import ResourceManagementModal from '../../components/oeuvres/ResourceManagementModal';
 
 const OeuvreDetail = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const OeuvreDetail = () => {
   const [oeuvre, setOeuvre] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
 
   // Charger les données de l'œuvre
   useEffect(() => {
@@ -119,25 +121,34 @@ const OeuvreDetail = () => {
           </Typography>
         </Box>
         
-        {!oeuvre.is_public && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={() => navigate(`/oeuvres/edit/${id}`)}
-            >
-              Modifier
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-            >
-              Supprimer
-            </Button>
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setResourceModalOpen(true)}
+          >
+            Gérer les ressources
+          </Button>
+          {!oeuvre.is_public && (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/oeuvres/edit/${id}`)}
+              >
+                Modifier
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDelete}
+              >
+                Supprimer
+              </Button>
+            </>
+          )}
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -373,6 +384,13 @@ const OeuvreDetail = () => {
           </Card>
         </Grid>
       </Grid>
+
+      <ResourceManagementModal
+        open={resourceModalOpen}
+        onClose={() => setResourceModalOpen(false)}
+        oeuvre={oeuvre}
+        onResourcesUpdated={(updatedOeuvre) => setOeuvre(updatedOeuvre)}
+      />
     </Box>
   );
 };

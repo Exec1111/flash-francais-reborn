@@ -77,6 +77,7 @@ const ResourceEdit = () => {
       isDialog={false} 
       initialData={resource} 
       isEdit={true}
+      hideStudyObjectSelection={true}
       resourceId={id}
     />
   );

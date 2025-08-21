@@ -29,7 +29,8 @@ import {
 } from '@mui/icons-material';
 import studyObjectService from '../../services/studyObjectService';
 import progressionService from '../../services/progressionService';
-import resourceService from '../../services/resourceService';
+import oeuvreService from '../../services/oeuvreService';
+import OeuvreSelectorModal from '../../components/oeuvres/OeuvreSelectorModal';
 
 const StudyObjectDetail = () => {
   const { id } = useParams();
@@ -40,8 +41,9 @@ const StudyObjectDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [progressions, setProgressions] = useState([]);
-  const [resources, setResources] = useState([]);
+  const [oeuvres, setOeuvres] = useState([]);
   const [loadingAssociations, setLoadingAssociations] = useState(false);
+  const [oeuvreModalOpen, setOeuvreModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchStudyObject = async () => {
@@ -65,30 +67,9 @@ const StudyObjectDetail = () => {
           );
           setProgressions(progs);
         }
-        if (data.resource_ids && data.resource_ids.length > 0) {
-          // Récupérer les titres réels des ressources associées
-          const fetchedResources = await Promise.all(
-            data.resource_ids.map(async resId => {
-              try {
-                const resource = await resourceService.getResourceById(resId);
-                return { 
-                  id: resId, 
-                  title: resource.title || `Ressource ${resId}`,
-                  type: resource.type?.value || "Type inconnu",
-                  subtype: resource.sub_type?.value || "Sous-type inconnu"
-                };
-              } catch (e) {
-                console.error(`Erreur lors de la récupération de la ressource ${resId}:`, e);
-                return { 
-                  id: resId, 
-                  title: `Ressource ${resId}`, 
-                  type: "Erreur de chargement", 
-                  subtype: ""
-                };
-              }
-            })
-          );
-          setResources(fetchedResources);
+        // Récupérer les œuvres liées à cet objet d'étude
+        if (data.oeuvres && data.oeuvres.length > 0) {
+          setOeuvres(data.oeuvres);
         }
       } catch (err) {
         setError(err.detail || err.message || 'Erreur inconnue');
@@ -116,6 +97,27 @@ const StudyObjectDetail = () => {
     } finally {
       setDeleting(false);
       setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleOeuvreSelection = async (selectedOeuvres) => {
+    try {
+      setLoadingAssociations(true);
+      // Mettre à jour les œuvres liées à l'objet d'étude
+      const oeuvreIds = selectedOeuvres.map(oeuvre => oeuvre.id);
+      await studyObjectService.updateStudyObject(id, { oeuvre_ids: oeuvreIds });
+      
+      // Recharger les données
+      const updatedData = await studyObjectService.getStudyObjectById(id);
+      setStudyObject(updatedData);
+      if (updatedData.oeuvres) {
+        setOeuvres(updatedData.oeuvres);
+      }
+      setOeuvreModalOpen(false);
+    } catch (err) {
+      setError(err.detail || err.message || 'Erreur lors de la mise à jour des œuvres');
+    } finally {
+      setLoadingAssociations(false);
     }
   };
 
@@ -155,10 +157,11 @@ const StudyObjectDetail = () => {
               <Button 
                 variant="contained"
                 color="primary"
-                onClick={() => navigate(`/study-objects/${id}/propose-works`, { state: { title: studyObject.title } })}
+                onClick={() => setOeuvreModalOpen(true)}
                 sx={{ mr: 1 }}
+                disabled={loadingAssociations}
               >
-                Proposer des œuvres
+                Gérer les œuvres
               </Button>
               <Button 
                 variant="contained" 
@@ -203,21 +206,21 @@ const StudyObjectDetail = () => {
           <Divider sx={{ my: 3 }} />
 
           <Typography variant="h6" gutterBottom>
-            Oeuvres liées
+            Œuvres liées
           </Typography>
-          {(!studyObject.resource_ids || studyObject.resource_ids.length === 0) && (
+          {(!oeuvres || oeuvres.length === 0) && (
             <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
-              Aucune ressource n'est actuellement liée à cet objet d'étude. Il est recommandé d'associer des ressources pour une expérience pédagogique complète.
+              Aucune œuvre n'est actuellement liée à cet objet d'étude. Il est recommandé d'associer des œuvres pour une expérience pédagogique complète.
             </Alert>
           )}
-          {studyObject.resource_ids && studyObject.resource_ids.length > 0 && (
+          {oeuvres && oeuvres.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {resources.map((resource) => (
+              {oeuvres.map((oeuvre) => (
                 <Chip
-                  key={resource.id}
-                  label={resource.title}
-                  onClick={() => navigate(`/resources/view/${resource.id}`)}
-                  title={`Type: ${resource.type}, Sous-type: ${resource.subtype}`}
+                  key={oeuvre.id}
+                  label={oeuvre.titre}
+                  onClick={() => navigate(`/oeuvres/${oeuvre.id}`)}
+                  title={`${oeuvre.auteur_complet} - ${oeuvre.type}`}
                   sx={{ cursor: 'pointer' }}
                 />
               ))}
@@ -240,6 +243,15 @@ const StudyObjectDetail = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <OeuvreSelectorModal
+        open={oeuvreModalOpen}
+        onClose={() => setOeuvreModalOpen(false)}
+        onSelect={handleOeuvreSelection}
+        selectedOeuvres={oeuvres}
+        multiSelect={true}
+        title="Sélectionner les œuvres pour cet objet d'étude"
+      />
     </Container>
   );
 };

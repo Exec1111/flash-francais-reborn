@@ -1,7 +1,18 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 
+if TYPE_CHECKING:
+    from schemas.resource import ResourceReadShort
+    from schemas.study_object import StudyObjectReadShort
+
+# Imports d'exécution pour résoudre les forward refs lors du model_rebuild
+try:
+    from .resource import ResourceReadShort  # type: ignore
+    from .study_object import StudyObjectReadShort  # type: ignore
+except Exception:
+    # Laisser __init__.py gérer la reconstruction globale si nécessaire
+    pass
 
 class AuteurSchema(BaseModel):
     """Schéma pour les informations de l'auteur"""
@@ -96,6 +107,10 @@ class OeuvreRead(OeuvreBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
+    # Relations
+    resources: Optional[List["ResourceReadShort"]] = Field([], description="Ressources liées à l'œuvre")
+    study_objects: Optional[List["StudyObjectReadShort"]] = Field([], description="Objets d'étude liés à l'œuvre")
+    
     # Propriétés calculées
     is_public: bool = Field(..., description="True si l'œuvre est publique")
     auteur_complet: str = Field(..., description="Nom complet formaté de l'auteur")
@@ -106,6 +121,33 @@ class OeuvreRead(OeuvreBase):
     @classmethod
     def from_orm(cls, orm_obj):
         """Méthode personnalisée pour créer l'objet depuis l'ORM"""
+        # Imports locaux pour éviter les imports circulaires
+        try:
+            from schemas.resource import ResourceReadShort  # type: ignore
+            from schemas.study_object import StudyObjectReadShort  # type: ignore
+        except Exception:
+            ResourceReadShort = None  # type: ignore
+            StudyObjectReadShort = None  # type: ignore
+
+        # Préparer les relations si elles sont chargées
+        orm_resources = getattr(orm_obj, 'resources', []) or []
+        orm_study_objects = getattr(orm_obj, 'study_objects', []) or []
+
+        resources = []
+        if orm_resources and 'ResourceReadShort' in globals() or ResourceReadShort:
+            try:
+                resources = [ResourceReadShort.model_validate(r, from_attributes=True) for r in orm_resources]  # type: ignore
+            except Exception:
+                # Fallback: laisser vide si conversion impossible
+                resources = []
+
+        study_objects = []
+        if orm_study_objects and 'StudyObjectReadShort' in globals() or StudyObjectReadShort:
+            try:
+                study_objects = [StudyObjectReadShort.model_validate(s, from_attributes=True) for s in orm_study_objects]  # type: ignore
+            except Exception:
+                study_objects = []
+
         return cls(
             id=orm_obj.id,
             titre=orm_obj.titre,
@@ -125,6 +167,8 @@ class OeuvreRead(OeuvreBase):
             user_id=orm_obj.user_id,
             created_at=orm_obj.created_at,
             updated_at=orm_obj.updated_at,
+            resources=resources,
+            study_objects=study_objects,
             is_public=orm_obj.is_public,
             auteur_complet=orm_obj.auteur_complet
         )
@@ -161,6 +205,18 @@ class OeuvreReadShort(BaseModel):
         )
 
 
+class OeuvreReadShort(BaseModel):
+    """Version courte d'une œuvre pour les listes et références"""
+    id: int
+    titre: str
+    auteur_complet: str
+    type: Optional[str] = None
+    genre: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class OeuvreAIGenerate(BaseModel):
     """Schéma pour la génération d'œuvre par IA"""
     titre: str = Field(..., description="Titre de l'œuvre à rechercher")
@@ -169,3 +225,10 @@ class OeuvreAIGenerate(BaseModel):
     type_prefere: Optional[str] = Field(None, description="Type d'œuvre préféré si plusieurs possibilités")
     niveau_cible: Optional[str] = Field(None, description="Niveau scolaire cible")
     extrait: bool = Field(False, description="Générer un extrait plutôt que l'œuvre complète")
+
+# Assurer la reconstruction des modèles pour résoudre les références en avant
+try:
+    OeuvreRead.model_rebuild()
+    OeuvreReadShort.model_rebuild()
+except Exception:
+    pass

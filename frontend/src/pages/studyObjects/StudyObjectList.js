@@ -25,7 +25,8 @@ import {
   FormControlLabel,
   Switch,
   Grid,
-  LinearProgress
+  LinearProgress,
+  Chip
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -36,7 +37,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import studyObjectService from '../../services/studyObjectService';
-import resourceService from '../../services/resourceService';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 import paginationConfig from '../../config/pagination';
 
@@ -64,37 +64,25 @@ const StudyObjectList = () => {
 
   const navigate = useNavigate();
 
-  // Charger la liste des objets d'étude et enrichir avec les titres des ressources
+  // Charger la liste des objets d'étude et enrichir avec les œuvres liées (pour affichage en chips cliquables)
   const fetchStudyObjects = async () => {
     setLoading(true);
     try {
       const skip = (page - 1) * itemsPerPage;
       const response = await studyObjectService.getStudyObjects(skip, itemsPerPage);
-      // Pour chaque objet, récupérer les titres des ressources associées
+      // Pour chaque objet, récupérer les œuvres associées via l'API de détail
       const dataWithResources = await Promise.all(
         response.items.map(async (obj) => {
-          let resourceTitles = [];
+          let oeuvres = [];
           try {
             const detail = await studyObjectService.getStudyObjectById(obj.id);
-            if (detail.resource_ids && detail.resource_ids.length > 0) {
-              // Récupérer les titres réels des ressources associées
-              resourceTitles = await Promise.all(
-                detail.resource_ids.map(async resId => {
-                  try {
-                    const resource = await resourceService.getResourceById(resId);
-                    return resource.title || `Ressource ${resId}`;
-                  } catch (e) {
-                    console.error(`Erreur lors de la récupération de la ressource ${resId} pour la liste:`, e);
-                    return `Ressource ${resId}`; // Titre par défaut en cas d'erreur
-                  }
-                })
-              );
+            if (Array.isArray(detail.oeuvres) && detail.oeuvres.length > 0) {
+              oeuvres = detail.oeuvres;
             }
           } catch (e) {
             console.error(`Erreur lors de la récupération des détails pour l'objet d'étude ${obj.id}:`, e);
-            // Laisser resourceTitles vide ou avec une indication d'erreur si nécessaire
           }
-          return { ...obj, resourceTitles };
+          return { ...obj, oeuvres };
         })
       );
       setStudyObjects(dataWithResources);
@@ -224,7 +212,7 @@ const StudyObjectList = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Titre</TableCell>
-                  <TableCell>Ressources liées</TableCell>
+                  <TableCell>Œuvres liées</TableCell>
                   <TableCell align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -235,17 +223,20 @@ const StudyObjectList = () => {
                       {studyObject.title}
                     </TableCell>
                     <TableCell>
-                      {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length === 0 && (
-                        <Tooltip title="Aucune ressource liée">
+                      {Array.isArray(studyObject.oeuvres) && studyObject.oeuvres.length === 0 && (
+                        <Tooltip title="Aucune œuvre liée">
                           <WarningAmberIcon color="warning" />
                         </Tooltip>
                       )}
-                      {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length > 0 && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          {studyObject.resourceTitles.map((title, idx) => (
-                            <Typography key={idx} variant="body2" color="text.secondary">
-                              {title}
-                            </Typography>
+                      {Array.isArray(studyObject.oeuvres) && studyObject.oeuvres.length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {studyObject.oeuvres.map((oeuvre) => (
+                            <Chip
+                              key={oeuvre.id}
+                              label={oeuvre.titre}
+                              onClick={() => navigate(`/oeuvres/${oeuvre.id}`)}
+                              sx={{ cursor: 'pointer' }}
+                            />
                           ))}
                         </Box>
                       )}
@@ -300,18 +291,21 @@ const StudyObjectList = () => {
                     {studyObject.title}
                   </Typography>
 
-                  {/* Ressources liées */}
-                  {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length === 0 && (
-                    <Tooltip title="Aucune ressource liée">
+                  {/* Œuvres liées */}
+                  {Array.isArray(studyObject.oeuvres) && studyObject.oeuvres.length === 0 && (
+                    <Tooltip title="Aucune œuvre liée">
                       <WarningAmberIcon color="warning" sx={{ mb: 1 }} />
                     </Tooltip>
                   )}
-                  {Array.isArray(studyObject.resourceTitles) && studyObject.resourceTitles.length > 0 && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
-                      {studyObject.resourceTitles.map((title, idx) => (
-                        <Typography key={idx} variant="body2" color="text.secondary">
-                          {title}
-                        </Typography>
+                  {Array.isArray(studyObject.oeuvres) && studyObject.oeuvres.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                      {studyObject.oeuvres.map((oeuvre) => (
+                        <Chip
+                          key={oeuvre.id}
+                          label={oeuvre.titre}
+                          onClick={() => navigate(`/oeuvres/${oeuvre.id}`)}
+                          sx={{ cursor: 'pointer' }}
+                        />
                       ))}
                     </Box>
                   )}
