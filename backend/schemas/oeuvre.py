@@ -219,12 +219,17 @@ class OeuvreReadShort(BaseModel):
 
 class OeuvreAIGenerate(BaseModel):
     """Schéma pour la génération d'œuvre par IA"""
-    titre: str = Field(..., description="Titre de l'œuvre à rechercher")
-    auteur_prenom: str = Field(..., description="Prénom de l'auteur")
-    auteur_nom: str = Field(..., description="Nom de l'auteur")
+    titre: Optional[str] = Field(None, description="Titre de l'œuvre à rechercher (optionnel)")
+    auteur_prenom: Optional[str] = Field(None, description="Prénom de l'auteur (optionnel)")
+    auteur_nom: Optional[str] = Field(None, description="Nom de l'auteur (optionnel)")
     type_prefere: Optional[str] = Field(None, description="Type d'œuvre préféré si plusieurs possibilités")
     niveau_cible: Optional[str] = Field(None, description="Niveau scolaire cible")
     extrait: bool = Field(False, description="Générer un extrait plutôt que l'œuvre complète")
+    # Champs additionnels pour guider l'IA
+    prompt_libre: Optional[str] = Field(None, description="Instructions libres fournies par l'utilisateur pour guider la génération")
+    study_object_title: Optional[str] = Field(None, description="Titre de l'objet d'étude lié (lecture seule côté frontend)")
+    study_object_description: Optional[str] = Field(None, description="Description de l'objet d'étude lié (lecture seule côté frontend)")
+    nombre_suggestions: Optional[int] = Field(None, description="Nombre de suggestions souhaité côté frontend (facultatif)")
 
 # Assurer la reconstruction des modèles pour résoudre les références en avant
 try:

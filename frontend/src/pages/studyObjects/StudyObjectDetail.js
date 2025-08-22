@@ -27,6 +27,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
+import { SmartToy as AiIcon } from '@mui/icons-material';
 import studyObjectService from '../../services/studyObjectService';
 import progressionService from '../../services/progressionService';
 import oeuvreService from '../../services/oeuvreService';
@@ -205,9 +206,19 @@ const StudyObjectDetail = () => {
 
           <Divider sx={{ my: 3 }} />
 
-          <Typography variant="h6" gutterBottom>
-            Œuvres liées
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Œuvres liées
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AiIcon />}
+              onClick={() => navigate('/oeuvres/wizard', { state: { fromStudyObject: { id: studyObject.id, title: studyObject.title, description: studyObject.description } } })}
+            >
+              Assistant œuvre
+            </Button>
+          </Box>
           {(!oeuvres || oeuvres.length === 0) && (
             <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
               Aucune œuvre n'est actuellement liée à cet objet d'étude. Il est recommandé d'associer des œuvres pour une expérience pédagogique complète.

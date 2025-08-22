@@ -68,6 +68,7 @@ import OeuvresList from './pages/oeuvres/OeuvresList';
 import NewOeuvre from './pages/oeuvres/NewOeuvre';
 import EditOeuvre from './pages/oeuvres/EditOeuvre';
 import OeuvreDetail from './pages/oeuvres/OeuvreDetail';
+import OeuvreWizard from './components/OeuvreWizard';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -416,6 +417,7 @@ function App() {
         <Route path="new" element={<NewOeuvre />} />
         <Route path="edit/:id" element={<EditOeuvre />} />
         <Route path=":id" element={<OeuvreDetail />} />
+        <Route path="wizard" element={<OeuvreWizard />} />
       </Route>
 
       {/* Redirection par défaut */}

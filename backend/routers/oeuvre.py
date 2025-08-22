@@ -188,11 +188,21 @@ async def generate_oeuvre_ai(
         from backend.ai.services.resource_generator import generate_ai_resource_content
         
         # Préparer les variables d'entrée pour l'IA
+        title_part = (obj.titre or "").strip()
+        author_full = " ".join([p for p in [(obj.auteur_prenom or "").strip(), (obj.auteur_nom or "").strip()] if p])
+        titre_ou_auteur = " - ".join([p for p in [title_part, author_full] if p])
+
         input_variables = {
-            "titre_ou_auteur": f"{obj.titre} - {obj.auteur_prenom} {obj.auteur_nom}",
+            "titre_ou_auteur": titre_ou_auteur,
             "type_prefere": obj.type_prefere or "",
             "niveau_cible": obj.niveau_cible or "3e",
-            "extrait": obj.extrait or False
+            "extrait": obj.extrait or False,
+            # Champs additionnels pour guider l'IA
+            "prompt_libre": getattr(obj, "prompt_libre", None) or "",
+            "study_object": {
+                "title": getattr(obj, "study_object_title", None) or "",
+                "description": getattr(obj, "study_object_description", None) or "",
+            },
         }
         
         # Appeler le service de génération IA

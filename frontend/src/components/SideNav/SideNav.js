@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button } from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
+import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon, MenuBook as MenuBookIcon, Add as AddIcon } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTreeData } from '../../contexts/TreeDataContext';
@@ -515,6 +515,24 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
 
       <Divider sx={{ my: 2 }} />
 
+      {/* Bouton de création de progression juste au-dessus de l'arborescence */}
+      <Box sx={{ px: 2, pb: 1 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          component={RouterLink}
+          to="/progressions/new"
+          fullWidth
+          sx={{ 
+            justifyContent: 'flex-start',
+            fontWeight: 'medium'
+          }}
+        >
+          Nouvelle Progression
+        </Button>
+      </Box>
+
       {/* Contenu principal du drawer - l'arbre de navigation */}
       <Box sx={{ overflow: 'auto', flexGrow: 1, p: 1 }}>
         {isTreeLoading ? (
@@ -582,9 +600,21 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
                   ))
                 
               ) : (
-                <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-                  Aucune progression trouvée.
-                </Typography>
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography sx={{ color: 'text.secondary', mb: 2 }}>
+                    Aucune progression trouvée.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    component={RouterLink}
+                    to="/progressions/new"
+                    size="small"
+                  >
+                    Créer ma première progression
+                  </Button>
+                </Box>
               )}
               {isReordering && (
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>

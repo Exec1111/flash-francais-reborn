@@ -30,6 +30,19 @@ user_prompt_template: |
   Je souhaite une fiche pour un extrait spécifique de l'œuvre plutôt que l'œuvre complète.
   {% endif %}
   
+  {% if prompt_libre and prompt_libre != '' %}
+  Instructions personnalisées :
+  {{ prompt_libre }}
+  {% endif %}
+  
+  {% if study_object and (study_object.title or study_object.description) %}
+  Objet d'étude (contexte pédagogique) :
+  {% if study_object.title %}Titre : {{ study_object.title }}{% endif %}
+  {% if study_object.description %}
+  Description : {{ study_object.description }}
+  {% endif %}
+  {% endif %}
+  
   Tu dois fournir une fiche complète avec toutes les informations structurées selon le schéma JSON fourni.
   
   INSTRUCTIONS IMPORTANTES :
@@ -41,6 +54,7 @@ user_prompt_template: |
   - Le résumé doit être complet mais accessible au niveau cible
   - Les mots-clés doivent faciliter la recherche et le classement
   - Les domaines programme doivent correspondre aux programmes officiels français
+  - Ajoute un champ "justification" (texte court, 1 à 3 phrases) qui explique le lien entre cette proposition et: (1) la recherche (titre/auteur), (2) les instructions personnalisées, (3) l'objet d'étude. Fais référence explicite aux éléments fournis s'ils existent.
 
 parameters:
   - name: titre_ou_auteur
@@ -65,6 +79,16 @@ parameters:
     label: Extrait d'œuvre
     description: Générer une fiche pour un extrait plutôt que l'œuvre complète
     default: false
+  - name: prompt_libre
+    type: str
+    label: Instructions personnalisées
+    description: Consignes spécifiques de l'utilisateur pour guider la génération
+    default: ""
+  - name: study_object
+    type: object
+    label: Objet d'étude
+    description: Contexte pédagogique avec un titre et une description (facultatif)
+    default: {}
 
 constraints:
   - Les informations sur l'auteur (nom, prénom, nationalité) doivent être exactes
@@ -80,5 +104,6 @@ constraints:
   - La difficulté doit être évaluée selon les critères pédagogiques français
   - Tous les champs obligatoires du schéma doivent être remplis
   - Les informations doivent être cohérentes entre elles
+  - La sortie JSON doit inclure la clé optionnelle "justification" décrivant le lien avec les entrées.
 
 response_schema: "oeuvre_generation.schema.json"

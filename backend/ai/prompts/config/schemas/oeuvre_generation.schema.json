@@ -119,6 +119,10 @@
       "minItems": 2,
       "maxItems": 8,
       "description": "Tags personnalisés pour organiser et retrouver l'œuvre"
+    },
+    "justification": {
+      "type": "string",
+      "description": "Explication concise du lien entre la suggestion/génération et les instructions/contexte fournis (titre/auteur, instructions personnalisées, objet d'étude)."
     }
   },
   "required": [
