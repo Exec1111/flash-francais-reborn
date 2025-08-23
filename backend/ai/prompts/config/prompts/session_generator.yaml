@@ -54,12 +54,12 @@ user_prompt_template: |
   {{ instructions_personnalisees }}
   {% endif %}
   
-  Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date,
-  des notes détaillant le contenu et l'organisation de la séance de manière fine, et une durée estimée en minutes.
+  Génère {{ nombre_seances }} séance(s) complète(s) et retourne la réponse au format JSON structuré.
+
   {% if nombre_seances == "auto" %}
   Tu es libre de déterminer le nombre optimal de séances nécessaires pour couvrir les objectifs pédagogiques.
   {% endif %}
-  Si des objectifs sont fournis, associe-les aux séances appropriées.
+  Si des objectifs sont fournis, associe-les aux séances appropriées en utilisant leurs IDs.
 
   IMPORTANT : Utilise les informations détaillées des œuvres pour adapter les séances :
   - Adapte le niveau de langue et les activités selon le niveau recommandé de chaque œuvre
@@ -181,3 +181,5 @@ constraints:
    - Intègre les thèmes et mouvements littéraires dans les discussions et analyses.
    - Utilise les informations biographiques des auteurs pour contextualiser les œuvres.
    - Adapte les activités selon la nationalité et l'époque des auteurs.
+
+response_schema: "session_generator.schema.json"

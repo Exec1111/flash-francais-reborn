@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "sessions": {
+      "type": "array",
+      "description": "Liste des séances générées",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Titre descriptif de la séance"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date de la séance (ISO 8601)"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes détaillant le contenu et l'organisation de la séance"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Durée estimée en minutes"
+          },
+          "sequence_id": {
+            "type": "integer",
+            "description": "ID de la séquence parente"
+          },
+          "objective_ids": {
+            "type": "array",
+            "description": "Liste des IDs des objectifs pédagogiques associés",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "resource_ids": {
+            "type": "array",
+            "description": "Liste des IDs des ressources associées",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": ["title", "date", "sequence_id"]
+      },
+      "minItems": 1,
+      "maxItems": 20
+    }
+  },
+  "required": ["sessions"]
+}
