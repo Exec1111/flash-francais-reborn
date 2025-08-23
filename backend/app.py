@@ -62,6 +62,22 @@ settings = get_settings()
 # --- Ajout du schéma de sécurité Bearer ---
 bearer_scheme = HTTPBearer()
 
+# Gestionnaire de cycle de vie pour remplacer les événements dépréciés
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gestionnaire de cycle de vie de l'application"""
+    # Startup
+    print("Application startup: rebuilding Pydantic models...")
+    rebuild_models_deferred()
+    print("Pydantic models rebuilt successfully.")
+    
+    yield
+    
+    # Shutdown
+    print("Application shutdown...")
+
 # --- Code d'initialisation de FastAPI ---
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -75,6 +91,7 @@ app = FastAPI(
     * Récupération des informations de l'utilisateur connecté
     """,
     version="1.0.0",
+    lifespan=lifespan,
     openapi_tags=[
         {
             "name": "auth",
@@ -408,12 +425,7 @@ def rebuild_models_deferred():
         print("Some forward references may not be resolved.")
         return False
 
-# Gestionnaire d'événement de démarrage pour reconstruire les modèles
-@app.on_event("startup")
-async def startup_event():
-    """Reconstruit les modèles Pydantic au démarrage de l'application"""
-    print("Application startup: rebuilding Pydantic models...")
-    rebuild_models_deferred()
+
 
 if __name__ == "__main__":
     import uvicorn

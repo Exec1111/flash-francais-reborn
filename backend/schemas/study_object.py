@@ -2,12 +2,12 @@ from pydantic import BaseModel
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .resource import ResourceShort # Import du nouveau schéma
-    from .oeuvre import OeuvreReadShort
+    from .resource import ResourceReadShort # Import du schéma correct
+    from .oeuvre import OeuvreReadShort, OeuvreWithResources
 
 # Imports d'exécution pour résoudre les références croisées lors de la validation/rebuild
 try:
-    from .resource import ResourceShort  # type: ignore
+    from .resource import ResourceReadShort  # type: ignore
     from .oeuvre import OeuvreReadShort  # type: ignore
 except Exception:
     # Laisser schemas/__init__.py gérer la reconstruction globale si nécessaire
@@ -63,8 +63,9 @@ class StudyObjectReadShort(BaseModel):
 class StudyObjectWithResources(StudyObjectBase):
     id: int
     # Conserver progression_ids si nécessaire, ou les obtenir d'une autre manière si ce schéma est spécifique
-    # progression_ids: List[int] = [] 
-    resources: List['ResourceShort'] = []
+    # progression_ids: List[int] = []
+    resources: List['ResourceReadShort'] = []
+    oeuvres: List['OeuvreWithResources'] = []  # Utilisation du schéma avec ressources
 
     class Config:
         from_attributes = True

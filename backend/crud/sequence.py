@@ -174,20 +174,22 @@ async def get_sequence_with_objects(db: Session, sequence_id: int) -> Dict[str, 
     """
     Récupère une séquence avec tous ses objets associés (objectifs, ressources, etc.)
     pour générer un bilan de fin de séquence complet.
-    
+
     Args:
         db (Session): La session de base de données
         sequence_id (int): ID de la séquence
-        
+
     Returns:
         Dict[str, Any]: Un dictionnaire contenant toutes les données de la séquence et ses objets associés
     """
-    # Récupérer la séquence avec ses objectifs, objets d'étude et son bilan
+    # Récupérer la séquence avec ses objectifs, objets d'étude et leurs œuvres (avec ressources), et son bilan
+    from models import StudyObject, Oeuvre
     sequence = db.query(Sequence).options(
         selectinload(Sequence.objectives),
-        selectinload(Sequence.study_objects),
+        selectinload(Sequence.study_objects).selectinload(StudyObject.oeuvres).selectinload(Oeuvre.resources),  # Eager load des œuvres et leurs ressources
         joinedload(Sequence.bilan_resource)  # Eager load for the bilan
     ).filter(Sequence.id == sequence_id).first()
+
     
     if not sequence:
         return None

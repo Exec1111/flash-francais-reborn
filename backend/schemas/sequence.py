@@ -5,10 +5,19 @@ from pydantic import BaseModel # Assurez-vous que BaseModel est importé
 
 # Pour les type hints uniquement, afin d'éviter les imports circulaires réels
 if TYPE_CHECKING:
-    from schemas.objective import ObjectiveRead
-    from schemas.session import SessionRead
-    from schemas.study_object import StudyObjectReadShort, StudyObjectWithResources # Déplacé ici
-    from schemas.resource import ResourceRead  # Ajout pour SequenceWithObjects
+    from .objective import ObjectiveRead
+    from .session import SessionRead
+    from .study_object import StudyObjectReadShort, StudyObjectWithResources
+    from .resource import ResourceRead
+
+# Imports d'exécution pour résoudre les références croisées lors de la validation/rebuild
+try:
+    from .objective import ObjectiveRead  # type: ignore
+    from .session import SessionRead  # type: ignore
+    from .study_object import StudyObjectWithResources  # type: ignore
+    from .resource import ResourceRead  # type: ignore
+except Exception:
+    pass
 
 class SequenceBase(BaseModel):
     title: str
@@ -57,12 +66,12 @@ class SequenceRead(BaseModel):
             description=sequence_orm.description,
             order=sequence_orm.order,
             progression_id=sequence_orm.progression_id,
-            objectives=[ObjectiveRead.from_orm(obj) for obj in getattr(sequence_orm, 'objectives', [])],
-            sessions=[SessionRead.from_orm(sess) for sess in getattr(sequence_orm, 'sessions', [])],
+            objectives=getattr(sequence_orm, 'objectives', []),
+            sessions=getattr(sequence_orm, 'sessions', []),
             study_object_ids=[obj.id for obj in getattr(sequence_orm, 'study_objects', [])],
-            study_objects=[StudyObjectWithResources.from_orm(obj) for obj in getattr(sequence_orm, 'study_objects', [])],
+            study_objects=getattr(sequence_orm, 'study_objects', []),
             bilan_resource_id=getattr(sequence_orm, 'bilan_resource_id', None),
-            bilan_resource=ResourceRead.from_orm(sequence_orm.bilan_resource) if getattr(sequence_orm, 'bilan_resource', None) else None,
+            bilan_resource=getattr(sequence_orm, 'bilan_resource', None),
         )
 
 # Les imports directs pour model_rebuild ne sont plus nécessaires si tout est en forward ref

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 ItemType = TypeVar('ItemType')
 
-class PaginatedResponse(Generic[ItemType], BaseModel):
+class PaginatedResponse(BaseModel, Generic[ItemType]):
     total: int
     items: List[ItemType]
 

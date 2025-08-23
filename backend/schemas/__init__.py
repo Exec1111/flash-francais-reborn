@@ -4,24 +4,67 @@ from .user import UserBase, UserCreate, UserResponse, UserLogin, Token, TokenDat
 from .common import ObjectiveIdentifier, SequenceIdentifier, SessionIdentifier, ResourceIdentifier
 from .objective import ObjectiveRead
 from .session import SessionRead, SessionReadSimple
-from .resource import ResourceShort, ResourceRead, ResourceResponse
+from .resource import ResourceShort, ResourceReadShort, ResourceRead, ResourceResponse
 from .study_object import StudyObjectRead, StudyObjectReadShort, StudyObjectWithResources  
-from .oeuvre import OeuvreRead, OeuvreReadShort
+from .oeuvre import OeuvreRead, OeuvreReadShort, OeuvreWithResources
 from .sequence import SequenceRead, SequenceWithObjects
 
 # Reconstruction des modèles après tous les imports pour résoudre les forward references
 def rebuild_models():
     """Reconstruit tous les modèles Pydantic après import pour résoudre les forward references"""
-    try:
-        # Résoudre explicitement les références en avant entre schémas
-        ResourceRead.model_rebuild()
-        ResourceResponse.model_rebuild()
-        StudyObjectRead.model_rebuild()
-        StudyObjectWithResources.model_rebuild()
-        OeuvreRead.model_rebuild()
-        OeuvreReadShort.model_rebuild()
-    except Exception as e:
-        print(f"Erreur lors de la reconstruction des modèles: {e}")
+    
+    # Créer un namespace avec toutes les classes nécessaires pour les références forward
+    types_namespace = {
+        'ObjectiveRead': ObjectiveRead,
+        'ResourceRead': ResourceRead,
+        'ResourceReadShort': ResourceReadShort,
+        'OeuvreReadShort': OeuvreReadShort,
+        'OeuvreWithResources': OeuvreWithResources,
+        'StudyObjectReadShort': StudyObjectReadShort,
+        'StudyObjectWithResources': StudyObjectWithResources,
+        'SessionRead': SessionRead,
+        'SequenceRead': SequenceRead,
+        'SequenceWithObjects': SequenceWithObjects,
+    }
+    
+    models_to_rebuild = [
+        # Modèles de base d'abord
+        ('ObjectiveRead', ObjectiveRead),
+        ('ResourceRead', ResourceRead),
+        ('ResourceReadShort', ResourceReadShort),
+        ('OeuvreReadShort', OeuvreReadShort),
+        
+        # Modèles qui dépendent des modèles de base
+        ('OeuvreWithResources', OeuvreWithResources),
+        ('OeuvreRead', OeuvreRead),
+        ('StudyObjectRead', StudyObjectRead),
+        ('StudyObjectWithResources', StudyObjectWithResources),
+        
+        # Modèles complexes en dernier
+        ('ResourceResponse', ResourceResponse),
+        ('SequenceRead', SequenceRead),
+        ('SequenceWithObjects', SequenceWithObjects),
+    ]
+
+    for model_name, model_class in models_to_rebuild:
+        try:
+            # Utiliser _types_namespace pour fournir les classes nécessaires
+            model_class.model_rebuild(_types_namespace=types_namespace)
+            print(f"✓ Modèle {model_name} reconstruit avec succès")
+        except Exception as e:
+            print(f"⚠ Erreur lors de la reconstruction de {model_name}: {e}")
+            # Continue avec les autres modèles même si un échoue
 
 # Appel de la reconstruction au moment de l'import du package
 rebuild_models()
+
+# Rendre les classes disponibles dans le namespace global du module
+__all__ = [
+    'UserBase', 'UserCreate', 'UserResponse', 'UserLogin', 'Token', 'TokenData', 'UserRole',
+    'ObjectiveIdentifier', 'SequenceIdentifier', 'SessionIdentifier', 'ResourceIdentifier',
+    'ObjectiveRead', 'SessionRead', 'SessionReadSimple',
+    'ResourceShort', 'ResourceReadShort', 'ResourceRead', 'ResourceResponse',
+    'StudyObjectRead', 'StudyObjectReadShort', 'StudyObjectWithResources',
+    'OeuvreRead', 'OeuvreReadShort', 'OeuvreWithResources',
+    'SequenceRead', 'SequenceWithObjects'
+]

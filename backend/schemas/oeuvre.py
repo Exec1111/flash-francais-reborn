@@ -205,16 +205,46 @@ class OeuvreReadShort(BaseModel):
         )
 
 
-class OeuvreReadShort(BaseModel):
-    """Version courte d'une œuvre pour les listes et références"""
-    id: int
-    titre: str
-    auteur_complet: str
-    type: Optional[str] = None
-    genre: Optional[str] = None
+class OeuvreWithResources(OeuvreReadShort):
+    """Schéma pour une œuvre avec ses ressources associées"""
+    resources: Optional[List["ResourceReadShort"]] = []
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_orm(cls, orm_obj):
+        """Méthode personnalisée pour créer l'objet depuis l'ORM"""
+        # Imports locaux pour éviter les imports circulaires
+        try:
+            from schemas.resource import ResourceReadShort  # type: ignore
+        except Exception:
+            ResourceReadShort = None
+
+        # Préparer les relations si elles sont chargées
+        orm_resources = getattr(orm_obj, 'resources', []) or []
+
+        resources = []
+        if orm_resources and 'ResourceReadShort' in globals() or ResourceReadShort:
+            try:
+                resources = [ResourceReadShort.model_validate(r, from_attributes=True) for r in orm_resources]  # type: ignore
+            except Exception:
+                resources = []
+
+        return cls(
+            id=orm_obj.id,
+            titre=orm_obj.titre,
+            auteur_complet=orm_obj.auteur_complet,
+            type=orm_obj.type,
+            genre=orm_obj.genre,
+            date_publication=orm_obj.date_publication,
+            extrait=orm_obj.extrait,
+            is_public=orm_obj.is_public,
+            tags=orm_obj.tags or [],
+            resources=resources
+        )
+
+
 
 
 class OeuvreAIGenerate(BaseModel):
@@ -235,5 +265,6 @@ class OeuvreAIGenerate(BaseModel):
 try:
     OeuvreRead.model_rebuild()
     OeuvreReadShort.model_rebuild()
+    OeuvreWithResources.model_rebuild()
 except Exception:
     pass

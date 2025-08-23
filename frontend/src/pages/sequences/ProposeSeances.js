@@ -47,7 +47,7 @@ const ProposeSeances = () => {
   const [autoNombreSeances, setAutoNombreSeances] = useState(false);
   const [classLevels, setClassLevels] = useState([]);
   const [niveau, setNiveau] = useState("");
-  const [studyObjectsWithResources, setStudyObjectsWithResources] = useState([]); // Stocke les objets d'étude avec leurs ressources
+  const [studyObjectsWithOeuvres, setStudyObjectsWithOeuvres] = useState([]); // Stocke les objets d'étude avec leurs œuvres
   const [instructions, setInstructions] = useState("");
   const [generating, setGenerating] = useState(false);
   const [seances, setSeances] = useState([]);
@@ -81,25 +81,31 @@ const ProposeSeances = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setSequenceTitle(response.data.title);
-        // Nouvelle logique pour extraire les objets d'étude et leurs ressources
+        // Nouvelle logique pour extraire les objets d'étude et leurs œuvres
         if (response.data.study_objects && Array.isArray(response.data.study_objects)) {
           const detailedStudyObjects = response.data.study_objects.map(so => {
             const SOTitle = so.title || `Objet d'étude ${so.id}`; // Titre de secours
-            const SOResources = (so.resources && Array.isArray(so.resources))
-              ? so.resources.map(res => ({ id: res.id, title: res.title || `Ressource ${res.id}` })).filter(res => res.id && res.title) // S'assurer que les ressources sont valides
+            const SOOeuvres = (so.oeuvres && Array.isArray(so.oeuvres))
+              ? so.oeuvres.map(oeuvre => ({
+                  id: oeuvre.id,
+                  titre: oeuvre.titre || `Œuvre ${oeuvre.id}`,
+                  auteur_complet: oeuvre.auteur_complet || 'Auteur non spécifié',
+                  type: oeuvre.type || 'Type non spécifié',
+                  resources: oeuvre.resources || [] // Ajout des ressources
+                })).filter(oeuvre => oeuvre.id && oeuvre.titre) // S'assurer que les œuvres sont valides
               : [];
-            return { id: so.id, title: SOTitle, resources: SOResources };
+            return { id: so.id, title: SOTitle, oeuvres: SOOeuvres };
           });
-          setStudyObjectsWithResources(detailedStudyObjects);
-          console.log("Données des objets d'étude avec ressources (ProposeSeances.js):", detailedStudyObjects); // Ligne de débogage
+          setStudyObjectsWithOeuvres(detailedStudyObjects);
+          console.log("Données des objets d'étude avec œuvres (ProposeSeances.js):", detailedStudyObjects); // Ligne de débogage
         } else {
-          setStudyObjectsWithResources([]); // Initialiser comme tableau vide si aucun objet d'étude
+          setStudyObjectsWithOeuvres([]); // Initialiser comme tableau vide si aucun objet d'étude
           console.log("Aucun objet d'étude trouvé dans la réponse API (ProposeSeances.js)."); // Ligne de débogage
         }
       } catch (err) {
         setError("Erreur lors du chargement des détails de la séquence: " + (err.response?.data?.detail || err.message));
         console.error(err);
-        setStudyObjectsWithResources([]); // Reset en cas d'erreur
+        setStudyObjectsWithOeuvres([]); // Reset en cas d'erreur
       }
     };
     fetchSequenceDetails();
@@ -460,40 +466,57 @@ const ProposeSeances = () => {
 
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                    Objets d'étude et ressources de la séquence :
+                    Objets d'étude et œuvres de la séquence :
                   </Typography>
-                  {studyObjectsWithResources.length > 0 ? (
+                  {studyObjectsWithOeuvres.length > 0 ? (
                     <List dense>
-                      {studyObjectsWithResources.map(so => (
+                      {studyObjectsWithOeuvres.map(so => (
                         <ListItem key={so.id} sx={{ display: 'block', mb: 1, p:1, border: '1px solid lightgray', borderRadius: '4px' }}>
-                          <ListItemText 
+                          <ListItemText
                             primary={so.title}
                             primaryTypographyProps={{ fontWeight: 'medium' }}
                           />
-                          {so.resources && so.resources.length > 0 ? (
+                          {so.oeuvres && so.oeuvres.length > 0 ? (
                             <List dense sx={{ pl: 2 }}>
-                              {so.resources.map(res => (
-                                <ListItem key={res.id} sx={{p:0}}>
-                                  <ListItemIcon sx={{minWidth: '30px'}}>
-                                    <DescriptionIcon fontSize="small" />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={res.title} 
-                                    secondary={`ID: ${res.id}`}
-                                    primaryTypographyProps={{ fontSize: '0.9rem' }}
-                                    secondaryTypographyProps={{ fontSize: '0.8rem' }}
-                                  />
-                                </ListItem>
+                              {so.oeuvres.map(oeuvre => (
+                                <Box key={oeuvre.id}>
+                                  <ListItem sx={{p:0}}>
+                                    <ListItemIcon sx={{minWidth: '30px'}}>
+                                      <DescriptionIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                      primary={oeuvre.titre}
+                                      secondary={`${oeuvre.auteur_complet} - ${oeuvre.type}`}
+                                      primaryTypographyProps={{ fontSize: '0.9rem' }}
+                                      secondaryTypographyProps={{ fontSize: '0.8rem' }}
+                                    />
+                                  </ListItem>
+                                  {oeuvre.resources && oeuvre.resources.length > 0 && (
+                                    <List dense sx={{ pl: 4, pt: 0 }}>
+                                      {oeuvre.resources.map(resource => (
+                                        <ListItem key={resource.id} sx={{p:0}}>
+                                          <ListItemIcon sx={{minWidth: '20px'}}>
+                                            <DescriptionIcon fontSize="small" sx={{ fontSize: '0.7rem' }} />
+                                          </ListItemIcon>
+                                          <ListItemText
+                                            primary={resource.title}
+                                            primaryTypographyProps={{ fontSize: '0.8rem' }}
+                                          />
+                                        </ListItem>
+                                      ))}
+                                    </List>
+                                  )}
+                                </Box>
                               ))}
                             </List>
                           ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{pl:2}}>Aucune ressource associée à cet objet d'étude.</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{pl:2}}>Aucune œuvre associée à cet objet d'étude.</Typography>
                           )}
                         </ListItem>
                       ))}
                     </List>
                   ) : (
-                    <Typography>Aucun objet d'étude avec ressources trouvé pour cette séquence.</Typography>
+                    <Typography>Aucun objet d'étude avec œuvres trouvé pour cette séquence.</Typography>
                   )}
                 </Grid>
 
