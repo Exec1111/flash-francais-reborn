@@ -51,11 +51,15 @@ const NewStudyObject = () => {
         title,
         description
       };
-      await studyObjectService.createStudyObject(data);
+      const created = await studyObjectService.createStudyObject(data);
       setSuccess('Objet d\'étude créé avec succès !');
       // Nettoyer le brouillon après succès
       try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
-      setTimeout(() => navigate('/study-objects'), 1000);
+      if (created && created.id) {
+        navigate(`/study-objects/${created.id}`);
+      } else {
+        navigate('/study-objects');
+      }
     } catch (err) {
       setError(err.detail || err.message || "Erreur inconnue");
     } finally {

@@ -23,8 +23,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
 import { useTreeData } from '../../contexts/TreeDataContext';
-import ObjectiveSelectorModal from './ObjectiveSelectorModal';
-import StudyObjectSelectorModal from './StudyObjectSelectorModal';
 
 /**
  * Composant de formulaire pour la création et l'édition de séquences
@@ -56,13 +54,6 @@ const SequenceForm = ({
     progression_id: progressionId || null,
   });
   
-  // --- Nouveaux États pour la gestion des objectifs --- 
-  const [selectedObjectives, setSelectedObjectives] = useState([]);
-  const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false);
-  // --- Nouveaux États pour la gestion des objets d'étude ---
-  const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
-  const [isStudyObjectModalOpen, setIsStudyObjectModalOpen] = useState(false);
-  // --- Fin des Nouveaux États ---
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -79,11 +70,9 @@ const SequenceForm = ({
     const dirty =
       formData.title !== (initialData.title || '') ||
       formData.description !== (initialData.description || '') ||
-      formData.progression_id !== (initialData.progression_id || progressionId || null) ||
-      JSON.stringify(selectedObjectives.map(o => o.id).sort()) !== JSON.stringify((initialData.objectives || []).map(o => o.id).sort()) ||
-      JSON.stringify(selectedStudyObjects.map(o => o.id).sort()) !== JSON.stringify((initialData.study_objects || []).map(o => o.id).sort());
+      formData.progression_id !== (initialData.progression_id || progressionId || null);
     setIsDirty(dirty);
-  }, [formData, selectedObjectives, selectedStudyObjects, initialData, progressionId]);
+  }, [formData, initialData, progressionId]);
 
   // --- Effets ---
 
@@ -95,14 +84,6 @@ const SequenceForm = ({
         description: initialData.description || '',
         progression_id: initialData.progression_id || progressionId || null,
       });
-      // Initialiser les objectifs sélectionnés si disponibles
-      if (Array.isArray(initialData.objectives)) {
-        setSelectedObjectives(initialData.objectives);
-      }
-      // Initialiser les objets d'étude sélectionnés si disponibles
-      if (Array.isArray(initialData.study_objects)) {
-        setSelectedStudyObjects(initialData.study_objects);
-      }
     } else if (progressionId) {
       setFormData(prev => ({
         ...prev,
@@ -122,18 +103,6 @@ const SequenceForm = ({
             description: data.description || '',
             progression_id: data.progression_id || progressionId || null,
           });
-          // Pré-remplir les objectifs en mode édition (si l'API les renvoie)
-          if (Array.isArray(data.objectives)) {
-            setSelectedObjectives(data.objectives);
-          } else {
-            setSelectedObjectives([]);
-          }
-          // Pré-remplir les objets d'étude en mode édition (si l'API les renvoie)
-          if (Array.isArray(data.study_objects)) {
-            setSelectedStudyObjects(data.study_objects);
-          } else {
-            setSelectedStudyObjects([]);
-          }
         } catch (err) {
           setError("Erreur lors du chargement de la séquence: " + (err.detail || err.message || "Erreur inconnue"));
         }
@@ -166,39 +135,7 @@ const SequenceForm = ({
     }));
   };
 
-  // --- Nouveaux Handlers pour la modale Objectifs --- 
-  const handleOpenObjectiveModal = () => {
-    setIsObjectiveModalOpen(true);
-  };
 
-  const handleObjectiveSelectionSave = (newSelection) => {
-    setSelectedObjectives(newSelection);
-    setIsObjectiveModalOpen(false); // Fermer la modale après sauvegarde
-  };
-
-  // Supprimer un objectif de la sélection locale
-  const handleRemoveObjective = (objectiveToRemove) => {
-     setSelectedObjectives(prev => prev.filter(obj => obj.id !== objectiveToRemove.id));
-  };
-  // --- Fin Nouveaux Handlers ---
-
-  // --- Handlers pour la modale d'objets d'étude ---
-  const handleOpenStudyObjectModal = () => {
-    if (!formData.progression_id) {
-      setError("Impossible de sélectionner des objets d'étude tant que la progression parente n'est pas chargée.");
-      return;
-    }
-    setIsStudyObjectModalOpen(true);
-  };
-
-  const handleStudyObjectSelectionSave = (newSelection) => {
-    setSelectedStudyObjects(newSelection);
-    setIsStudyObjectModalOpen(false);
-  };
-
-  const handleRemoveStudyObject = (studyObjectToRemove) => {
-    setSelectedStudyObjects(prev => prev.filter(obj => obj.id !== studyObjectToRemove.id));
-  };
 
   // Soumission du formulaire
   const handleSubmit = async (e) => {
@@ -224,14 +161,8 @@ const SequenceForm = ({
         progression_id: parseInt(formData.progression_id, 10), // S'assurer que c'est bien un nombre
       };
       
-      // Ajouter les IDs des objectifs sélectionnés
-      const objectiveIds = selectedObjectives.map(obj => obj.id);
-      // Ajouter les IDs des objets d'étude sélectionnés
-      const studyObjectIds = selectedStudyObjects.map(obj => obj.id);
       const finalSequenceData = {
         ...sequenceData,
-        objective_ids: objectiveIds,
-        study_object_ids: studyObjectIds,
       };
 
       console.log('Données soumises:', {
@@ -317,74 +248,7 @@ const SequenceForm = ({
           />
         </Grid>
 
-        {/* --- Section Gestion des Objectifs --- */} 
-        <Grid item xs={12}> 
-          <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}> 
-            Objectifs Associés ({selectedObjectives.length})
-          </Typography>
-          <Button 
-            variant="outlined" 
-            onClick={handleOpenObjectiveModal} 
-            disabled={submitting}
-            sx={{ mb: 1 }}
-          >
-            Gérer les Objectifs
-          </Button>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {selectedObjectives.length > 0 ? (
-              selectedObjectives.map((objective) => (
-                <Chip
-                  key={objective.id}
-                  label={objective.title}
-                  onDelete={() => handleRemoveObjective(objective)}
-                  disabled={submitting}
-                />
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">Aucun objectif associé.</Typography>
-            )}
-          </Box>
-        </Grid>
-        {/* --- Fin Section Gestion des Objectifs --- */}
 
-        {/* --- Section Gestion des Objets d'Étude --- */}
-        <Grid item xs={12}>
-          <CardHeader title="Objets d'étude associés" />
-          <Box sx={{ px: 2, pb: 1 }}>
-            <Typography variant="caption" color="warning.main" sx={{ fontStyle: 'italic' }}>
-              Vous ne pouvez rattacher que des objets d'étude connus par votre progression.
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            onClick={handleOpenStudyObjectModal}
-            disabled={submitting || !formData.progression_id}
-            sx={{ mb: 1 }}
-          >
-            Gérer les objets d'étude
-          </Button>
-          {!formData.progression_id && (
-            <Alert severity="info" sx={{ mt: 1 }}>
-              Progression parente en cours de chargement ou non définie pour cette séquence.<br/>
-              Veuillez vérifier que la séquence est bien rattachée à une progression.
-            </Alert>
-          )}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {selectedStudyObjects.length > 0 ? (
-              selectedStudyObjects.map((obj) => (
-                <Chip
-                  key={obj.id}
-                  label={obj.title}
-                  onDelete={() => handleRemoveStudyObject(obj)}
-                  disabled={submitting}
-                />
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">Aucun objet d'étude associé.</Typography>
-            )}
-          </Box>
-        </Grid>
-        {/* --- Fin Section Gestion des Objets d'Étude --- */}
 
         {/* Le champ progression_id est généralement caché car fourni automatiquement */}
         <input type="hidden" name="progression_id" value={formData.progression_id || ''} />
@@ -462,21 +326,6 @@ const SequenceForm = ({
         </CardContent>
       </Card>
 
-      {/* Instanciation de la modale Objectifs */}
-      <ObjectiveSelectorModal 
-        open={isObjectiveModalOpen}
-        onClose={() => setIsObjectiveModalOpen(false)}
-        initialSelectedObjectives={selectedObjectives}
-        onSave={handleObjectiveSelectionSave}
-      />
-      {/* Instanciation de la modale Objets d'étude */}
-      <StudyObjectSelectorModal
-        open={isStudyObjectModalOpen}
-        onClose={() => setIsStudyObjectModalOpen(false)}
-        initialSelectedStudyObjects={selectedStudyObjects}
-        onSave={handleStudyObjectSelectionSave}
-        progressionId={formData.progression_id}
-      />
     </Box>
   );
 };

@@ -43,6 +43,7 @@ import { useTreeData } from '../../contexts/TreeDataContext';
  * @param {Function} props.onSuccess - Fonction appelée après une soumission réussie
  * @param {string} props.sessionId - ID de la séance (pour l'édition)
  * @param {number} props.sequenceId - ID de la séquence parente (pour la création)
+ * @param {string} props.returnPath - Chemin de retour après création réussie
  */
 const SessionForm = ({
   open,
@@ -52,7 +53,8 @@ const SessionForm = ({
   isEdit = false,
   onSuccess,
   sessionId,
-  sequenceId
+  sequenceId,
+  returnPath
 }) => {
   // --- États ---
   const [formData, setFormData] = useState({
@@ -60,6 +62,7 @@ const SessionForm = ({
     notes: '',
     date: new Date().toISOString().split('T')[0], // Date au format YYYY-MM-DD
     duration: 60, // Durée par défaut en minutes
+    order: 1, // Ordre de la séance dans la séquence
     sequence_id: sequenceId || null,
     resource_ids: [] // Ajout pour les IDs des ressources
   });
@@ -85,6 +88,7 @@ const SessionForm = ({
         notes: initialData.notes || '',
         date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         duration: initialData.duration ? (typeof initialData.duration === 'string' ? parseInt(initialData.duration.replace(/PT(\d+)M/, '$1')) : initialData.duration) : 60,
+        order: initialData.order || 1,
         sequence_id: initialData.sequence_id || sequenceId || null,
         resource_ids: initialData.resources ? initialData.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
         // Note: initialData ne contient pas directement objective_ids mais les objets objectives
@@ -121,6 +125,7 @@ const SessionForm = ({
             // Assurer la conversion correcte de la date
             date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             duration: data.duration ? (typeof data.duration === 'string' ? parseInt(data.duration.replace(/PT(\d+)M/, '$1')) : data.duration) : 60,
+            order: data.order || 1,
             sequence_id: data.sequence_id || null,
             resource_ids: data.resources ? data.resources.map(res => res.id) : [],
             // Note: objective_ids ne sont pas dans formData initialement mais gérés via selectedObjectives
@@ -217,11 +222,13 @@ const SessionForm = ({
     // Préparer les données pour l'API
     // Inclure les IDs des objectifs sélectionnés
     const sessionData = {
-      ...formData,
-      // Assurer que duration est un nombre entier
-      duration: formData.duration ? parseInt(formData.duration, 10) : null,
-      // Explicitement ajouter les IDs des objectifs sélectionnés
-      objective_ids: selectedObjectives.map(obj => obj.id)
+       ...formData,
+       // Assurer que duration est un nombre entier
+       duration: formData.duration ? parseInt(formData.duration, 10) : null,
+       // Assurer que order est un nombre entier
+       order: formData.order ? parseInt(formData.order, 10) : 1,
+       // Explicitement ajouter les IDs des objectifs sélectionnés
+       objective_ids: selectedObjectives.map(obj => obj.id)
     };
 
     // Retirer les IDs si le champ n'est pas pertinent pour l'opération (ex: sequence_id si non défini)
@@ -276,6 +283,9 @@ const SessionForm = ({
         if (isEdit) {
           // Si c'est une modification, rediriger vers la page de détail de la séance modifiée
           navigate(`/sessions/${sessionId}`);
+        } else if (returnPath) {
+          // Si un chemin de retour est fourni (création depuis une autre page), y retourner
+          navigate(returnPath);
         } else if (response && response.data && response.data.id) {
           // Si c'est une création, rediriger vers la page de détail de la nouvelle séance
           navigate(`/sessions/${response.data.id}`);
@@ -284,7 +294,7 @@ const SessionForm = ({
           navigate(`/sequences/${formData.sequence_id}`);
         } else {
           // Dernier recours: rediriger vers la liste des séances
-          navigate('/sessions'); 
+          navigate('/sessions');
         }
       }
 
@@ -346,24 +356,38 @@ const SessionForm = ({
         </Grid>
         
         <Grid item xs={12} sm={6} md={4}>
-          <TextField
-            fullWidth
-            label="Durée (minutes)"
-            name="duration"
-            type="number"
-            value={formData.duration}
-            onChange={handleInputChange}
-            disabled={submitting}
-            InputProps={{ inputProps: { min: 5, step: 5 } }}
-          />
-        </Grid>
+           <TextField
+             fullWidth
+             label="Durée (minutes)"
+             name="duration"
+             type="number"
+             value={formData.duration}
+             onChange={handleInputChange}
+             disabled={submitting}
+             InputProps={{ inputProps: { min: 5, step: 5 } }}
+           />
+         </Grid>
+
+         <Grid item xs={12} sm={6} md={4}>
+           <TextField
+             fullWidth
+             label="Ordre dans la séquence"
+             name="order"
+             type="number"
+             value={formData.order}
+             onChange={handleInputChange}
+             disabled={submitting}
+             InputProps={{ inputProps: { min: 1 } }}
+             helperText="Position de la séance dans la séquence"
+           />
+         </Grid>
 
         {/* Le champ sequence_id est généralement caché car fourni automatiquement */}
         <input type="hidden" name="sequence_id" value={formData.sequence_id || ''} />
 
         {/* Affichage des ressources sélectionnées et bouton d'ajout */}
         <Grid item xs={12} sx={{ mt: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>Ressources Associées</Typography>
+          <Typography variant="subtitle1" gutterBottom>Ressources</Typography>
           <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
             {selectedResources.map((resource) => (
               <Chip

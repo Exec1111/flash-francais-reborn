@@ -7,3 +7,5 @@ Supprimer la notion de durée sur une séance
 mieux gérer le rattachement des objets à des sous objets (sur la page de consultation plutot que la page d'édition).
 Sur la page de consultation de progression, à côté de "Objets d'étude associés", ajoute un bouton permettant d'ouvruir une popup de recherche des objets d'étude pour pouvoir les lier dès cet écran.
 Su la page de modifications de progression enlève la possibilité de modifier les objets d'étude associés. 
+
+Le bouton "Proposer avce l'IA" sur la page de détail de séquence reste grisé

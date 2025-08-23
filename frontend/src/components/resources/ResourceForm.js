@@ -646,7 +646,7 @@ const ResourceForm = ({
                 <TextField
                   {...params}
                   variant="outlined"
-                  label="Objets d'étude associés"
+                  label="Objets d'étude"
                   placeholder="Ajouter un objet d'étude"
                   fullWidth
                 />
@@ -671,7 +671,7 @@ const ResourceForm = ({
               <TextField
                 {...params}
                 variant="outlined"
-                label="Œuvres associées"
+                label="Œuvres"
                 placeholder="Ajouter une œuvre"
                 fullWidth
               />

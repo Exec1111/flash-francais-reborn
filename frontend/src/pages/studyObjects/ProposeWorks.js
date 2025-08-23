@@ -390,7 +390,7 @@ const ProposeWorks = () => {
       <Card>
         <CardContent>
           <Typography variant="h5" component="h1" gutterBottom>
-            Proposer des œuvres associées
+            Proposer des œuvres
           </Typography>
           <Typography variant="subtitle1" gutterBottom>
             Objet d'étude : <strong>{studyObjectTitle || id}</strong>

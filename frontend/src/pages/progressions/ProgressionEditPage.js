@@ -117,18 +117,6 @@ const ProgressionEditPage = () => {
               multiline
               minRows={3}
             />
-            <Autocomplete
-              multiple
-              options={allStudyObjects}
-              getOptionLabel={option => option.title}
-              value={selectedStudyObjects}
-              onChange={(e, newValue) => setSelectedStudyObjects(newValue)}
-              renderInput={params => (
-                <TextField {...params} label="Objets d'étude associés" placeholder="Sélectionner..." margin="normal" />
-              )}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              sx={{ mt: 2 }}
-            />
             {error && (
               <Alert severity="error" sx={{ my: 2 }} onClose={() => setError(null)}>
                 {error}

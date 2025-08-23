@@ -11,7 +11,12 @@ import {
   Box,
   Divider,
   IconButton,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import objectiveService from '../../services/objectiveService';
@@ -26,6 +31,8 @@ const ObjectiveDetailPage = () => {
   const [error, setError] = useState(null);
   const [sequences, setSequences] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchObjective = async () => {
@@ -79,6 +86,22 @@ const ObjectiveDetailPage = () => {
     fetchObjective();
   }, [id]);
 
+  const handleOpenDeleteDialog = () => setDeleteDialogOpen(true);
+  const handleCloseDeleteDialog = () => setDeleteDialogOpen(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await objectiveService.deleteObjective(id);
+      navigate('/objectives');
+    } catch (err) {
+      setError(err.detail || err.message || 'Erreur inconnue');
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   if (loading) {
     return <CircularProgress sx={{ mt: 6, mx: 'auto', display: 'block' }} />;
   }
@@ -106,7 +129,7 @@ const ObjectiveDetailPage = () => {
               >
                 Modifier
               </Button>
-              <IconButton color="error">
+              <IconButton color="error" onClick={handleOpenDeleteDialog}>
                 <DeleteIcon />
               </IconButton>
             </Box>
@@ -117,7 +140,7 @@ const ObjectiveDetailPage = () => {
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6" gutterBottom>
-            Séquences associées
+            Séquences
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             {sequences.map(seq => (
@@ -138,7 +161,7 @@ const ObjectiveDetailPage = () => {
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6" gutterBottom>
-            Séances associées
+            Séances
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             {sessions.map(sess => (
@@ -157,6 +180,21 @@ const ObjectiveDetailPage = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Êtes-vous sûr de vouloir supprimer cet objectif pédagogique ? Cette action est irréversible.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} disabled={deleting}>Annuler</Button>
+          <Button onClick={handleDelete} color="error" disabled={deleting}>
+            {deleting ? <CircularProgress size={20} /> : 'Supprimer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

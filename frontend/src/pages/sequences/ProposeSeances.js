@@ -593,7 +593,7 @@ const ProposeSeances = () => {
                       <Grid item xs={12} md={6}>
                         <Paper variant="outlined" sx={{ p: 2 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle1">Ressources Associées</Typography>
+                            <Typography variant="subtitle1">Ressources</Typography>
                             <Button size="small" onClick={openResourceModal}>Modifier</Button>
                           </Box>
                           {editedSeances[currentEditIndex]?.resource_ids?.length > 0 ? (

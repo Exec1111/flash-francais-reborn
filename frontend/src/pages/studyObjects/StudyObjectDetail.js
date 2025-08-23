@@ -27,7 +27,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import { SmartToy as AiIcon } from '@mui/icons-material';
+import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material';
 import studyObjectService from '../../services/studyObjectService';
 import progressionService from '../../services/progressionService';
 import oeuvreService from '../../services/oeuvreService';
@@ -156,15 +156,6 @@ const StudyObjectDetail = () => {
             </Typography>
             <Box>
               <Button 
-                variant="contained"
-                color="primary"
-                onClick={() => setOeuvreModalOpen(true)}
-                sx={{ mr: 1 }}
-                disabled={loadingAssociations}
-              >
-                Gérer les œuvres
-              </Button>
-              <Button 
                 variant="contained" 
                 startIcon={<EditIcon />} 
                 onClick={handleEdit}
@@ -206,18 +197,25 @@ const StudyObjectDetail = () => {
 
           <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Typography variant="h6" gutterBottom>
-              Œuvres liées
+              Œuvres
             </Typography>
             <Button
               variant="outlined"
-              size="small"
-              startIcon={<AiIcon />}
+              startIcon={<AutoAwesomeIcon />}
               onClick={() => navigate('/oeuvres/wizard', { state: { fromStudyObject: { id: studyObject.id, title: studyObject.title, description: studyObject.description } } })}
             >
-              Assistant œuvre
+              Proposer avec l'IA
             </Button>
+            <Button 
+              variant="outlined"
+                onClick={() => setOeuvreModalOpen(true)}
+                sx={{ mr: 1 }}
+                disabled={loadingAssociations}
+              >
+                Rattacher/détacher
+              </Button>
           </Box>
           {(!oeuvres || oeuvres.length === 0) && (
             <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>

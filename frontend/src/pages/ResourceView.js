@@ -351,7 +351,7 @@ function ResourceView() {
                     </Stack>
                 </Box>
 
-                <Typography variant="h6">Objets d'étude associés</Typography>
+                <Typography variant="h6">Objets d'étude</Typography>
                 {loadingStudyObjects ? (
                     <CircularProgress size={24} />
                 ) : errorStudyObjects ? (

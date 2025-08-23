@@ -3,7 +3,7 @@ import ManageSequenceObjectives from '../../components/sequences/ManageSequenceO
 import { Box } from '@mui/material';
 
 /**
- * Page pour gérer les objectifs pédagogiques associés à une séquence
+ * Page pour gérer les objectifs pédagogiques d'une séquence
  */
 const ManageSequenceObjectivesPage = () => {
   return (

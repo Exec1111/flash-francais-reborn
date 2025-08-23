@@ -151,14 +151,14 @@ const ObjectiveForm = ({
         onSuccess(result);
       }
 
-      // Redirection vers la liste des objectifs
+      // Redirection vers la page de détail de l'objectif créé
       setTimeout(() => {
         if (isDialog) {
           // Si c'est un dialogue, le fermer d'abord
           if (onClose) onClose();
         }
-        // Rediriger vers la liste des objectifs après un court délai pour permettre de voir le message de succès
-        navigate('/objectives');
+        // Rediriger vers la page de détail de l'objectif nouvellement créé
+        navigate(`/objectives/${result.id}`);
       }, 1500);
     } catch (err) {
       setError("Erreur: " + (err.detail || err.message || "Une erreur est survenue"));

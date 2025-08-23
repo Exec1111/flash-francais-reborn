@@ -22,7 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import _debounce from 'lodash/debounce';
 import studyObjectService from '../../services/studyObjectService';
 
-const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects = [], onSave }) => {
+const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects = [], onSave, progressionId = null }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [studyObjectSearchResults, setStudyObjectSearchResults] = useState([]);
     const [selectedStudyObjects, setSelectedStudyObjects] = useState([]);
@@ -45,19 +45,41 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
         setLoading(true);
         setError('');
         try {
-            const skip = (page - 1) * objectsPerPage;
-            const params = {
-                limit: objectsPerPage,
-                skip: skip
-            };
-            if (term) {
-                params.search = term;
+            let response;
+
+            if (progressionId) {
+                // If progressionId is provided, fetch only study objects for that progression
+                response = await studyObjectService.getStudyObjectsByProgression(progressionId);
+                // Convert to the same format as the regular search
+                const filteredItems = term
+                    ? response.filter(item =>
+                        item.title.toLowerCase().includes(term.toLowerCase()) ||
+                        (item.description && item.description.toLowerCase().includes(term.toLowerCase()))
+                    )
+                    : response;
+
+                const startIndex = (page - 1) * objectsPerPage;
+                const endIndex = startIndex + objectsPerPage;
+                const paginatedItems = filteredItems.slice(startIndex, endIndex);
+
+                setStudyObjectSearchResults(paginatedItems);
+                setTotalPages(Math.ceil(filteredItems.length / objectsPerPage) || 0);
+            } else {
+                // Original behavior for when no progressionId is provided
+                const skip = (page - 1) * objectsPerPage;
+                const params = {
+                    limit: objectsPerPage,
+                    skip: skip
+                };
+                if (term) {
+                    params.search = term;
+                }
+
+                response = await studyObjectService.getStudyObjects(params.skip, params.limit, params.search);
+
+                setStudyObjectSearchResults(response.items || []);
+                setTotalPages(Math.ceil(response.total / objectsPerPage) || 0);
             }
-            
-            const response = await studyObjectService.getStudyObjects(params.skip, params.limit, params.search);
-            
-            setStudyObjectSearchResults(response.items || []);
-            setTotalPages(Math.ceil(response.total / objectsPerPage) || 0);
 
         } catch (err) {
             setError('Impossible de charger les objets d\'étude. Veuillez réessayer.');
@@ -66,7 +88,7 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
         } finally {
             setLoading(false);
         }
-    }, [objectsPerPage]);
+    }, [objectsPerPage, progressionId]);
 
     const debouncedFetchStudyObjects = useMemo(
         () => _debounce((term, page) => fetchStudyObjects(term, page), 300),
@@ -80,7 +102,7 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
         return () => {
             debouncedFetchStudyObjects.cancel();
         };
-    }, [searchTerm, open, debouncedFetchStudyObjects, currentPage]);
+    }, [searchTerm, open, debouncedFetchStudyObjects, currentPage, progressionId]);
 
     const handleSearchChange = (event) => {
         const newSearchTerm = event.target.value;
@@ -113,7 +135,7 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>
-                Associer des objets d'étude
+                {progressionId ? "Associer des objets d'étude (de la progression)" : "Associer des objets d'étude"}
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
@@ -149,8 +171,14 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
                                         dense
                                         button
                                         onClick={handleToggle(studyObject)}
+                                        sx={{
+                                            maxHeight: '5em',
+                                            minHeight: '4em',
+                                            alignItems: 'flex-start',
+                                            py: 1
+                                        }}
                                     >
-                                        <ListItemIcon>
+                                        <ListItemIcon sx={{ mt: 0.5 }}>
                                             <Checkbox
                                                 edge="start"
                                                 checked={isSelected}
@@ -160,10 +188,24 @@ const StudyObjectSelectorModal = ({ open, onClose, initialSelectedStudyObjects =
                                             />
                                         </ListItemIcon>
                                         <ListItemText
-                                            id={labelId}
-                                            primary={studyObject.title}
-                                            secondary={studyObject.description || 'Aucune description'}
-                                        />
+                                                id={labelId}
+                                                primary={studyObject.title}
+                                                secondary={
+                                                    <Box
+                                                        sx={{
+                                                            maxHeight: '3em',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            lineHeight: 1.5
+                                                        }}
+                                                    >
+                                                        {studyObject.description || 'Aucune description'}
+                                                    </Box>
+                                                }
+                                            />
                                     </ListItem>
                                 );
                             })

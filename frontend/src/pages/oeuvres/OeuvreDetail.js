@@ -127,7 +127,7 @@ const OeuvreDetail = () => {
             color="primary"
             onClick={() => setResourceModalOpen(true)}
           >
-            Gérer les ressources
+            Ressources
           </Button>
           {!oeuvre.is_public && (
             <>
