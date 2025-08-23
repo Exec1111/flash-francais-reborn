@@ -14,7 +14,25 @@ user_prompt_template: |
   {% if study_objects %}
   Objets d'étude de la séquence :
   {% for study_object in study_objects %}
-  - {{ study_object.title }} (ID: {{ study_object.id }})
+  - {{ study_object.title }} (ID: {{ study_object.id }}){% if study_object.description %}, Description: {{ study_object.description }}{% endif %}
+    {% if study_object.oeuvres and study_object.oeuvres|length > 0 %}
+    Œuvres associées :
+    {% for oeuvre in study_object.oeuvres %}
+    - {{ oeuvre.titre }} par {{ oeuvre.auteur_complet }}
+      {% if oeuvre.auteur and oeuvre.auteur.nationalite %} ({{ oeuvre.auteur.nationalite }}){% endif %}
+      {% if oeuvre.type %}(Type: {{ oeuvre.type }}){% endif %}
+      {% if oeuvre.genre %}, Genre: {{ oeuvre.genre }}{% endif %}
+      {% if oeuvre.date_publication %}, Année: {{ oeuvre.date_publication }}{% endif %}
+      {% if oeuvre.extrait %} (Extrait){% else %} (Œuvre complète){% endif %}
+      {% if oeuvre.mouvement_litteraire %}, Mouvement: {{ oeuvre.mouvement_litteraire }}{% endif %}
+      {% if oeuvre.langue_originale %}, Langue: {{ oeuvre.langue_originale }}{% endif %}
+      {% if oeuvre.contenu and oeuvre.contenu.resume %}, Résumé: {{ oeuvre.contenu.resume }}{% endif %}
+      {% if oeuvre.contenu and oeuvre.contenu.themes %}, Thèmes: {{ oeuvre.contenu.themes|join(', ') }}{% endif %}
+      {% if oeuvre.pedagogie and oeuvre.pedagogie.niveau_mini_recommande %}, Niveau recommandé: {{ oeuvre.pedagogie.niveau_mini_recommande }}{% endif %}
+      {% if oeuvre.pedagogie and oeuvre.pedagogie.domaines_programme %}, Domaines: {{ oeuvre.pedagogie.domaines_programme|join(', ') }}{% endif %}
+      {% if oeuvre.tags %}, Tags: {{ oeuvre.tags|join(', ') }}{% endif %}
+    {% endfor %}
+    {% endif %}
   {% endfor %}
   {% endif %}
   {% if objectifs %}
@@ -36,12 +54,22 @@ user_prompt_template: |
   {{ instructions_personnalisees }}
   {% endif %}
   
-  Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date, 
+  Génère {{ nombre_seances }} séance(s) complète(s) avec un titre descriptif, une date,
   des notes détaillant le contenu et l'organisation de la séance de manière fine, et une durée estimée en minutes.
   {% if nombre_seances == "auto" %}
   Tu es libre de déterminer le nombre optimal de séances nécessaires pour couvrir les objectifs pédagogiques.
   {% endif %}
   Si des objectifs sont fournis, associe-les aux séances appropriées.
+
+  IMPORTANT : Utilise les informations détaillées des œuvres pour adapter les séances :
+  - Adapte le niveau de langue et les activités selon le niveau recommandé de chaque œuvre
+  - Intègre les thèmes et motifs littéraires dans les discussions et analyses
+  - Propose des activités spécifiques au genre littéraire (poésie, roman, théâtre, etc.)
+  - Considère le mouvement littéraire pour contextualiser historiquement l'œuvre
+  - Adapte les supports et exercices selon que l'œuvre est complète ou un extrait
+  - Utilise les domaines du programme pour lier aux objectifs officiels
+  - Intègre le contexte biographique et culturel de l'auteur dans les présentations
+  - Adapte les activités selon la nationalité et l'époque de l'auteur
 
 parameters:
   - name: nombre_seances
@@ -90,17 +118,66 @@ parameters:
     schema:
       type: object
       properties:
-        id: 
+        id:
           type: integer
-        title: 
+        title:
           type: string
+        description:
+          type: string
+        oeuvres:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              titre:
+                type: string
+              auteur_complet:
+                type: string
+              auteur:
+                type: object
+                properties:
+                  nom:
+                    type: string
+                  prenom:
+                    type: string
+                  nationalite:
+                    type: string
+              type:
+                type: string
+              genre:
+                type: string
+              date_publication:
+                type: integer
+              extrait:
+                type: boolean
+              mouvement_litteraire:
+                type: string
+              langue_originale:
+                type: string
+              contenu:
+                type: object
+              pedagogie:
+                type: object
+              tags:
+                type: array
+                items:
+                  type: string
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération des séances
     default: ""
 
 constraints:
-  - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants et la description fournie.
-  - Les séances doivent inclure des activités variées et complémentaires.
-  - L'ensemble des séances doit couvrir tous les objectifs pédagogiques.
-  - Les dates des séances doivent être réalistes et progressives.
+   - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants et la description fournie.
+   - Les séances doivent inclure des activités variées et complémentaires.
+   - L'ensemble des séances doit couvrir tous les objectifs pédagogiques.
+   - Les dates des séances doivent être réalistes et progressives.
+   - Adapte les activités selon les caractéristiques spécifiques de chaque œuvre (genre, époque, difficulté).
+   - Pour les extraits : concentre-toi sur l'analyse de passages ciblés et la compréhension contextuelle.
+   - Pour les œuvres complètes : propose une progression dans l'étude de l'œuvre sur plusieurs séances.
+   - Respecte les niveaux recommandés des œuvres et les domaines du programme associés.
+   - Intègre les thèmes et mouvements littéraires dans les discussions et analyses.
+   - Utilise les informations biographiques des auteurs pour contextualiser les œuvres.
+   - Adapte les activités selon la nationalité et l'époque des auteurs.

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 # Imports d'exécution pour résoudre les références croisées lors de la validation/rebuild
 try:
     from .resource import ResourceReadShort  # type: ignore
-    from .oeuvre import OeuvreReadShort  # type: ignore
+    from .oeuvre import OeuvreReadShort, OeuvreWithAuthor  # type: ignore
 except Exception:
     # Laisser schemas/__init__.py gérer la reconstruction globale si nécessaire
     pass
@@ -76,10 +76,20 @@ class StudyObjectWithResources(StudyObjectBase):
     # mais pour l'instant, on suppose que la relation `resources` sur l'objet ORM `orm_obj`
     # sera une liste d'objets ORM Resource, et Pydantic les convertira en ResourceShort.
 
+
+class StudyObjectWithOeuvres(StudyObjectBase):
+    """Schéma pour un objet d'étude avec ses œuvres associées (pour les prompts IA)"""
+    id: int
+    oeuvres: List['OeuvreWithAuthor'] = []
+
+    class Config:
+        from_attributes = True
+
 # Reconstruction locale des modèles pour résoudre les forward refs si nécessaire
 try:
     StudyObjectRead.model_rebuild()
     StudyObjectWithResources.model_rebuild()
+    StudyObjectWithOeuvres.model_rebuild()
 except Exception:
     pass
 

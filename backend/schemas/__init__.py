@@ -5,8 +5,8 @@ from .common import ObjectiveIdentifier, SequenceIdentifier, SessionIdentifier, 
 from .objective import ObjectiveRead
 from .session import SessionRead, SessionReadSimple
 from .resource import ResourceShort, ResourceReadShort, ResourceRead, ResourceResponse
-from .study_object import StudyObjectRead, StudyObjectReadShort, StudyObjectWithResources  
-from .oeuvre import OeuvreRead, OeuvreReadShort, OeuvreWithResources
+from .study_object import StudyObjectRead, StudyObjectReadShort, StudyObjectWithResources, StudyObjectWithOeuvres
+from .oeuvre import OeuvreRead, OeuvreReadShort, OeuvreWithResources, OeuvreWithAuthor
 from .sequence import SequenceRead, SequenceWithObjects
 
 # Reconstruction des modèles après tous les imports pour résoudre les forward references
@@ -20,8 +20,10 @@ def rebuild_models():
         'ResourceReadShort': ResourceReadShort,
         'OeuvreReadShort': OeuvreReadShort,
         'OeuvreWithResources': OeuvreWithResources,
+        'OeuvreWithAuthor': OeuvreWithAuthor,
         'StudyObjectReadShort': StudyObjectReadShort,
         'StudyObjectWithResources': StudyObjectWithResources,
+        'StudyObjectWithOeuvres': StudyObjectWithOeuvres,
         'SessionRead': SessionRead,
         'SequenceRead': SequenceRead,
         'SequenceWithObjects': SequenceWithObjects,
@@ -36,9 +38,11 @@ def rebuild_models():
         
         # Modèles qui dépendent des modèles de base
         ('OeuvreWithResources', OeuvreWithResources),
+        ('OeuvreWithAuthor', OeuvreWithAuthor),
         ('OeuvreRead', OeuvreRead),
         ('StudyObjectRead', StudyObjectRead),
         ('StudyObjectWithResources', StudyObjectWithResources),
+        ('StudyObjectWithOeuvres', StudyObjectWithOeuvres),
         
         # Modèles complexes en dernier
         ('ResourceResponse', ResourceResponse),
@@ -50,9 +54,9 @@ def rebuild_models():
         try:
             # Utiliser _types_namespace pour fournir les classes nécessaires
             model_class.model_rebuild(_types_namespace=types_namespace)
-            print(f"✓ Modèle {model_name} reconstruit avec succès")
+            print(f"[OK] Modele {model_name} reconstruit avec succes")
         except Exception as e:
-            print(f"⚠ Erreur lors de la reconstruction de {model_name}: {e}")
+            print(f"[WARNING] Erreur lors de la reconstruction de {model_name}: {e}")
             # Continue avec les autres modèles même si un échoue
 
 # Appel de la reconstruction au moment de l'import du package
@@ -64,7 +68,7 @@ __all__ = [
     'ObjectiveIdentifier', 'SequenceIdentifier', 'SessionIdentifier', 'ResourceIdentifier',
     'ObjectiveRead', 'SessionRead', 'SessionReadSimple',
     'ResourceShort', 'ResourceReadShort', 'ResourceRead', 'ResourceResponse',
-    'StudyObjectRead', 'StudyObjectReadShort', 'StudyObjectWithResources',
-    'OeuvreRead', 'OeuvreReadShort', 'OeuvreWithResources',
+    'StudyObjectRead', 'StudyObjectReadShort', 'StudyObjectWithResources', 'StudyObjectWithOeuvres',
+    'OeuvreRead', 'OeuvreReadShort', 'OeuvreWithResources', 'OeuvreWithAuthor',
     'SequenceRead', 'SequenceWithObjects'
 ]

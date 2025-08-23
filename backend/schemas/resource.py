@@ -194,6 +194,7 @@ class ResourceReadShort(BaseModel):
     description: Optional[str] = None
     type_id: int
     sub_type_id: Optional[int] = None
+    type: Optional[ResourceTypeSchema] = None  # Ajout du type pour l'affichage
 
     class Config:
         from_attributes = True

@@ -334,7 +334,7 @@ def remove_resource_from_oeuvre(db: Session, oeuvre_id: int, resource_id: int, u
 def get_oeuvres_by_resource(db: Session, resource_id: int, user: Optional[User] = None) -> List[Oeuvre]:
     """Récupère les œuvres associées à une ressource"""
     query = db.query(Oeuvre).join(Oeuvre.resources).filter(Resource.id == resource_id)
-    
+
     if user:
         query = query.filter(
             or_(
@@ -344,5 +344,24 @@ def get_oeuvres_by_resource(db: Session, resource_id: int, user: Optional[User] 
         )
     else:
         query = query.filter(Oeuvre.cree_par == "SYSTEME")
-    
+
+    return query.all()
+
+
+def get_oeuvres_by_study_object(db: Session, study_object_id: int, user: Optional[User] = None) -> List[Oeuvre]:
+    """Récupère les œuvres associées à un objet d'étude"""
+    from models import StudyObject  # Import local pour éviter les imports circulaires
+
+    query = db.query(Oeuvre).join(Oeuvre.study_objects).filter(StudyObject.id == study_object_id)
+
+    if user:
+        query = query.filter(
+            or_(
+                Oeuvre.cree_par == "SYSTEME",
+                Oeuvre.user_id == user.id
+            )
+        )
+    else:
+        query = query.filter(Oeuvre.cree_par == "SYSTEME")
+
     return query.all()

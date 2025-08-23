@@ -247,6 +247,29 @@ class OeuvreWithResources(OeuvreReadShort):
 
 
 
+class OeuvreWithAuthor(BaseModel):
+    """Schéma pour une œuvre avec informations d'auteur formatées pour les prompts IA"""
+    id: int
+    titre: str
+    auteur_complet: str
+    type: str
+    genre: Optional[str] = None
+    date_publication: Optional[int] = None
+    mouvement_litteraire: Optional[str] = None
+    langue_originale: Optional[str] = None
+    resume: Optional[str] = None
+    themes: Optional[str] = None
+    mots_cles: Optional[str] = None
+    niveau_recommande: Optional[str] = None
+    domaines_programme: Optional[str] = None
+    difficulte: Optional[str] = None
+    extrait: Optional[str] = None
+    tags: Optional[List[str]] = []
+
+    class Config:
+        from_attributes = True
+
+
 class OeuvreAIGenerate(BaseModel):
     """Schéma pour la génération d'œuvre par IA"""
     titre: Optional[str] = Field(None, description="Titre de l'œuvre à rechercher (optionnel)")

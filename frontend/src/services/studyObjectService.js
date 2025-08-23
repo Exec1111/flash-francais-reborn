@@ -79,6 +79,35 @@ const studyObjectService = {
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors de la récupération des objets d'étude pour la progression" };
     }
+  },
+
+  // Gestion des œuvres
+  attachOeuvre: async (objId, oeuvreId) => {
+    try {
+      const response = await api.post(`${STUDY_OBJECTS_ENDPOINT}/${objId}/oeuvres/${oeuvreId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: 'Erreur lors de l\'association à l\'œuvre' };
+    }
+  },
+
+  detachOeuvre: async (objId, oeuvreId) => {
+    try {
+      const response = await api.delete(`${STUDY_OBJECTS_ENDPOINT}/${objId}/oeuvres/${oeuvreId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: 'Erreur lors de la dissociation de l\'œuvre' };
+    }
+  },
+
+  // Nouvel endpoint : objets d'étude par œuvre
+  getStudyObjectsByOeuvre: async (oeuvreId) => {
+    try {
+      const response = await api.get(`/study_objects/by_oeuvre/${oeuvreId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la récupération des objets d'étude pour l'œuvre" };
+    }
   }
 };
 

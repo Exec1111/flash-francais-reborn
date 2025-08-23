@@ -34,6 +34,8 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DescriptionIcon from '@mui/icons-material/Description'; // Ajout pour l'icône des ressources listées
+import WarningIcon from '@mui/icons-material/Warning';
+import ErrorIcon from '@mui/icons-material/Error';
 import axios from "axios";
 import ObjectiveSelectorModal from '../../components/sequences/ObjectiveSelectorModal';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
@@ -478,36 +480,88 @@ const ProposeSeances = () => {
                           />
                           {so.oeuvres && so.oeuvres.length > 0 ? (
                             <List dense sx={{ pl: 2 }}>
-                              {so.oeuvres.map(oeuvre => (
-                                <Box key={oeuvre.id}>
-                                  <ListItem sx={{p:0}}>
-                                    <ListItemIcon sx={{minWidth: '30px'}}>
-                                      <DescriptionIcon fontSize="small" />
-                                    </ListItemIcon>
-                                    <ListItemText
-                                      primary={oeuvre.titre}
-                                      secondary={`${oeuvre.auteur_complet} - ${oeuvre.type}`}
-                                      primaryTypographyProps={{ fontSize: '0.9rem' }}
-                                      secondaryTypographyProps={{ fontSize: '0.8rem' }}
-                                    />
-                                  </ListItem>
-                                  {oeuvre.resources && oeuvre.resources.length > 0 && (
-                                    <List dense sx={{ pl: 4, pt: 0 }}>
-                                      {oeuvre.resources.map(resource => (
-                                        <ListItem key={resource.id} sx={{p:0}}>
-                                          <ListItemIcon sx={{minWidth: '20px'}}>
-                                            <DescriptionIcon fontSize="small" sx={{ fontSize: '0.7rem' }} />
-                                          </ListItemIcon>
-                                          <ListItemText
-                                            primary={resource.title}
-                                            primaryTypographyProps={{ fontSize: '0.8rem' }}
-                                          />
-                                        </ListItem>
-                                      ))}
-                                    </List>
-                                  )}
-                                </Box>
-                              ))}
+                              {so.oeuvres.map(oeuvre => {
+                                // Vérifier si l'œuvre a des ressources de type "OEUVRE"
+                                const oeuvreResources = oeuvre.resources?.filter(resource => resource.type?.key === 'OEUVRE') || [];
+                                const hasOeuvreResources = oeuvreResources.length > 0;
+
+                                return (
+                                  <Box key={oeuvre.id}>
+                                    <ListItem sx={{
+                                      p: 0,
+                                      borderRadius: 1,
+                                      mb: 1,
+                                      border: hasOeuvreResources ? 'none' : '2px solid',
+                                      borderColor: hasOeuvreResources ? 'transparent' : 'warning.main',
+                                      bgcolor: hasOeuvreResources ? 'transparent' : 'rgba(255, 152, 0, 0.08)'
+                                    }}>
+                                      <ListItemIcon sx={{minWidth: '30px'}}>
+                                        {hasOeuvreResources ? (
+                                          <CheckCircleIcon fontSize="small" color="success" />
+                                        ) : (
+                                          <ErrorIcon fontSize="small" color="warning" />
+                                        )}
+                                      </ListItemIcon>
+                                      <ListItemText
+                                        primary={
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            {oeuvre.titre}
+                                            {!hasOeuvreResources && (
+                                              <WarningIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
+                                            )}
+                                          </Box>
+                                        }
+                                        secondary={`${oeuvre.auteur_complet} - ${oeuvre.type}`}
+                                        primaryTypographyProps={{
+                                          fontSize: '0.9rem',
+                                          color: hasOeuvreResources ? 'inherit' : 'text.primary',
+                                          fontWeight: hasOeuvreResources ? 'normal' : 'medium'
+                                        }}
+                                        secondaryTypographyProps={{
+                                          fontSize: '0.8rem',
+                                          color: hasOeuvreResources ? 'inherit' : 'text.secondary'
+                                        }}
+                                      />
+                                    </ListItem>
+
+                                    {hasOeuvreResources ? (
+                                      <List dense sx={{ pl: 4, pt: 0 }}>
+                                        {oeuvreResources.map(resource => (
+                                          <ListItem key={resource.id} sx={{p:0}}>
+                                            <ListItemIcon sx={{minWidth: '20px'}}>
+                                              <DescriptionIcon fontSize="small" sx={{ fontSize: '0.7rem' }} />
+                                            </ListItemIcon>
+                                            <ListItemText
+                                              primary={resource.title}
+                                              primaryTypographyProps={{ fontSize: '0.8rem' }}
+                                            />
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    ) : (
+                                      <Box sx={{
+                                        pl: 4,
+                                        py: 2,
+                                        mx: 1,
+                                        mb: 1,
+                                        borderRadius: 1,
+                                        bgcolor: 'rgba(255, 152, 0, 0.12)',
+                                        border: '1px solid',
+                                        borderColor: 'warning.main'
+                                      }}>
+                                        <Typography variant="body2" sx={{
+                                          fontSize: '0.8rem',
+                                          fontWeight: 'medium',
+                                          color: 'warning.dark',
+                                          textAlign: 'center'
+                                        }}>
+                                          ⚠️ Aucune ressource de type "OEUVRE" liée à cette œuvre
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                );
+                              })}
                             </List>
                           ) : (
                             <Typography variant="body2" color="text.secondary" sx={{pl:2}}>Aucune œuvre associée à cet objet d'étude.</Typography>

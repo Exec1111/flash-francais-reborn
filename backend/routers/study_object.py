@@ -89,3 +89,26 @@ def detach_res(obj_id: int, rid: int, db: Session = Depends(get_db), current_use
 @router.get("/by_progression/{progression_id}", response_model=List[StudyObjectRead])
 def get_by_progression(progression_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return crud.get_study_objects_by_progression(db, progression_id)
+
+@router.post("/{obj_id}/oeuvres/{oeuvre_id}", response_model=StudyObjectRead)
+def attach_oeuvre(obj_id: int, oeuvre_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Attache une œuvre à un objet d'étude"""
+    try:
+        db_obj = crud.attach_oeuvre(db, obj_id, oeuvre_id, current_user)
+        return StudyObjectRead.from_orm_with_resources(db_obj)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/{obj_id}/oeuvres/{oeuvre_id}", response_model=StudyObjectRead)
+def detach_oeuvre(obj_id: int, oeuvre_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Détache une œuvre d'un objet d'étude"""
+    try:
+        db_obj = crud.detach_oeuvre(db, obj_id, oeuvre_id, current_user)
+        return StudyObjectRead.from_orm_with_resources(db_obj)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/by_oeuvre/{oeuvre_id}", response_model=List[StudyObjectRead])
+def get_by_oeuvre(oeuvre_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Récupère tous les objets d'étude associés à une œuvre donnée"""
+    return crud.get_study_objects_by_oeuvre(db, oeuvre_id, current_user)

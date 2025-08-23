@@ -523,36 +523,56 @@ async def generate_sessions(
                 "description": getattr(objective, "description", None) or ""
             })
         
-        # Récupérer les objets d'étude de la séquence et les logger pour débogage
-        sequence_study_objects_titles = []
-        if sequence and sequence.study_objects:
-            # S'assurer que les titres sont correctement extraits
-            sequence_study_objects_titles = []
-            for so in sequence.study_objects:
-                if hasattr(so, 'title') and so.title:
-                    if callable(so.title):
-                        # Si c'est une méthode, l'appeler
-                        title = so.title()
-                    else:
-                        # Sinon, c'est une propriété
-                        title = so.title
-                    sequence_study_objects_titles.append(title)
-            
-            # Log pour déboguer
-            study_objects_info = [f"Titre: {title}" for title in sequence_study_objects_titles]
-            logger.info(f"sequence.study_objects = {study_objects_info}")
-            
-        # Pas de ressources directement accessibles depuis la séquence
-        existing_resources_summary = []
-            
-        # Génération des séances
-        # Créer des objets d'étude avec la structure attendue par le template
+        # Récupérer les objets d'étude de la séquence avec leurs œuvres associées
+        from crud.sequence import get_sequence_with_objects
+        sequence_with_objects = await get_sequence_with_objects(db, request.sequence_id)
+
         formatted_study_objects = []
-        for i, title in enumerate(sequence_study_objects_titles):
-            formatted_study_objects.append({
-                "id": "",  # Pas d'ID disponible ici
-                "title": title
-            })
+        if sequence_with_objects and sequence_with_objects.get('study_objects'):
+            for study_obj in sequence_with_objects['study_objects']:
+                # Formater l'objet d'étude avec ses œuvres
+                study_object_data = {
+                    "id": study_obj.id,
+                    "title": study_obj.title,
+                    "description": getattr(study_obj, 'description', None),
+                    "oeuvres": []
+                }
+
+                # Ajouter les œuvres associées si elles existent
+                if hasattr(study_obj, 'oeuvres') and study_obj.oeuvres:
+                    for oeuvre in study_obj.oeuvres:
+                        # Récupérer les informations d'auteur de manière robuste
+                        auteur_info = {}
+                        if hasattr(oeuvre, 'auteur') and oeuvre.auteur:
+                            if isinstance(oeuvre.auteur, dict):
+                                auteur_info = oeuvre.auteur
+                            elif hasattr(oeuvre.auteur, '__dict__'):
+                                auteur_info = oeuvre.auteur.__dict__
+                            else:
+                                auteur_info = {"nom": str(oeuvre.auteur)}
+
+                        oeuvre_data = {
+                            "id": oeuvre.id,
+                            "titre": oeuvre.titre,
+                            "auteur_complet": getattr(oeuvre, 'auteur_complet', ''),
+                            "auteur": auteur_info,
+                            "type": getattr(oeuvre, 'type', ''),
+                            "genre": getattr(oeuvre, 'genre', None),
+                            "date_publication": getattr(oeuvre, 'date_publication', None),
+                            "extrait": getattr(oeuvre, 'extrait', False),
+                            "mouvement_litteraire": getattr(oeuvre, 'mouvement_litteraire', None),
+                            "langue_originale": getattr(oeuvre, 'langue_originale', None),
+                            "contenu": getattr(oeuvre, 'contenu', None),
+                            "pedagogie": getattr(oeuvre, 'pedagogie', None),
+                            "tags": getattr(oeuvre, 'tags', [])
+                        }
+                        study_object_data["oeuvres"].append(oeuvre_data)
+
+                formatted_study_objects.append(study_object_data)
+
+            # Log pour déboguer
+            study_objects_info = [f"ID: {so['id']}, Titre: {so['title']}, Œuvres: {len(so['oeuvres'])}" for so in formatted_study_objects]
+            logger.info(f"Objets d'étude formatés avec œuvres : {study_objects_info}")
             
         logger.info(f"Objets d'étude formatés pour le prompt : {formatted_study_objects}")
             

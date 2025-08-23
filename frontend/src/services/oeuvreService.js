@@ -121,6 +121,11 @@ const oeuvreService = {
     const response = await api.get(`/oeuvres/by-resource/${resourceId}`);
     return response.data;
   },
+
+  getOeuvresByStudyObject: async (studyObjectId) => {
+    const response = await api.get(`/oeuvres/by-study-object/${studyObjectId}`);
+    return response.data;
+  },
 };
 
 export default oeuvreService;

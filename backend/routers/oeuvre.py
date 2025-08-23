@@ -260,3 +260,13 @@ async def get_oeuvres_by_resource(
     """Récupère les œuvres associées à une ressource"""
     oeuvres = crud.get_oeuvres_by_resource(db, resource_id, current_user)
     return [OeuvreReadShort.from_orm(oeuvre) for oeuvre in oeuvres]
+
+@router.get("/by-study-object/{study_object_id}")
+async def get_oeuvres_by_study_object(
+    study_object_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Récupère les œuvres associées à un objet d'étude"""
+    oeuvres = crud.get_oeuvres_by_study_object(db, study_object_id, current_user)
+    return [OeuvreReadShort.from_orm(oeuvre) for oeuvre in oeuvres]
