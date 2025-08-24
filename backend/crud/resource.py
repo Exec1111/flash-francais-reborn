@@ -179,17 +179,17 @@ def get_resources_by_session_and_type(db: Session, session_id: int, type_key: st
 
 def get_available_supports_for_session(db: Session, session_id: int) -> List["Resource"]:
     """
-    Retourne la liste des ressources de type 'OEUVRE' disponibles pour une session.
+    Retourne la liste des œuvres disponibles pour une session comme supports pédagogiques.
     Cela inclut:
-    - Les ressources de type 'OEUVRE' liées directement à la session
-    - Les ressources de type 'OEUVRE' liées à tous les objets d'étude de la séquence parente de la session
+    - Les œuvres liées directement à la session via la table session_oeuvre
+    - Les œuvres liées aux objets d'étude de la séquence parente de la session
 
     Args:
         db: Session SQLAlchemy
         session_id: ID de la session ciblée
 
     Returns:
-        Liste d'objets Resource
+        Liste d'objets Resource (ressources de type OEUVRE associées aux œuvres)
     """
     try:
         logger.info(f"[CRUD] get_available_supports_for_session(session_id={session_id})")
@@ -205,36 +205,47 @@ def get_available_supports_for_session(db: Session, session_id: int) -> List["Re
             logger.warning(f"[CRUD] Session {session_id} sans sequence_id")
             return []
 
-        # 2) Construire les 2 ensembles d'IDs de ressources
-        from models.association_tables import session_resource_association, sequence_study_object, study_object_resource
+        # 2) Récupérer les œuvres associées à la session via la table session_oeuvre
+        from models.association_tables import session_oeuvre_association
 
-        # a) Ressources liées directement à la session
-        direct_resource_ids = [row[0] for row in db.query(session_resource_association.c.resource_id)
-                               .filter(session_resource_association.c.session_id == session_id)
-                               .all()]
+        session_oeuvre_ids = [row[0] for row in db.query(session_oeuvre_association.c.oeuvre_id)
+                             .filter(session_oeuvre_association.c.session_id == session_id)
+                             .all()]
 
-        # b) Ressources liées via les objets d'étude de la séquence parente
+        logger.info(f"[CRUD] Œuvres directement associées à la session {session_id}: {session_oeuvre_ids}")
+
+        # 3) Récupérer les œuvres associées aux objets d'étude de la séquence parente
+        from models.association_tables import sequence_study_object, study_object_oeuvre
+
         study_object_ids = [row[0] for row in db.query(sequence_study_object.c.study_object_id)
-                            .filter(sequence_study_object.c.sequence_id == sequence_id)
-                            .all()]
+                           .filter(sequence_study_object.c.sequence_id == sequence_id)
+                           .all()]
 
-        via_so_resource_ids: List[int] = []
+        via_so_oeuvre_ids: List[int] = []
         if study_object_ids:
-            via_so_resource_ids = [row[0] for row in db.query(study_object_resource.c.resource_id)
-                                   .filter(study_object_resource.c.study_object_id.in_(study_object_ids))
-                                   .all()]
+            via_so_oeuvre_ids = [row[0] for row in db.query(study_object_oeuvre.c.oeuvre_id)
+                                .filter(study_object_oeuvre.c.study_object_id.in_(study_object_ids))
+                                .all()]
 
-        # Union des IDs (éliminer les doublons)
-        all_resource_ids = list(set(direct_resource_ids) | set(via_so_resource_ids))
-        if not all_resource_ids:
-            logger.info(f"[CRUD] Aucun ID de ressource trouvé pour session {session_id} (direct + via SO)")
+        logger.info(f"[CRUD] Œuvres via objets d'étude de la séquence {sequence_id}: {via_so_oeuvre_ids}")
+
+        # 4) Union des IDs d'œuvres (éliminer les doublons)
+        all_oeuvre_ids = list(set(session_oeuvre_ids) | set(via_so_oeuvre_ids))
+        if not all_oeuvre_ids:
+            logger.info(f"[CRUD] Aucune œuvre trouvée pour session {session_id} (direct + via SO)")
             return []
 
-        # 3) Récupérer les ressources filtrées par type 'OEUVRE'
+        logger.info(f"[CRUD] Total œuvres disponibles pour session {session_id}: {all_oeuvre_ids}")
+
+        # 5) Récupérer les ressources de type 'OEUVRE' associées à ces œuvres
         resources = (
             db.query(Resource)
             .join(ResourceType, Resource.type_id == ResourceType.id)
-            .filter(Resource.id.in_(all_resource_ids), ResourceType.key == "OEUVRE")
+            .join(Resource.oeuvres)  # Jointure avec la table d'association resource_oeuvre
+            .filter(
+                ResourceType.key == "OEUVRE",
+                Oeuvre.id.in_(all_oeuvre_ids)
+            )
             .options(
                 joinedload(Resource.type),
                 joinedload(Resource.sub_type),
@@ -246,8 +257,9 @@ def get_available_supports_for_session(db: Session, session_id: int) -> List["Re
             .all()
         )
 
-        logger.info(f"[CRUD] Supports disponibles (OEUVRE) pour session {session_id}: {len(resources)} trouvés")
+        logger.info(f"[CRUD] Supports disponibles (ressources OEUVRE) pour session {session_id}: {len(resources)} trouvés")
         return resources
+
     except Exception as e:
         logger.error(f"[CRUD] Erreur get_available_supports_for_session(session_id={session_id}): {e}", exc_info=True)
         raise
