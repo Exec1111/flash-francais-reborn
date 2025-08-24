@@ -34,11 +34,21 @@ user_prompt_template: |
   Chaque champ lexical ne doit pas dépasser {{ max_mots_par_champ }} mots.
   {% endif %}
   
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour identifier et analyser les champs lexicaux. Les mots doivent être extraits ou inspirés du contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
-  
+
   Génère les données au format requis pour l'exercice : un objet avec une propriété "champs" qui contient un tableau d'objets, chacun ayant un "name" (nom du champ lexical) et "words" (la liste des mots appartenant au champ lexical).
   
   {% if constraints %}
@@ -85,6 +95,10 @@ parameters:
     type: int
     description: Nombre maximum de mots par champ lexical (optionnel)
     default: 10
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice de champs lexicaux (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)

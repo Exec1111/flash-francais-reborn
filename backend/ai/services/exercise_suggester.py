@@ -31,7 +31,9 @@ async def suggest_exercise_types_for_session(
     nombre_ressources: int = None,
     type_resources: List[Dict[str, str]] = None,
     support: Dict[str, Any] = None,
-    user_id: int = None
+    user_id: int = None,
+    available_resource_ids: List[int] = None,
+    resource_ids: List[int] = None
 ) -> Dict[str, Any]:
     """
     Suggère des types d'exercices pertinents pour une session donnée en utilisant l'IA.
@@ -126,11 +128,28 @@ async def suggest_exercise_types_for_session(
         "existing_resources_summary": existing_resources_summary,
         "available_exercise_types": available_exercise_types
     }
+
+    # Ajouter les IDs des ressources disponibles si fournis
+    if available_resource_ids:
+        input_vars_for_suggester["available_resource_ids"] = available_resource_ids
+        logger.info(f"IDs des ressources disponibles ajoutés: {available_resource_ids}")
+
+    # Ajouter les IDs des ressources pour les exercices individuels si fournis
+    if resource_ids:
+        input_vars_for_suggester["resource_ids"] = resource_ids
+        logger.info(f"resource_ids ajouté pour les exercices: {resource_ids}")
+    elif available_resource_ids:
+        # Fallback: utiliser available_resource_ids si resource_ids n'est pas fourni
+        input_vars_for_suggester["resource_ids"] = available_resource_ids
+        logger.info(f"resource_ids (fallback) ajouté pour les exercices: {available_resource_ids}")
     
     # Ajout d'informations sur le support sélectionné, si disponible
     if support:
         input_vars_for_suggester["support"] = {
+            "id": support.get("id", ""),
             "title": support.get("title", ""),
+            "type": support.get("type", ""),
+            "subtype": support.get("subtype", ""),
             "content": support.get("content", "")
         }
         logger.info(f"DEBUG SUPPORT: Support '{support.get('title')}' ajouté à la génération")
@@ -197,7 +216,8 @@ async def suggest_exercise_types_for_session(
         suggestions = await generate_ai_resource_content(
             type_key="meta",
             subtype_key="exercise_suggester",
-            input_variables=input_vars_for_suggester
+            input_variables=input_vars_for_suggester,
+            user_id=user_id
         )
         duration_ms = int((time.perf_counter() - start_time) * 1000)    
 

@@ -25,6 +25,16 @@ user_prompt_template: |
   Niveau des élèves : {{ niveau }}.
   Nombre de questions de compréhension à fournir : {{ nombre_questions }}.
 
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour l'analyse de texte. Le contenu peut servir de complément au texte principal ou comme source d'exemples.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
@@ -49,6 +59,10 @@ parameters:
     type: int
     default: 6
     description: Nombre total approximatif de paires question/réponse à répartir sur les 6 sections (min. 1 par section)
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme complément pour l'analyse de texte (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     default: ""

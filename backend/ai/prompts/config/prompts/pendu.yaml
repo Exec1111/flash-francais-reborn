@@ -12,11 +12,21 @@ user_prompt_template: |
   Thème : {{ theme }}
   Niveau de l'apprenant : {{ niveau }}
   Nombre de mots à générer : {{ nombre_mots | default(3) }}
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer les mots du jeu du Pendu. Les mots doivent être extraits ou inspirés du contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
-  
+
   {% if constraints %}
   ## Contraintes techniques à respecter obligatoirement :
   {% for constraint in constraints %}
@@ -38,6 +48,10 @@ parameters:
     default: 3
     minimum: 1
     maximum: 5
+  - name: resource_ids
+    type: list
+    description: "Liste d'identifiants de ressources à utiliser comme base pour le jeu du Pendu (optionnel)."
+    default: []
   - name: instructions_personnalisees
     type: str
     description: "Instructions spécifiques pour la génération du jeu (optionnel)."

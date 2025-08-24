@@ -124,14 +124,148 @@ async def generate_resource(
         logger.info(f"Sous-type: {request.subtype_key}")
         logger.info(f"Utilisateur ID: {current_user.id}, Email: {current_user.email}")
         
+        # Traiter les paramètres si ils sont dans une liste (format de la suggestion d'exercices)
+        if isinstance(request.variables, dict) and 'parameters' in request.variables:
+            logger.info(f"[Gen] Paramètres détectés dans une liste: {request.variables['parameters']}")
+            # Extraire les paramètres de la liste et les mettre directement dans variables
+            parameters_list = request.variables.pop('parameters', [])
+            for param in parameters_list:
+                if isinstance(param, dict) and 'name' in param and 'value' in param:
+                    param_name = param['name']
+                    param_value = param['value']
+                    request.variables[param_name] = param_value
+                    logger.info(f"[Gen] Paramètre extrait: {param_name} = {param_value}")
+
+        # Traiter resource_ids pour créer resource_content
+        if isinstance(request.variables, dict) and 'resource_ids' in request.variables:
+            resource_ids = request.variables.get('resource_ids', [])
+            if resource_ids:
+                logger.info(f"[Gen] resource_ids détectés: {resource_ids}")
+                resource_content = []
+                for resource_id in resource_ids:
+                    try:
+                        # 1) Essayer d'abord comme ressource
+                        resource = get_resource(db, resource_id=int(resource_id))
+                        if resource:
+                            # Récupérer le contenu de la ressource
+                            upload_dir = settings.UPLOADS_BASE_DIR
+                            content = ""
+
+                            # 1a) Essayer d'abord le Markdown Docling
+                            md_rel = getattr(resource, 'docling_md_path', None)
+                            if md_rel:
+                                md_abs = os.path.join(upload_dir, md_rel)
+                                if os.path.exists(md_abs):
+                                    with open(md_abs, 'r', encoding='utf-8') as f:
+                                        content = f.read()
+                                    logger.info(f"[Gen] Contenu récupéré depuis Docling MD: {md_abs}")
+
+                            # 1b) Fallback: fichier original
+                            if not content:
+                                file_rel = resource.file_path
+                                if file_rel:
+                                    file_abs = os.path.join(upload_dir, file_rel)
+                                    if os.path.exists(file_abs):
+                                        try:
+                                            with open(file_abs, 'r', encoding='utf-8') as f:
+                                                content = f.read()
+                                            logger.info(f"[Gen] Contenu récupéré depuis fichier original: {file_abs}")
+                                        except Exception as e:
+                                            logger.warning(f"[Gen] Impossible de lire le fichier original: {e}")
+
+                            if content:
+                                resource_content.append({
+                                    'id': resource.id,
+                                    'title': resource.title,
+                                    'content': content
+                                })
+                                logger.info(f"[Gen] Ressource {resource.id} ajoutée à resource_content")
+                            else:
+                                logger.warning(f"[Gen] Aucun contenu trouvé pour la ressource {resource.id}")
+                        else:
+                            # 2) Si pas trouvé comme ressource, essayer comme œuvre
+                            from crud.oeuvre import get_oeuvre
+                            oeuvre = get_oeuvre(db, oeuvre_id=int(resource_id))
+                            if oeuvre:
+                                # Récupérer le contenu de l'œuvre depuis les champs JSON
+                                content_parts = []
+
+                                # 2a) Résumé
+                                if oeuvre.contenu and isinstance(oeuvre.contenu, dict):
+                                    resume = oeuvre.contenu.get('resume', '')
+                                    if resume:
+                                        content_parts.append(f"Résumé: {resume}")
+
+                                # 2b) Thèmes
+                                if oeuvre.contenu and isinstance(oeuvre.contenu, dict):
+                                    themes = oeuvre.contenu.get('themes', [])
+                                    if themes:
+                                        if isinstance(themes, list):
+                                            content_parts.append(f"Thèmes: {', '.join(themes)}")
+                                        else:
+                                            content_parts.append(f"Thèmes: {themes}")
+
+                                # 2c) Informations pédagogiques
+                                if oeuvre.pedagogie and isinstance(oeuvre.pedagogie, dict):
+                                    niveau = oeuvre.pedagogie.get('niveau_mini_recommande', '')
+                                    if niveau:
+                                        content_parts.append(f"Niveau recommandé: {niveau}")
+
+                                    domaines = oeuvre.pedagogie.get('domaines_programme', [])
+                                    if domaines:
+                                        if isinstance(domaines, list):
+                                            content_parts.append(f"Domaines: {', '.join(domaines)}")
+                                        else:
+                                            content_parts.append(f"Domaines: {domaines}")
+
+                                # 2d) Métadonnées de l'œuvre
+                                metadata_parts = []
+                                if oeuvre.type:
+                                    metadata_parts.append(f"Type: {oeuvre.type}")
+                                if oeuvre.genre:
+                                    metadata_parts.append(f"Genre: {oeuvre.genre}")
+                                if oeuvre.mouvement_litteraire:
+                                    metadata_parts.append(f"Mouvement: {oeuvre.mouvement_litteraire}")
+                                if oeuvre.date_publication:
+                                    metadata_parts.append(f"Année: {oeuvre.date_publication}")
+                                if oeuvre.langue_originale:
+                                    metadata_parts.append(f"Langue: {oeuvre.langue_originale}")
+
+                                if metadata_parts:
+                                    content_parts.insert(0, f"Métadonnées: {', '.join(metadata_parts)}")
+
+                                # 2e) Auteur
+                                if oeuvre.auteur_complet:
+                                    content_parts.insert(0, f"Auteur: {oeuvre.auteur_complet}")
+
+                                # Combiner tout le contenu
+                                content = "\n\n".join(content_parts)
+
+                                if content:
+                                    resource_content.append({
+                                        'id': oeuvre.id,
+                                        'title': oeuvre.titre,
+                                        'content': content
+                                    })
+                                    logger.info(f"[Gen] Œuvre {oeuvre.id} ajoutée à resource_content")
+                                else:
+                                    logger.warning(f"[Gen] Aucun contenu trouvé pour l'œuvre {oeuvre.id}")
+                            else:
+                                logger.warning(f"[Gen] ID {resource_id} non trouvé ni comme ressource ni comme œuvre")
+                    except Exception as e:
+                        logger.error(f"[Gen] Erreur lors de la récupération du contenu pour l'ID {resource_id}: {e}")
+
+                if resource_content:
+                    request.variables['resource_content'] = resource_content
+                    logger.info(f"[Gen] resource_content créé avec {len(resource_content)} éléments")
+                else:
+                    logger.warning("[Gen] Aucun contenu trouvé pour les IDs fournis")
+
         # Analyser spécifiquement les variables
-        if 'parameters' in request.variables:
-            logger.info(f"Paramètres: {request.variables['parameters']}")
-            
         if isinstance(request.variables, dict):
             for key, value in request.variables.items():
                 logger.info(f"Variable '{key}': {value}")
-        
+
         # Injecter le contenu du support si nécessaire (priorité au Markdown Docling)
         try:
             support_id = None
@@ -723,7 +857,7 @@ async def suggest_exercises_for_session_endpoint(
         if config_params.type_resources:
             config_dict['type_resources'] = config_params.type_resources
             logger.info(f"Types de ressources spécifiés: {config_params.type_resources}")
-        
+
         # Récupération du support si spécifié
         if config_params.support_id:
             logger.info(f"DEBUG: Support ID reçu: {config_params.support_id}")
@@ -829,10 +963,12 @@ async def suggest_exercises_for_session_endpoint(
                     )
                 except Exception as e:
                     logger.error(f"Erreur lors de la lecture du support: {e}")
-                
+
                 config_dict['support'] = {
                     'id': support_resource.id,
                     'title': support_resource.title,
+                    'type': support_resource.type.key if support_resource.type else '',
+                    'subtype': support_resource.sub_type.key if support_resource.sub_type else '',
                     'content': content
                 }
                 logger.info(f"DEBUG: Support ajouté à config_dict avec titre: {support_resource.title}")
@@ -840,6 +976,30 @@ async def suggest_exercises_for_session_endpoint(
                 logger.info(f"Support utilisé pour la génération: {support_resource.title} (ID: {support_resource.id})")
         else:
             logger.info("DEBUG: Aucun support_id reçu dans config_params")
+
+    # 5b. Récupération des ressources disponibles pour les exercices
+    # Récupérer les vraies ressources (pas les œuvres) pour les passer au prompt
+    available_resource_ids = []
+    try:
+        from crud.resource import get_resources_by_session_and_type
+        # Récupérer toutes les ressources de la session (tous types)
+        session_resources = get_resources_by_session_and_type(db, session_id=session_id, type_key=None, subtype_key=None)
+        if session_resources:
+            available_resource_ids = [r.id for r in session_resources]
+            logger.info(f"Ressources disponibles pour les exercices: {available_resource_ids}")
+        else:
+            logger.info("Aucune ressource disponible dans la session pour les exercices")
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des ressources disponibles: {e}")
+
+    if available_resource_ids:
+        config_dict['available_resource_ids'] = available_resource_ids
+        logger.info(f"DEBUG: available_resource_ids ajouté à config_dict: {available_resource_ids}")
+
+        # Pour les suggestions d'exercices, nous devons aussi passer resource_ids
+        # car c'est ce que les templates d'exercices attendent
+        config_dict['resource_ids'] = available_resource_ids
+        logger.info(f"DEBUG: resource_ids ajouté à config_dict pour les exercices: {available_resource_ids}")
 
 
     logger.info(f"Configuration pour suggestion d'exercices: {config_dict}")

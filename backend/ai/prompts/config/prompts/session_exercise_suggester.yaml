@@ -41,10 +41,13 @@ user_prompt_template: |
   {% if support %}
   IMPORTANT - SUPPORT DE TRAVAIL :
   Cette session utilise comme support pédagogique l'œuvre suivante :
+  - ID : {{ support.id }}
   - Titre : {{ support.title }}
+  - Type : {{ support.type }}
+  - Sous-type : {{ support.subtype }}
   - Contenu :
   """{{ support.content }}"""
-  
+
   Tu DOIS t'appuyer sur ce support pour proposer des exercices pertinents. Tes suggestions doivent faire référence spécifique aux éléments de ce texte et utiliser son contenu comme base pour les exercices.
   {% endif %}
 
@@ -123,6 +126,8 @@ user_prompt_template: |
           -   Déduite du contexte de la session (titre, description, objectifs, objets d'étude).
           -   Si une valeur par défaut est pertinente et fournie, utilise-la. Si le paramètre n'est pas `required` et qu'aucune valeur pertinente ne peut être déterminée, tu peux l'omettre ou utiliser `null`.
   4.  Si une ressource propose le paramètre 'instructions_personnalisees' profite toujours de ce champ pour donner du contexte à la génération de la ressource pour qu'elle soit adaptée le plus possible à la session d'apprentissage.
+  5.  Si le paramètre 'available_resource_ids' est fourni, utilise UNIQUEMENT ces IDs pour le paramètre 'resource_ids' des exercices. N'invente jamais d'IDs de ressources.
+  6.  Si tu utilises le paramètre 'resource_ids', assure-toi que les IDs proviennent UNIQUEMENT de la liste 'available_resource_ids' fournie. Ne jamais utiliser d'autres IDs.
 
 parameters:
   - {name: session_title, type: string, description: "Titre de la session d'apprentissage."}
@@ -156,6 +161,14 @@ parameters:
   - name: support
     type: dict
     description: "Support pédagogique associé à la session (optionnel)"
+    default: null
+  - name: available_resource_ids
+    type: array
+    description: "Liste des IDs de ressources disponibles pour les exercices (optionnel)"
+    default: null
+  - name: resource_ids
+    type: array
+    description: "Liste des IDs de ressources à utiliser pour l'exercice (optionnel)"
     default: null
 
 constraints:

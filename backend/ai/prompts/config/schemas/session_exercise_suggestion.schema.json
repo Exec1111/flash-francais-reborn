@@ -6,7 +6,7 @@
   "properties": {
     "suggestions": {
       "type": "array",
-      "description": "Liste des types d'exercices suggérés.",
+      "description": "Liste des types d'exercices suggérés. 'IA devrait retourner entre 2 et 3 suggestions par défaut, ou le nombre spécifié dans le prompt.",
       "items": {
         "type": "object",
         "properties": {
@@ -69,8 +69,7 @@
         ],
         "additionalProperties": false
       },
-      "minItems": 1,
-      "description": "L'IA devrait retourner entre 2 et 3 suggestions par défaut, ou le nombre spécifié dans le prompt."
+      "minItems": 1
     }
   },
   "required": [

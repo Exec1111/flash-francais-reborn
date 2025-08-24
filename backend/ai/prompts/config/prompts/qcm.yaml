@@ -11,12 +11,22 @@ user_prompt_template: |
   Niveau de l'apprenant : {{ niveau }}.
   Nombre de questions : {{ nombre_questions }}.
   Nombre d'options par question : {{ nb_options }}.
-  
+
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer le QCM. Les questions doivent être basées sur le contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
-  
+
   Contraintes :
   {% for c in constraints %}
   - {{ c }}
@@ -38,6 +48,10 @@ parameters:
     type: int
     default: 4
     description: Nombre de choix par question
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour le QCM (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)

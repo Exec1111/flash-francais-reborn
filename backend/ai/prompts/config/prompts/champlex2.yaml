@@ -26,6 +26,16 @@ user_prompt_template: |
   Environ la moitié des mots doivent ne pas appartenir au champ lexical.
   {% endif %}
 
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour identifier et analyser les champs lexicaux. Les mots doivent être extraits ou inspirés du contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
@@ -63,6 +73,10 @@ parameters:
     type: int
     description: Pourcentage de mots hors champ lexical (optionnel)
     default: 50
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice de champs lexicaux (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)

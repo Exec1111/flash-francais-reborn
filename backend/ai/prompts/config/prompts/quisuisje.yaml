@@ -14,18 +14,28 @@ user_prompt_template: |
   {% elif theme %}
   Le thème des mots, personnages ou concept est : {{ theme }}
   {% endif %}
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer les mots et indices du jeu. Les mots doivent être extraits ou inspirés du contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
-  
+
   {% if constraints %}
   ## Contraintes techniques à respecter obligatoirement :
   {% for constraint in constraints %}
   - {{ constraint }}
   {% endfor %}
   {% endif %}
-  
+
   Pour chaque mot, fournit autant d'indice que demandé. Les indices doivent permettre de deviner le mot, le personnage ou le concept.
 
 parameters:
@@ -45,6 +55,10 @@ parameters:
     type: int
     description: Nombre d'indices à fournir pour chaque mot
     default: 5
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour le jeu Qui suis-je (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)

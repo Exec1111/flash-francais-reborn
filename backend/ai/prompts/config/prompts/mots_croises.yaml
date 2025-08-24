@@ -12,10 +12,20 @@ user_prompt_template: |
   Niveau de l'apprenant : {{ niveau }}.
   Nombre de mots cible : environ {{ nombre_mots_cible }}.
 
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer les mots-croisés. Les mots et définitions doivent être basés sur le contenu fourni.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
-  {% endif %} 
+  {% endif %}
 
   {% if constraints %}
   ## Contraintes techniques à respecter scrupuleusement
@@ -38,6 +48,10 @@ parameters:
     type: int
     description: Nombre approximatif de mots à inclure dans la grille
     default: 8 # Un 10x10 peut raisonnablement contenir entre 7 et 12 mots
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour les mots-croisés (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions spécifiques pour la génération du mot-croisé (optionnel)

@@ -18,11 +18,21 @@ user_prompt_template: |
   La leçon doit être structurée avec un titre, un sous-titre, plusieurs sections de contenu principal, une section d'exemples (si applicable), une section de points d'attention (si applicable), et une section de résumé "À retenir".
   N'oublie pas d'identifier les mots-clés importants.
   
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer la leçon. Le contenu doit être basé sur les informations fournies.
+  {% endif %}
+
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
-  
+
   {% if constraints %}
   ## Contraintes techniques à respecter obligatoirement :
   {% for constraint in constraints %}
@@ -41,6 +51,10 @@ parameters:
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour la leçon (optionnel)
+    default: []
   - name: instructions_personnalisees
     type: str
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
