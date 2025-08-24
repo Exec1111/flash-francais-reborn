@@ -39,6 +39,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import axios from "axios";
 import ObjectiveSelectorModal from '../../components/sequences/ObjectiveSelectorModal';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
+import OeuvreSelectorModal from '../../components/oeuvres/OeuvreSelectorModal';
 
 const ProposeSeances = () => {
   const { id } = useParams(); // ID de la séquence
@@ -65,6 +66,7 @@ const ProposeSeances = () => {
   // États pour les modales
   const [objectiveModalOpen, setObjectiveModalOpen] = useState(false);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
+  const [oeuvreModalOpen, setOeuvreModalOpen] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
   
@@ -265,6 +267,7 @@ const ProposeSeances = () => {
           description: s.notes || s.description || "Description non définie",
           objective_ids: s.objective_ids || [],
           resource_ids: s.resource_ids || [],
+          oeuvre_ids: s.oeuvre_ids || [],
         }));
         setSeances(generatedSeances);
         setEditedSeances(JSON.parse(JSON.stringify(generatedSeances))); // Copie profonde pour l'édition
@@ -300,6 +303,13 @@ const ProposeSeances = () => {
     updatedSeances[currentEditIndex].resource_ids = resources.map(res => res.id);
     setEditedSeances(updatedSeances);
   };
+
+  // Gestion des modifications d'œuvres
+  const handleOeuvresChange = (oeuvres) => {
+    const updatedSeances = [...editedSeances];
+    updatedSeances[currentEditIndex].oeuvre_ids = oeuvres.map(oeuvre => oeuvre.id);
+    setEditedSeances(updatedSeances);
+  };
   
   // Ouvrir la modale de sélection d'objectifs
   const openObjectiveModal = () => {
@@ -333,6 +343,22 @@ const ProposeSeances = () => {
     closeResourceModal();
   };
 
+  // Ouvrir la modale de sélection d'œuvres
+  const openOeuvreModal = () => {
+    setOeuvreModalOpen(true);
+  };
+
+  // Fermer la modale de sélection d'œuvres
+  const closeOeuvreModal = () => {
+    setOeuvreModalOpen(false);
+  };
+
+  // Sauvegarder les œuvres sélectionnées depuis la modale
+  const handleSaveOeuvres = (selectedOeuvres) => {
+    handleOeuvresChange(selectedOeuvres);
+    closeOeuvreModal();
+  };
+
   const handlePrevResult = () => {
     setCurrentEditIndex(prev => Math.max(0, prev - 1));
   };
@@ -356,6 +382,7 @@ const ProposeSeances = () => {
           order: i, // Ce champ sera probablement ignoré par le backend car non dans SessionCreate
           objective_ids: seance.objective_ids || [],
           resource_ids: seance.resource_ids || [],
+          oeuvre_ids: seance.oeuvre_ids || [], // ← AJOUTÉ : œuvres associées à la séance
           // 'notes' et 'duration' sont optionnels dans SessionBase
         };
 
@@ -680,7 +707,7 @@ const ProposeSeances = () => {
                                 console.log(`--- Débogage pour Ressource ID: ${resId} ---`);
                                 console.log("Contenu de resourcesMap:", JSON.parse(JSON.stringify(resourcesMap)));
                                 // Pour un débogage plus approfondi si nécessaire, décommentez la ligne suivante :
-                                // console.log("Contenu de allResources:", JSON.parse(JSON.stringify(allResources))); 
+                                // console.log("Contenu de allResources:", JSON.parse(JSON.stringify(allResources)));
                                 const resourceFromMap = resourcesMap[resId];
                                 const resourceFromFind = allResources.find(r => r.id === resId);
                                 console.log(`Recherche pour ID ${resId}:`);
@@ -704,6 +731,50 @@ const ProposeSeances = () => {
                           ) : (
                             <Typography variant="body2" color="text.secondary">
                               Aucune ressource sélectionnée
+                            </Typography>
+                          )}
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="subtitle1">Œuvres</Typography>
+                            <Button size="small" onClick={openOeuvreModal}>Modifier</Button>
+                          </Box>
+                          {editedSeances[currentEditIndex]?.oeuvre_ids?.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {editedSeances[currentEditIndex].oeuvre_ids.map((oeuvreId) => {
+                                // Trouver l'œuvre dans studyObjectsWithOeuvres
+                                let oeuvreLabel = `Œuvre ${oeuvreId}`;
+                                for (const studyObject of studyObjectsWithOeuvres) {
+                                  const oeuvre = studyObject.oeuvres?.find(o => o.id === oeuvreId);
+                                  if (oeuvre) {
+                                    oeuvreLabel = `${oeuvre.titre} - ${oeuvre.auteur_complet}`;
+                                    break;
+                                  }
+                                }
+
+                                return (
+                                  <Chip
+                                    key={oeuvreId}
+                                    label={oeuvreLabel}
+                                    size="small"
+                                    sx={{
+                                      mr: 1,
+                                      mb: 1,
+                                      backgroundColor: 'secondary.light',
+                                      color: 'secondary.contrastText',
+                                      '&:hover': {
+                                        backgroundColor: 'secondary.main',
+                                      }
+                                    }}
+                                  />
+                                );
+                              })}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Aucune œuvre sélectionnée
                             </Typography>
                           )}
                         </Paper>
@@ -788,6 +859,22 @@ const ProposeSeances = () => {
           return res || { id: id, title: resourcesMap[id] || `Ressource ${id}` };
         }) || []}
         onSave={handleSaveResources}
+      />
+
+      <OeuvreSelectorModal
+        open={oeuvreModalOpen}
+        onClose={closeOeuvreModal}
+        initialSelectedOeuvres={editedSeances[currentEditIndex]?.oeuvre_ids?.map(id => {
+          // Trouver l'œuvre dans studyObjectsWithOeuvres
+          for (const studyObject of studyObjectsWithOeuvres) {
+            const oeuvre = studyObject.oeuvres?.find(o => o.id === id);
+            if (oeuvre) {
+              return oeuvre;
+            }
+          }
+          return { id: id, titre: `Œuvre ${id}`, auteur_complet: 'Auteur non spécifié' };
+        }) || []}
+        onSave={handleSaveOeuvres}
       />
     </Box>
   );

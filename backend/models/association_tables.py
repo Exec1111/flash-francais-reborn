@@ -71,3 +71,11 @@ oeuvre_resource_association = Table(
     Column('oeuvre_id', Integer, ForeignKey('oeuvres.id', ondelete='CASCADE'), primary_key=True),
     Column('resource_id', Integer, ForeignKey('resources.id', ondelete='CASCADE'), primary_key=True)
 )
+
+# Table d'association Many-to-Many entre Session et Oeuvre
+session_oeuvre_association = Table(
+    'session_oeuvre_association',
+    Base.metadata,
+    Column('session_id', Integer, ForeignKey('sessions.id', ondelete='CASCADE'), primary_key=True),
+    Column('oeuvre_id', Integer, ForeignKey('oeuvres.id', ondelete='CASCADE'), primary_key=True)
+)

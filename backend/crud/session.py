@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, selectinload
 from models import Session, Objective, Resource
+from models.oeuvre import Oeuvre
 from models.association_tables import session_resource_association
 from schemas.session import SessionCreate, SessionUpdate
 from crud.objective import get_objective
@@ -15,6 +16,7 @@ def get_session_by_id(db: Session, session_id: int):
         selectinload(Session.sequence),
         selectinload(Session.resources).selectinload(Resource.type), # Charger les ressources puis leur type
         selectinload(Session.resources).selectinload(Resource.sub_type), # Charger les ressources puis leur sous-type
+        selectinload(Session.oeuvres), # Charger les œuvres associées
         selectinload(Session.fiche_resource)  # Charger la fiche de séance si elle existe
     ).filter(Session.id == session_id).first()
 
@@ -54,11 +56,12 @@ def create_session(db: Session, session: SessionCreate):
 
 def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
     """Crée une nouvelle séance liée à un utilisateur et à ses ressources.
-       Modifié pour lier aussi les objectifs.
+       Modifié pour lier aussi les objectifs et les œuvres.
     """
     session_data = session.model_dump()
     resource_ids = session_data.pop('resource_ids', []) # Extraire les IDs de ressources
     objective_ids = session_data.pop('objective_ids', []) # Extraire les IDs d'objectifs
+    oeuvre_ids = session_data.pop('oeuvre_ids', []) # Extraire les IDs d'œuvres
 
     db_session = Session(**session_data, user_id=user_id)
 
@@ -86,15 +89,28 @@ def create_session_with_user(db: Session, session: SessionCreate, user_id: int):
                 print(f"Warning: Objective with id {obj_id} not found, skipping.")
         db_session.objectives = objectives
 
+    # Lier les œuvres
+    if oeuvre_ids:
+        oeuvres = []
+        for oeuvre_id in oeuvre_ids:
+            # Récupérer l'œuvre sans filtrage de permissions (pour les opérations système)
+            db_oeuvre = db.query(Oeuvre).filter(Oeuvre.id == oeuvre_id).first()
+            if db_oeuvre:
+                oeuvres.append(db_oeuvre)
+            else:
+                # Gérer le cas où un ID d'œuvre fourni n'existe pas
+                print(f"Warning: Oeuvre with id {oeuvre_id} not found, skipping.")
+        db_session.oeuvres = oeuvres
+
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
     # Recharger explicitement les relations pour qu'elles soient disponibles dans l'objet retourné
-    db.refresh(db_session, attribute_names=['resources', 'objectives'])
+    db.refresh(db_session, attribute_names=['resources', 'objectives', 'oeuvres'])
     return db_session
 
 def update_session(db: Session, session_id: int, session_update: SessionUpdate):
-    """Met à jour une séance existante, y compris ses objectifs et ressources associés."""
+    """Met à jour une séance existante, y compris ses objectifs, ressources et œuvres associés."""
     db_session = get_session_by_id(db, session_id=session_id)
     if db_session is None:
         return None
@@ -102,6 +118,7 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
     update_data = session_update.model_dump(exclude_unset=True)
     new_objective_ids = update_data.pop('objective_ids', None) # Récupérer et retirer objective_ids
     new_resource_ids = update_data.pop('resource_ids', None) # Récupérer et retirer resource_ids
+    new_oeuvre_ids = update_data.pop('oeuvre_ids', None) # Récupérer et retirer oeuvre_ids
     # Règle métier: fiche_resource_id ne doit JAMAIS être modifié via update_session
     # (seules set_fiche_resource/remove_fiche_resource sont autorisées à le faire)
     ignored_fiche_resource = update_data.pop('fiche_resource_id', None)
@@ -139,8 +156,20 @@ def update_session(db: Session, session_id: int, session_update: SessionUpdate):
         # Assigner la nouvelle liste d'objets Resource à la relation
         db_session.resources = new_resources
 
+    # Gérer la mise à jour de la relation many-to-many avec les œuvres
+    if new_oeuvre_ids is not None: # Si une liste (même vide) est fournie
+        new_oeuvres = []
+        for oeuvre_id in new_oeuvre_ids:
+            db_oeuvre = get_oeuvre(db, oeuvre_id=oeuvre_id)
+            if db_oeuvre:
+                new_oeuvres.append(db_oeuvre)
+            else:
+                print(f"Warning: Oeuvre with id {oeuvre_id} not found, skipping.")
+        # Assigner la nouvelle liste d'objets Oeuvre à la relation
+        db_session.oeuvres = new_oeuvres
+
     # Mise à jour des autres champs fournis dans session_update via setattr
-    for key, value in update_data.items(): # update_data ne contient plus objective_ids, resource_ids, ni fiche_resource_id
+    for key, value in update_data.items(): # update_data ne contient plus objective_ids, resource_ids, oeuvre_ids, ni fiche_resource_id
         setattr(db_session, key, value)
 
     db.add(db_session)

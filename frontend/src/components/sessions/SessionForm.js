@@ -29,6 +29,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import api from '../../services/api';
 import ResourceSelectorModal from '../resources/ResourceSelectorModal';
 import ObjectiveSelectorModal from '../sequences/ObjectiveSelectorModal'; // Importer la modale des objectifs
+import OeuvreSelectorModal from '../oeuvres/OeuvreSelectorModal'; // Importer la modale des œuvres
 import { useTreeData } from '../../contexts/TreeDataContext';
 
 /**
@@ -77,6 +78,8 @@ const SessionForm = ({
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false); // État pour le modal
   const [selectedObjectives, setSelectedObjectives] = useState([]); // État pour les objectifs sélectionnés
   const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false); // État pour le modal objectifs
+  const [selectedOeuvres, setSelectedOeuvres] = useState([]); // État pour les œuvres sélectionnées
+  const [isOeuvreModalOpen, setIsOeuvreModalOpen] = useState(false); // État pour le modal œuvres
 
   // --- Effets ---
 
@@ -93,12 +96,15 @@ const SessionForm = ({
         resource_ids: initialData.resources ? initialData.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
         // Note: initialData ne contient pas directement objective_ids mais les objets objectives
       });
-      // Initialiser les objectifs et ressources sélectionnés pour l'affichage des Chips
+      // Initialiser les objectifs, ressources et œuvres sélectionnés pour l'affichage des Chips
       if (initialData.objectives) {
         setSelectedObjectives(initialData.objectives);
       }
       if (initialData.resources) {
         setSelectedResources(initialData.resources);
+      }
+      if (initialData.oeuvres) {
+        setSelectedOeuvres(initialData.oeuvres);
       }
     } else if (sequenceId) {
       setFormData(prev => ({
@@ -130,12 +136,15 @@ const SessionForm = ({
             resource_ids: data.resources ? data.resources.map(res => res.id) : [],
             // Note: objective_ids ne sont pas dans formData initialement mais gérés via selectedObjectives
           });
-          // Initialiser les objectifs et ressources sélectionnés pour l'affichage des Chips
+          // Initialiser les objectifs, ressources et œuvres sélectionnés pour l'affichage des Chips
           if (data.objectives) {
             setSelectedObjectives(data.objectives);
           }
           if (data.resources) {
             setSelectedResources(data.resources);
+          }
+          if (data.oeuvres) {
+            setSelectedOeuvres(data.oeuvres);
           }
 
         } catch (err) {
@@ -184,6 +193,11 @@ const SessionForm = ({
     setIsObjectiveModalOpen(true);
   };
 
+  // Ouvrir le modal de sélection des œuvres
+  const handleOpenOeuvreModal = () => {
+    setIsOeuvreModalOpen(true);
+  };
+
   // Fermer le modal et mettre à jour les ressources sélectionnées
   const handleSaveResources = (newSelection) => {
     setSelectedResources(newSelection);
@@ -198,6 +212,13 @@ const SessionForm = ({
     setIsObjectiveModalOpen(false);
   };
 
+  // Fermer le modal et mettre à jour les œuvres sélectionnées
+  const handleSaveOeuvres = (newSelection) => {
+    setSelectedOeuvres(newSelection);
+    // Note: On ajoutera oeuvre_ids au payload lors de la soumission, pas besoin de le stocker dans formData directement
+    setIsOeuvreModalOpen(false);
+  };
+
   // Supprimer une ressource de la sélection via le Chip
   const handleRemoveResource = (resourceToRemove) => {
     const newSelection = selectedResources.filter(res => res.id !== resourceToRemove.id);
@@ -209,6 +230,13 @@ const SessionForm = ({
   const handleRemoveObjective = (objectiveToRemove) => {
     const newSelection = selectedObjectives.filter(obj => obj.id !== objectiveToRemove.id);
     setSelectedObjectives(newSelection);
+    // Pas besoin de modifier formData ici
+  };
+
+  // Supprimer une œuvre de la sélection via le Chip
+  const handleRemoveOeuvre = (oeuvreToRemove) => {
+    const newSelection = selectedOeuvres.filter(oeuvre => oeuvre.id !== oeuvreToRemove.id);
+    setSelectedOeuvres(newSelection);
     // Pas besoin de modifier formData ici
   };
 
@@ -228,7 +256,9 @@ const SessionForm = ({
        // Assurer que order est un nombre entier
        order: formData.order ? parseInt(formData.order, 10) : 1,
        // Explicitement ajouter les IDs des objectifs sélectionnés
-       objective_ids: selectedObjectives.map(obj => obj.id)
+       objective_ids: selectedObjectives.map(obj => obj.id),
+       // Explicitement ajouter les IDs des œuvres sélectionnées
+       oeuvre_ids: selectedOeuvres.map(oeuvre => oeuvre.id)
     };
 
     // Retirer les IDs si le champ n'est pas pertinent pour l'opération (ex: sequence_id si non défini)
@@ -435,6 +465,38 @@ const SessionForm = ({
           </Button>
         </Grid>
 
+        {/* Affichage des œuvres sélectionnées et bouton d'ajout */}
+        <Grid item xs={12} sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>Œuvres Associées</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {selectedOeuvres.map((oeuvre) => (
+              <Chip
+                key={oeuvre.id}
+                label={`${oeuvre.titre} - ${oeuvre.auteur_complet}`}
+                onDelete={() => handleRemoveOeuvre(oeuvre)}
+                deleteIcon={<CancelIcon onMouseDown={(event) => event.stopPropagation()} />}
+                size="small"
+                sx={{
+                  backgroundColor: 'secondary.light',
+                  color: 'secondary.contrastText',
+                  '&:hover': {
+                    backgroundColor: 'secondary.main',
+                  }
+                }}
+              />
+            ))}
+          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={handleOpenOeuvreModal}
+            disabled={submitting}
+            size="small"
+          >
+            Ajouter/Gérer les Œuvres
+          </Button>
+        </Grid>
+
       </Grid>
     </>
   );
@@ -502,6 +564,20 @@ const SessionForm = ({
           onClose={() => setIsObjectiveModalOpen(false)}
           initialSelectedObjectives={selectedObjectives} // Passer les objectifs déjà sélectionnés
           onSave={handleSaveObjectives} // Fonction pour récupérer la sélection finale
+        />
+        {/* Modal de sélection des œuvres */}
+        <OeuvreSelectorModal
+          open={isOeuvreModalOpen}
+          onClose={() => setIsOeuvreModalOpen(false)}
+          initialSelectedOeuvres={selectedOeuvres} // Passer les œuvres déjà sélectionnées
+          onSave={handleSaveOeuvres} // Fonction pour récupérer la sélection finale
+        />
+        {/* Modal de sélection des œuvres */}
+        <OeuvreSelectorModal
+          open={isOeuvreModalOpen}
+          onClose={() => setIsOeuvreModalOpen(false)}
+          initialSelectedOeuvres={selectedOeuvres} // Passer les œuvres déjà sélectionnées
+          onSave={handleSaveOeuvres} // Fonction pour récupérer la sélection finale
         />
       </Dialog>
     );

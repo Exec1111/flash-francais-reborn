@@ -36,15 +36,23 @@
               "type": "integer"
             }
           },
-          "resource_ids": {
+          "oeuvre_ids": {
             "type": "array",
-            "description": "Liste des IDs des ressources associées",
+            "description": "Liste des IDs des œuvres à exploiter dans la séance",
             "items": {
               "type": "integer"
             }
+          },
+          "notes": {
+            "type": "string",
+            "description": "Description détaillée du contenu, des activités et de l'organisation de la séance"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Durée estimée en minutes (optionnel)"
           }
         },
-        "required": ["title", "date", "sequence_id"]
+        "required": ["title", "date", "sequence_id", "notes", "oeuvre_ids"]
       },
       "minItems": 1,
       "maxItems": 20

@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 # Importer la table d'association
-from models.association_tables import session_objective_association, session_resource_association
+from models.association_tables import session_objective_association, session_resource_association, session_oeuvre_association
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -37,5 +37,12 @@ class Session(Base):
     resources = relationship(
         "Resource",
         secondary=session_resource_association,
+        back_populates="sessions"
+    )
+
+    # Relationship with Oeuvre (many-to-many)
+    oeuvres = relationship(
+        "Oeuvre",
+        secondary=session_oeuvre_association,
         back_populates="sessions"
     )

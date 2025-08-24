@@ -334,6 +334,36 @@ const SessionDetailPage = () => {
 
           <Divider sx={{ my: 3 }} />
 
+          {/* Section Œuvres associées */}
+          <Typography variant="h6" gutterBottom>
+            Œuvres associées
+          </Typography>
+          {session.oeuvres && session.oeuvres.length > 0 ? (
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mb={1}>
+              {session.oeuvres.map((oeuvre) => (
+                <Chip
+                  key={oeuvre.id}
+                  label={`${oeuvre.titre} - ${oeuvre.auteur_complet}`}
+                  size="small"
+                  onClick={() => navigate(`/oeuvres/${oeuvre.id}`)}
+                  sx={{
+                    backgroundColor: 'primary.light',
+                    color: 'primary.contrastText',
+                    '&:hover': {
+                      backgroundColor: 'primary.main',
+                    }
+                  }}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Aucune œuvre n'est associée à cette séance pour le moment.
+            </Typography>
+          )}
+
+          <Divider sx={{ my: 3 }} />
+
           {/* Section Ressources */}
           <Typography variant="h6" gutterBottom>
             Ressources liées

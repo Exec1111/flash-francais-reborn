@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from database import Base
-from models.association_tables import oeuvre_resource_association
+from models.association_tables import oeuvre_resource_association, session_oeuvre_association
 
 
 class Oeuvre(Base):
@@ -50,6 +50,11 @@ class Oeuvre(Base):
     study_objects = relationship(
         "StudyObject",
         secondary="study_object_oeuvre",
+        back_populates="oeuvres"
+    )
+    sessions = relationship(
+        "Session",
+        secondary=session_oeuvre_association,
         back_populates="oeuvres"
     )
     

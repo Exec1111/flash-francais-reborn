@@ -18,7 +18,7 @@ user_prompt_template: |
     {% if study_object.oeuvres and study_object.oeuvres|length > 0 %}
     Œuvres associées :
     {% for oeuvre in study_object.oeuvres %}
-    - {{ oeuvre.titre }} par {{ oeuvre.auteur_complet }}
+    - {{ oeuvre.titre }} par {{ oeuvre.auteur_complet }} (ID: {{ oeuvre.id }})
       {% if oeuvre.auteur and oeuvre.auteur.nationalite %} ({{ oeuvre.auteur.nationalite }}){% endif %}
       {% if oeuvre.type %}(Type: {{ oeuvre.type }}){% endif %}
       {% if oeuvre.genre %}, Genre: {{ oeuvre.genre }}{% endif %}
@@ -42,34 +42,40 @@ user_prompt_template: |
   {% endfor %}
   {% endif %}
   
-  {% if ressources_disponibles and ressources_disponibles|length > 0 %}
-  Voici les ressources disponibles que tu peux inclure dans les séances :
-  {% for ressource in ressources_disponibles %}
-  - {{ ressource.title }} (ID: {{ ressource.id }}, Type: {{ ressource.type }})
-  {% endfor %}
-  {% endif %}
   
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
   {{ instructions_personnalisees }}
   {% endif %}
   
-  Génère {{ nombre_seances }} séance(s) complète(s) et retourne la réponse au format JSON structuré.
+  Génère {{ nombre_seances }} séance(s) avec les informations essentielles suivantes pour chaque séance :
+
+  1. **Titre** : Un titre descriptif et précis pour la séance
+  2. **Notes** : Description détaillée du contenu et de l'organisation de la séance. Détaille bien ces otes qui permettront par la suite de proposer des leçon et des exercices adaptées.
+  3. **Date** : Date de la séance (au format ISO 8601)
+  4. **Durée** : Durée estimée en minutes (optionnel)
+  5. **Objectifs** : Liste des IDs des objectifs pédagogiques associés à cette séance
+  6. **Œuvres** : Liste des IDs des œuvres qui seront exploitées dans cette séance
+
+  Retourne la réponse au format JSON structuré.
 
   {% if nombre_seances == "auto" %}
   Tu es libre de déterminer le nombre optimal de séances nécessaires pour couvrir les objectifs pédagogiques.
   {% endif %}
-  Si des objectifs sont fournis, associe-les aux séances appropriées en utilisant leurs IDs.
 
   IMPORTANT : Utilise les informations détaillées des œuvres pour adapter les séances :
-  - Adapte le niveau de langue et les activités selon le niveau recommandé de chaque œuvre
-  - Intègre les thèmes et motifs littéraires dans les discussions et analyses
-  - Propose des activités spécifiques au genre littéraire (poésie, roman, théâtre, etc.)
+  - Adapte le contenu selon le niveau recommandé de chaque œuvre
+  - Intègre les thèmes et motifs littéraires dans la description de la séance
   - Considère le mouvement littéraire pour contextualiser historiquement l'œuvre
-  - Adapte les supports et exercices selon que l'œuvre est complète ou un extrait
+  - Adapte la séance selon que l'œuvre est complète ou un extrait
   - Utilise les domaines du programme pour lier aux objectifs officiels
-  - Intègre le contexte biographique et culturel de l'auteur dans les présentations
-  - Adapte les activités selon la nationalité et l'époque de l'auteur
+  - Intègre le contexte biographique et culturel de l'auteur dans les notes
+  - Associe chaque séance aux œuvres appropriées en utilisant leurs IDs dans oeuvre_ids
+
+  Pour chaque séance, fournis :
+  - Un titre précis et descriptif
+  - Des notes détaillées décrivant le contenu et l'organisation
+  - Les œuvres les plus pertinentes pour les objectifs de la séance
 
 parameters:
   - name: nombre_seances
@@ -85,21 +91,6 @@ parameters:
     type: str
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
-  - name: inclure_ressources
-    type: bool
-    description: Indique si les ressources doivent être incluses dans les séances
-  - name: ressources_disponibles
-    type: list
-    description: Liste des ressources disponibles pour les séances
-    schema:
-      type: object
-      properties:
-        id: 
-          type: integer
-        title: 
-          type: string
-        type: 
-          type: string
   - name: objectifs
     type: list
     description: Liste des objectifs pédagogiques de la séquence
@@ -131,6 +122,7 @@ parameters:
             properties:
               id:
                 type: integer
+                description: ID unique de l'œuvre pour référence dans oeuvre_ids
               titre:
                 type: string
               auteur_complet:
@@ -171,15 +163,14 @@ parameters:
 
 constraints:
    - Les séances doivent être cohérentes avec le niveau {{ niveau }} des apprenants et la description fournie.
-   - Les séances doivent inclure des activités variées et complémentaires.
    - L'ensemble des séances doit couvrir tous les objectifs pédagogiques.
    - Les dates des séances doivent être réalistes et progressives.
-   - Adapte les activités selon les caractéristiques spécifiques de chaque œuvre (genre, époque, difficulté).
-   - Pour les extraits : concentre-toi sur l'analyse de passages ciblés et la compréhension contextuelle.
+   - Adapte le contenu selon les caractéristiques spécifiques de chaque œuvre (genre, époque, difficulté).
+   - Pour les extraits : concentre-toi sur l'analyse ciblée et la compréhension contextuelle.
    - Pour les œuvres complètes : propose une progression dans l'étude de l'œuvre sur plusieurs séances.
    - Respecte les niveaux recommandés des œuvres et les domaines du programme associés.
-   - Intègre les thèmes et mouvements littéraires dans les discussions et analyses.
+   - Intègre les thèmes et mouvements littéraires dans la description des séances.
    - Utilise les informations biographiques des auteurs pour contextualiser les œuvres.
-   - Adapte les activités selon la nationalité et l'époque des auteurs.
+   - Adapte le contenu selon la nationalité et l'époque des auteurs.
 
 response_schema: "session_generator.schema.json"
