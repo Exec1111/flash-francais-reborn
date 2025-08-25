@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntroSequence",
+  "description": "Schema pour une fiche d'introduction à une séquence pédagogique.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Titre de la fiche d'introduction."
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Sous-titre ou accroche engageante."
+    },
+    "introduction": {
+      "type": "object",
+      "description": "Section d'introduction qui présente le sujet.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section d'introduction."
+        },
+        "content": {
+          "type": "string",
+          "description": "Texte d'introduction engageant qui présente le sujet."
+        }
+      },
+      "required": ["heading", "content"]
+    },
+    "literary_references": {
+      "type": "object",
+      "description": "Section des références littéraires.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section littéraire."
+        },
+        "extraits": {
+          "type": "array",
+          "description": "Liste des extraits littéraires et références.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "auteur": {
+                "type": "string",
+                "description": "Nom de l'auteur."
+              },
+              "oeuvre": {
+                "type": "string",
+                "description": "Titre de l'œuvre."
+              },
+              "extrait": {
+                "type": "string",
+                "description": "Court extrait du texte (2-3 phrases maximum)."
+              },
+              "lien_avec_sujet": {
+                "type": "string",
+                "description": "Explication du lien entre cet extrait et le sujet de la séquence."
+              }
+            },
+            "required": ["auteur", "oeuvre", "extrait", "lien_avec_sujet"]
+          }
+        }
+      },
+      "required": ["heading", "extraits"]
+    },
+    "artistic_references": {
+      "type": "object",
+      "description": "Section des références artistiques (autres arts).",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section artistique."
+        },
+        "references": {
+          "type": "array",
+          "description": "Liste des références artistiques.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type_art": {
+                "type": "string",
+                "enum": ["peinture", "sculpture", "musique", "cinéma", "BD", "photographie", "danse", "théâtre", "architecture"],
+                "description": "Type d'art (peinture, cinéma, BD, musique, etc.)."
+              },
+              "titre": {
+                "type": "string",
+                "description": "Titre de l'œuvre artistique."
+              },
+              "artiste": {
+                "type": "string",
+                "description": "Nom de l'artiste ou créateur."
+              },
+              "description": {
+                "type": "string",
+                "description": "Brève description de l'œuvre."
+              },
+              "lien_avec_sujet": {
+                "type": "string",
+                "description": "Explication du lien entre cette œuvre et le sujet de la séquence."
+              }
+            },
+            "required": ["type_art", "titre", "artiste", "description", "lien_avec_sujet"]
+          }
+        }
+      },
+      "required": ["heading", "references"]
+    },
+    "cultural_context": {
+      "type": "object",
+      "description": "Section du contexte culturel et historique.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section contexte."
+        },
+        "elements": {
+          "type": "array",
+          "description": "Éléments de contexte culturel et historique.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "titre": {
+                "type": "string",
+                "description": "Titre de l'élément de contexte."
+              },
+              "description": {
+                "type": "string",
+                "description": "Description de l'élément contextuel."
+              }
+            },
+            "required": ["titre", "description"]
+          }
+        }
+      },
+      "required": ["heading", "elements"]
+    },
+    "opening_questions": {
+      "type": "object",
+      "description": "Section des questions d'ouverture.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section questions."
+        },
+        "questions": {
+          "type": "array",
+          "description": "Liste des questions pour stimuler la réflexion.",
+          "items": {
+            "type": "string",
+            "description": "Question d'ouverture."
+          }
+        }
+      },
+      "required": ["heading", "questions"]
+    },
+    "conclusion": {
+      "type": "object",
+      "description": "Section de conclusion qui annonce les apprentissages à venir.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section conclusion."
+        },
+        "content": {
+          "type": "string",
+          "description": "Texte de conclusion qui annonce les apprentissages à venir dans la séquence."
+        },
+        "apprentissages_venir": {
+          "type": "array",
+          "description": "Liste des principaux apprentissages qui seront abordés dans la séquence.",
+          "items": {
+            "type": "string",
+            "description": "Apprentissage ou compétence qui sera développée."
+          }
+        }
+      },
+      "required": ["heading", "content", "apprentissages_venir"]
+    },
+    "highlight_keywords": {
+      "type": "array",
+      "description": "Liste des mots-clés importants à mettre en évidence dans le texte.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "subtitle",
+    "introduction",
+    "literary_references",
+    "artistic_references",
+    "cultural_context",
+    "opening_questions",
+    "conclusion",
+    "highlight_keywords"
+  ]
+}

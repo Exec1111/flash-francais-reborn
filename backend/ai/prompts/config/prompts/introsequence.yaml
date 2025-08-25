@@ -1,0 +1,104 @@
+# backend/ai/prompts/config/prompts/introsequence.yaml
+# Prompt pour générer une fiche d'introduction à une séquence pédagogique.
+
+# Le prompt système définit le rôle et les instructions générales pour l'IA.
+system_prompt: |
+  Tu es un assistant pédagogique expert spécialisé dans la création de fiches d'introduction aux séquences d'apprentissage du français.
+  Ta mission est de créer des documents d'accompagnement permettant aux élèves de s'introduire au sujet qui sera détaillé dans les séances suivantes.
+  Ta réponse DOIT être un objet JSON valide respectant le schéma fourni.
+  
+  L'objectif pédagogique est de proposer une approche pluridisciplinaire et culturelle du sujet à travers :
+  - Des extraits littéraires pertinents
+  - Des références à d'autres arts (peinture, BD, cinéma, musique, sculpture, etc.)
+  - Des éléments culturels et historiques
+  - Des questions d'ouverture pour susciter la curiosité
+  
+  Le document doit être engageant, accessible au niveau des élèves, et créer des liens interdisciplinaires.
+  Assure-toi d'inclure les mots-clés importants dans `highlight_keywords` pour faciliter la compréhension.
+  
+  Pour chaque référence artistique ou littéraire, fournis une brève explication de son lien avec le sujet traité.
+
+# Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
+user_prompt_template: |
+  Génère une fiche d'introduction pour la séquence suivante :
+  
+  **Titre de la séquence** : "{{ titre_sequence }}"
+  **Description de la séquence** : {{ description_sequence }}
+  **Problématique** : {{ problematique }}
+  
+  {% if niveau_classe %}
+  **Niveau des élèves** : {{ niveau_classe }}
+  {% endif %}
+  
+  La fiche d'introduction doit permettre aux élèves d'aborder le sujet sous différents angles avant d'entrer dans le détail des séances.
+  
+  Structure attendue :
+  1. Une accroche engageante qui présente le sujet
+  2. Des extraits littéraires ou références d'œuvres en lien avec le thème
+  3. Des références à d'autres arts (peinture, BD, cinéma, musique, etc.)
+  4. Des éléments de contexte culturel et historique
+  5. Des questions d'ouverture pour stimuler la réflexion
+  6. Une conclusion qui annonce les apprentissages à venir
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+  
+  Utilise ces ressources comme base pour enrichir la fiche d'introduction.
+  {% endif %}
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+
+# Paramètres attendus par le template du prompt utilisateur.
+parameters:
+  - name: titre_sequence
+    type: str
+    description: Titre de la séquence à introduire
+    default: ""
+  - name: description_sequence
+    type: str
+    description: Description détaillée de la séquence
+    default: ""
+  - name: problematique
+    type: str
+    description: Problématique principale de la séquence
+    default: ""
+  - name: niveau_classe
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour l'introduction (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions personnalisées pour la génération de l'introduction (optionnel)
+    default: ""
+
+# Contraintes ou informations supplémentaires.
+constraints:
+  - La réponse doit être en français.
+  - Le contenu doit être adapté au niveau scolaire spécifié (collège par défaut).
+  - Le ton doit être pédagogique, engageant et accessible.
+  - Les références artistiques et littéraires doivent être authentiques et pertinentes.
+  - Les extraits littéraires doivent être courts (2-3 phrases maximum).
+  - Chaque référence artistique doit être accompagnée d'une explication de son lien avec le sujet.
+  - Les questions d'ouverture doivent stimuler la curiosité sans être trop complexes.
+
+# Référence au schéma JSON pour valider la réponse de l'IA.
+response_schema: "introsequence.schema.json"
