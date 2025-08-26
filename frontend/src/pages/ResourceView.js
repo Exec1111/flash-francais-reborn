@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import resourceService from '../services/resourceService';
 import resourceTypeService from '../services/resourceTypeService';
+import { API_BASE_URL } from '../services/api';
 import { 
     Box, Typography, CircularProgress, Alert, Button, Link, Divider, List, ListItem,
     Container, Card, CardContent, IconButton, Chip, Stack, FormControlLabel, Checkbox
@@ -15,9 +16,6 @@ const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleDateString('fr-FR', options);
 };
-
-// Base URL pour l'API et les fichiers statiques du backend depuis les variables d'environnement
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
 function ResourceView() {
     const { id } = useParams();

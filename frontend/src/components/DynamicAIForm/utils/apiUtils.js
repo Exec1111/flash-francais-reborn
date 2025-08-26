@@ -2,8 +2,7 @@
  * Utilitaires pour les appels API et la gestion des erreurs
  */
 
-// L'URL de base de l'API
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
+import { API_BASE_URL } from '../../../services/api';
 
 /**
  * Crée une instance d'API fetch avec la configuration commune

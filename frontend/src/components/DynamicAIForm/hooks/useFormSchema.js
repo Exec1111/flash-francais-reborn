@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../../services/api';
 
 /**
  * Hook personnalisé pour gérer la récupération et le traitement du schéma du formulaire
@@ -16,9 +17,6 @@ const useFormSchema = ({ typeKey, subtypeKey, prefilledData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showAuthError, setShowAuthError] = useState(false);
-
-  // L'URL de base de l'API
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
 
   // Fonction pour créer une instance d'axios
   const createAxiosInstance = () => {

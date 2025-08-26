@@ -33,7 +33,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import api, { API_BASE_URL } from '../../services/api';
 import resourceService from '../../services/resourceService';
 import resourceTypeService from '../../services/resourceTypeService';
 import ResourceDocumentLink from './ResourceDocumentLink';
@@ -148,9 +148,6 @@ const ResourceList = () => {
       )
     }
   ];
-
-  // Base URL pour l'API et les fichiers statiques du backend
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'; // Fallback
 
   // Fonction de chargement des ressources avec pagination
   const fetchResources = async (currentPage = 1, search = searchTerm, typeId = selectedTypeId, subTypeId = selectedSubTypeId) => {

@@ -33,6 +33,7 @@ import resourceService from '../../services/resourceService';
 import studyObjectService from '../../services/studyObjectService';
 import oeuvreService from '../../services/oeuvreService';
 import configService from '../../services/configService';
+import { API_BASE_URL } from '../../services/api';
 import DynamicAIForm from '../DynamicAIForm/index';  
 import TinyHtmlEditor from '../editors/TinyHtmlEditor';
 
@@ -227,7 +228,7 @@ const ResourceForm = ({
       if (relativeUrl.startsWith('http')) {
         fullUrl = relativeUrl;
       } else {
-        let base = process.env.REACT_APP_API_BASE_URL || '';
+        let base = API_BASE_URL || '';
         // Si base se termine par /api ou /api/, on le retire pour accéder aux fichiers statiques
         base = base.replace(/\/api\/?$/, '');
         // Si le chemin commence par "uploads/", préfixer avec /media/
@@ -759,7 +760,7 @@ const ResourceForm = ({
                 <span>
                   Document actuellement lié :{' '}
                   <a
-                    href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000'}/media/uploads/${initialData.file_path.startsWith('/') ? initialData.file_path.substring(1) : initialData.file_path}`.replace(/\\/g, '/')}
+                    href={`${API_BASE_URL}/media/uploads/${initialData.file_path.startsWith('/') ? initialData.file_path.substring(1) : initialData.file_path}`.replace(/\\/g, '/')}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

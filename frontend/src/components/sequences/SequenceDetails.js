@@ -28,12 +28,11 @@ import {
 import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import sequenceService from '../../services/sequenceService';
 import studyObjectService from '../../services/studyObjectService';
+import { API_BASE_URL } from '../../services/api';
 import StudyObjectChips from '../../components/studyObjects/StudyObjectChips';
 import SequenceSummaryResourceGenerator from './SequenceSummaryResourceGenerator';
 import StudyObjectSelectorModal from '../../components/studyObjects/StudyObjectSelectorModal';
 import ObjectiveSelectorModal from './ObjectiveSelectorModal';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
 
 /**
  * Composant affichant les détails d'une séquence et permettant

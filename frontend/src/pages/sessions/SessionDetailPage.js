@@ -27,7 +27,7 @@ import {
   Psychology as PsychologyIcon,
   Launch as LaunchIcon
 } from '@mui/icons-material';
-import api from '../../services/api';
+import api, { API_BASE_URL } from '../../services/api';
 
 import { useTreeData } from '../../contexts/TreeDataContext';
 import objectiveService from '../../services/objectiveService';
@@ -35,8 +35,6 @@ import sessionService from '../../services/sessionService';
 import resourceService from '../../services/resourceService';
 
 import ResourceGenerationWizard from '../../components/ResourceGenerationWizard';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
 
 /**
  * Page pour afficher les détails d'une séance

@@ -23,9 +23,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-
-// Base URL du backend pour construire des URLs absolues vers /static
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
+import { API_BASE_URL } from '../../services/api';
 const buildPreviewUrl = (url) => {
   if (!url) return url;
   const u = typeof url === 'string' ? url : String(url);

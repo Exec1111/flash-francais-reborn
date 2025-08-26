@@ -3,9 +3,7 @@ import { Typography, Link as MuiLink } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import CircularProgress from '@mui/material/CircularProgress';
 import resourceService from '../../services/resourceService'; // Assurez-vous que le chemin est correct
-
-// Définir API_BASE_URL (idéalement depuis une config centrale)
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:10000';
+import { API_BASE_URL } from '../../services/api'; // Utiliser l'API_BASE_URL centralisée
 
 function ResourceDocumentLink({ resource }) {
     const [fileUrl, setFileUrl] = useState(null);

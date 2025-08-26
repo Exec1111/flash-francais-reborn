@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import resourceService from '../../../services/resourceService';
-import api from '../../../services/api';
+import api, { API_BASE_URL } from '../../../services/api';
 
 /**
  * Hook personnalisé pour gérer la logique de soumission du formulaire
@@ -22,9 +22,6 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
   const [htmlPreviewUrl, setHtmlPreviewUrl] = useState(null);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [localHtmlContent, setLocalHtmlContent] = useState("");
-
-  // L'URL de base de l'API (alignée sur app.py et render.yaml -> port 10000)
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
   /**
    * Gère la soumission du formulaire

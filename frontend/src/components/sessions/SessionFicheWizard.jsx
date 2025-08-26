@@ -3,6 +3,7 @@ import { Box, Stepper, Step, StepLabel, Paper } from '@mui/material';
 import FicheResourceSelector from './FicheResourceSelector';
 import FicheEditor from './FicheEditor';
 import sessionService from '../../services/sessionService';
+import { API_BASE_URL } from '../../services/api';
 
 const steps = ['Sélection des ressources', 'Édition de la fiche'];
 
@@ -19,7 +20,7 @@ const SessionFicheWizard = ({ sessionId, onFinish }) => {
     if (!relativeUrl) return null;
     if (relativeUrl.startsWith('http')) return relativeUrl;
 
-    let base = process.env.REACT_APP_API_BASE_URL || '';
+    let base = API_BASE_URL || '';
     base = base.replace(/\/api\/?$/, '');
     if (relativeUrl.startsWith('/media/uploads/')) {
       return `${base}${relativeUrl}`;

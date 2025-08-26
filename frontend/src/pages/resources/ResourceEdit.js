@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import ResourceForm from '../../components/resources/ResourceForm';
+import resourceService from '../../services/resourceService';
 
 const ResourceEdit = () => {
   const { id } = useParams();
@@ -15,17 +16,7 @@ const ResourceEdit = () => {
     const fetchResource = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:10000/api/v1/resources/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Erreur lors du chargement de la ressource');
-        }
-
-        const data = await response.json();
+        const data = await resourceService.getById(id);
         console.log('[DEBUG API] Données brutes de l\'API:', data); // Debug complet
 
         // Construire l'objet initialData pour ResourceForm

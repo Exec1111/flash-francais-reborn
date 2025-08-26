@@ -37,6 +37,7 @@ import DescriptionIcon from '@mui/icons-material/Description'; // Ajout pour l'i
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 import axios from "axios";
+import { API_BASE_URL } from '../../services/api';
 import ObjectiveSelectorModal from '../../components/sequences/ObjectiveSelectorModal';
 import ResourceSelectorModal from '../../components/resources/ResourceSelectorModal';
 import OeuvreSelectorModal from '../../components/oeuvres/OeuvreSelectorModal';
@@ -68,8 +69,6 @@ const ProposeSeances = () => {
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
   const [oeuvreModalOpen, setOeuvreModalOpen] = useState(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
-  
   // Les étapes de la cinématique
   const steps = [
     'Configuration',

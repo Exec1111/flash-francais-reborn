@@ -25,6 +25,7 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import axios from "axios";
+import { API_BASE_URL } from '../../services/api';
 import ResourceEditorForm from '../../components/ResourceEditorForm';
 
 const ProposeWorks = () => {
@@ -52,8 +53,6 @@ const ProposeWorks = () => {
   const [selectedForMerge, setSelectedForMerge] = useState([]); // Nouvel état
   const [classLevels, setClassLevels] = useState([]);
   const [selectedClassLevel, setSelectedClassLevel] = useState('');
-
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:10000";
 
   useEffect(() => {
     // Récupérer le titre transmis via navigation ou le recharger si besoin
