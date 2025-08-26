@@ -14,4 +14,13 @@ Le bouton "Proposer avce l'IA" sur la page de détail de séquence reste grisé
 
 L'nalyse de texte par génération manuelle ne fonctione plus (textesource à préciser en entrée)
 
-les enums ne remontent aps toujours comme telles dans la génération de ressource (exemple carte mentale)
+les enumérations des fichiers yaml ne remontent aps toujours comme telles dans la génération de ressource (exemple carte mentale)
+
+
+edition de ressource ne marche pas sur le serveur distant
+
+pouvoir permettre d'éditer une ressource existante avec un chat en plus de l'édition manuelle déja existante.
+
+la génération de ressource sur séance ne respecte pas le nombre de documents demandés
+
+Dcitée : pour la version élève, invitrer a se poser des questions sur les difficultés qu'elle comporte (points gramaticaux, vocabulaire, conjugaison...)

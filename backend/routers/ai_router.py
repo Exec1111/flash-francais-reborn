@@ -424,8 +424,12 @@ async def get_resource_type_schema(
         generator = PromptGenerator(prompt_config)
         form_fields = []
         for p in generator.parameters:
-            # Déterminer type de champ
-            field_type = "number" if str(p.get("type")).lower() in ("int", "integer") else "string"
+            # Déterminer type de champ - utiliser 'enum' pour les champs avec énumération
+            if "enum" in p:
+                field_type = "enum"  # Utiliser le type enum pour les champs avec énumération
+            else:
+                field_type = "number" if str(p.get("type")).lower() in ("int", "integer") else "string"
+            
             # Validations et valeurs par défaut
             validations = {}
             default = p.get("default")  # Définir default AVANT de l'utiliser

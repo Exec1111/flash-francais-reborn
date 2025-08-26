@@ -93,6 +93,41 @@ const FormField = ({
   switch (field.type) {
     case 'string':
     case 'text':
+      // Vérifier d'abord si c'est un champ avec énumération
+      if (field.enum || (field.validations && field.validations.enum)) {
+        const enumOptions = field.enum || field.validations.enum || [];
+        console.log(`Champ string avec énumération détecté - ${field.name}:`, enumOptions);
+        
+        return (
+          <FormControl 
+            fullWidth={fullWidth} 
+            error={!!error} 
+            disabled={disabled} 
+            variant="outlined"
+            margin="normal"
+          >
+            <InputLabel id={`${field.name}-label`}>
+              {field.label || field.name}
+            </InputLabel>
+            <Select
+              labelId={`${field.name}-label`}
+              name={field.name}
+              value={value || ''}
+              onChange={(e) => onChange(e.target.value)}
+              label={field.label || field.name}
+            >
+              {enumOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+            {(error || field.description) && (
+              <FormHelperText>{error || field.description}</FormHelperText>
+            )}
+          </FormControl>
+        );
+      }
       // Si le champ a un format spécifique (email, password, etc.)
       if (field.format) {
         switch (field.format) {
