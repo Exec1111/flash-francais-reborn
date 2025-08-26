@@ -70,33 +70,40 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    label: Thème
     description: Sujet du texte à reconstituer
     default: ""
   - name: type_texte
     type: str
+    label: Type de texte
     enum: [narratif, descriptif, argumentatif, explicatif]
     description: Type de texte à reconstituer
     default: "narratif"
   - name: nombre_elements
     type: int
+    label: Nombre d'éléments
     description: Nombre de phrases ou paragraphes à remettre en ordre
     default: 5
   - name: difficulte
     type: str
+    label: Difficulté
     enum: [facile, moyen, difficile]
     description: Niveau de difficulté de l'exercice
     default: "moyen"
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
     default: ""
 

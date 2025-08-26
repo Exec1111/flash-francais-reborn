@@ -41,26 +41,32 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    label: Thème
     description: Thème à partir duquel générer les mots de vocabulaire (optionnel)
     default: ""
   - name: niveau
     type: str
+    label: Niveau
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants  
   - name: liste_mots
     type: list
+    label: Liste de mots
     description: Liste de mots à utiliser pour l'exercice (optionnel, prioritaire si fourni)
     default: []
   - name: nb_indice
     type: int
+    label: Nombre d'indices
     description: Nombre d'indices à fournir pour chaque mot
     default: 5
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour le jeu Qui suis-je (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
     default: ""
 

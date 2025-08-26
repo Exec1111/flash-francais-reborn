@@ -114,11 +114,13 @@ variables:
 parameters:
   - name: elements_specifiques
     type: string
+    label: Éléments spécifiques
     description: "Eléments spécifiques à mettre en valeur dans le résumé (optionnel)"
     default: ""
     
   - name: style_pedagogique
     type: string
+    label: Style pédagogique
     enum: ["Synthétique", "Détaillé", "Visuel"]
     description: "Style pédagogique du résumé"
     default: "Synthétique"

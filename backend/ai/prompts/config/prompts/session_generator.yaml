@@ -80,19 +80,24 @@ user_prompt_template: |
 parameters:
   - name: nombre_seances
     type: str
+    label: Nombre de séances
     description: Nombre de séances à générer ou "auto" pour laisser l'IA décider
   - name: titre_sequence
     type: str
+    label: Titre de la séquence
     description: Titre de la séquence pédagogique pour laquelle générer des séances
   - name: description_sequence
     type: str
+    label: Description de la séquence
     description: Description courte de la séquence pédagogique
   - name: niveau
     type: str
+    label: Niveau
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
   - name: objectifs
     type: list
+    label: Objectifs pédagogiques
     description: Liste des objectifs pédagogiques de la séquence
     schema:
       type: object
@@ -105,6 +110,7 @@ parameters:
           type: string
   - name: study_objects
     type: list
+    label: Objets d'étude
     description: Liste des objets d'étude de la séquence
     schema:
       type: object
@@ -158,6 +164,7 @@ parameters:
                   type: string
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération des séances
     default: ""
 

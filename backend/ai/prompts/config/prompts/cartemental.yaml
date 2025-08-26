@@ -52,29 +52,35 @@ user_prompt_template: |
 parameters:
   - name: theme_central
     type: str
+    label: Thème central
     description: Sujet principal de la carte mentale
     default: ""
   - name: profondeur
     type: str
+    label: Profondeur
     enum: [basique, approfondie, exhaustive]
     description: Niveau de détail souhaité pour la carte mentale
     default: "approfondie"
   - name: type_contenu
     type: str
+    label: Type de contenu
     enum: [vocabulaire, analyse_oeuvre, grammaire, culture]
     description: Type de contenu à organiser dans la carte
     default: "vocabulaire"
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour la carte (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de la carte (optionnel)
     default: ""
 

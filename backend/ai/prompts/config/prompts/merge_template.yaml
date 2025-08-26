@@ -14,6 +14,7 @@ user_prompt_template: |
 parameters:
   - name: json_data
     type: str
+    label: Données JSON
     description: Les données JSON à injecter dans le modèle HTML.
     default: ""
 

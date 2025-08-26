@@ -50,21 +50,26 @@ user_prompt_template: |
 parameters:
   - name: texte_source
     type: str
+    label: Texte source
     description: Texte ou extrait à analyser (français)
   - name: niveau
     type: str
+    label: Niveau
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
   - name: nombre_questions
     type: int
+    label: Nombre de questions
     default: 6
     description: Nombre total approximatif de paires question/réponse à répartir sur les 6 sections (min. 1 par section)
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme complément pour l'analyse de texte (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     default: ""
     description: Précisions optionnelles (objectifs, accent à mettre, etc.)
 

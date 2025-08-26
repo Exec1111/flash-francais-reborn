@@ -37,23 +37,28 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    label: Thème
     description: "Thème sur lequel les mots du Pendu doivent porter (ex: Les animaux de la ferme, Les capitales d'Europe, Vocabulaire scientifique)."
   - name: niveau
     type: str
+    label: Niveau
     enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé"]
     description: "Niveau de difficulté pour l'apprenant. Cela peut influencer la longueur et la complexité des mots."
   - name: nombre_mots
     type: int
+    label: Nombre de mots
     description: "Nombre de paires mot/indice à générer (entre 1 et 5)."
     default: 3
     minimum: 1
     maximum: 5
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: "Liste d'identifiants de ressources à utiliser comme base pour le jeu du Pendu (optionnel)."
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: "Instructions spécifiques pour la génération du jeu (optionnel)."
     default: ""
 

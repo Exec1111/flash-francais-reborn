@@ -138,6 +138,7 @@ parameters:
   - {name: available_exercise_types, type: array, description: "Liste des types de ressources disponibles avec leurs configurations."}
   - name: niveau_classe
     type: string
+    label: Niveau de classe
     description: "Niveau de classe des élèves."
     enum: ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé"]
     default: null

@@ -39,21 +39,26 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    label: Thème
     description: Thème sur lequel le mot-croisé doit être créé
   - name: niveau # Harmonisé avec le template {{ niveau }}
     type: str
+    label: Niveau
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
   - name: nombre_mots_cible
     type: int
+    label: Nombre de mots
     description: Nombre approximatif de mots à inclure dans la grille
     default: 8 # Un 10x10 peut raisonnablement contenir entre 7 et 12 mots
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour les mots-croisés (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions spécifiques pour la génération du mot-croisé (optionnel)
     default: ""
 

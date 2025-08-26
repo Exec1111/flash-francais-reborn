@@ -44,19 +44,23 @@ user_prompt_template: |
 parameters:
   - name: sujet_lecon
     type: str
+    label: Sujet de la leçon
     description: Sujet de la leçon à étudier
     default: ""
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour la leçon (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
     default: ""
 

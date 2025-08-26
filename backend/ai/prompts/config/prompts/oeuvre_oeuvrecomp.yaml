@@ -51,6 +51,7 @@ parameters:
     default: ""
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""

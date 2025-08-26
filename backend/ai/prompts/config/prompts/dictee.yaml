@@ -47,34 +47,42 @@ user_prompt_template: |
 parameters:
    - name: theme
      type: str
+     label: Thème
      description: Thème de la dictée (optionnel)
      default: ""
    - name: niveau
      type: str
+     label: Niveau
      enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
      description: Niveau des apprenants
    - name: longueur
      type: str
+     label: Longueur
      description: Longueur approximative de la dictée en nombre de mots (optionnel)
      default: "100-150"
    - name: mots_cles
      type: str
+     label: Mots clés
      description: Liste de mots complets qui doivent apparaître dans la dictée (exemple "talent, réputation, blancheur")
      default: ""
    - name: temps_verbaux
      type: str
+     label: Temps verbaux
      description: Temps verbaux complets à travailler dans la dictée (exemple "présent de l'indicatif, passé composé")
      default: ""
    - name: notions_grammaire
      type: str
+     label: Notions de grammaire
      description: Notions de grammaire complètes à inclure dans la dictée (exemple "accord sujet-verbe, complément du nom")
      default: ""
    - name: resource_ids
      type: list
+     label: Ressources de référence
      description: Liste d'identifiants de ressources à utiliser comme base pour la dictée (optionnel)
      default: []
    - name: instructions_personnalisees
      type: str
+     label: Instructions personnalisées
      description: Instructions personnalisées pour la génération de la dictée (optionnel)
      default: ""
 

@@ -72,35 +72,43 @@ user_prompt_template: |
 parameters:
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: champs_specifiques
     type: list
+    label: Champs spécifiques
     description: Liste spécifique de champs lexicaux à utiliser (optionnel, prioritaire si fourni)
     default: []
   - name: theme
     type: str
+    label: Thème
     description: Thème général pour lequel générer des champs lexicaux (optionnel, utilisé si champs_specifiques est absent)
     default: ""
   - name: nombre_champs
     type: int
+    label: Nombre de champs
     description: Nombre de champs lexicaux à générer (optionnel)
     default: 3
   - name: min_mots_par_champ
     type: int
+    label: Mots minimum par champ
     description: Nombre minimum de mots par champ lexical (optionnel)
     default: 5
   - name: max_mots_par_champ
     type: int
+    label: Mots maximum par champ
     description: Nombre maximum de mots par champ lexical (optionnel)
     default: 10
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice de champs lexicaux (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
     default: ""
 

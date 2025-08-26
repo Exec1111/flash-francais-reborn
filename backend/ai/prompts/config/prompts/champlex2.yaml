@@ -58,27 +58,33 @@ user_prompt_template: |
 parameters:
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: champ_lexical
     type: str
+    label: Champ lexical
     description: Champ lexical à utiliser (optionnel)
     default: ""
   - name: nombre_mots
     type: int
+    label: Nombre de mots
     description: Nombre total de mots à proposer (optionnel)
     default: 10
   - name: proportion_hors_champ
     type: int
+    label: Proportion hors champ (%)
     description: Pourcentage de mots hors champ lexical (optionnel)
     default: 50
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice de champs lexicaux (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions supplémentaires pour la génération de l'exercice (optionnel)
     default: ""
 

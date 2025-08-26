@@ -35,25 +35,31 @@ user_prompt_template: |
 parameters:
   - name: theme
     type: str
+    label: Thème
     description: Thème sur lequel le QCM doit être créé
   - name: niveau
     type: str
+    label: Niveau
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
   - name: nombre_questions
     type: int
+    label: Nombre de questions
     description: nombre de questions au total
     default: 5
   - name: nb_options
     type: int
+    label: Options par question
     default: 4
     description: Nombre de choix par question
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour le QCM (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de l'exercice (optionnel)
     default: ""
 

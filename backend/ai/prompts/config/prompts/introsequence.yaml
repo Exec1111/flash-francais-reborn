@@ -66,27 +66,33 @@ user_prompt_template: |
 parameters:
   - name: titre_sequence
     type: str
+    label: Titre de la séquence
     description: Titre de la séquence à introduire
     default: ""
   - name: description_sequence
     type: str
+    label: Description de la séquence
     description: Description détaillée de la séquence
     default: ""
   - name: problematique
     type: str
+    label: Problématique
     description: Problématique principale de la séquence
     default: ""
   - name: niveau_classe
     type: str
+    label: Niveau de classe
     enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
     description: Niveau des apprenants
     default: ""
   - name: resource_ids
     type: list
+    label: Ressources de référence
     description: Liste d'identifiants de ressources à utiliser comme base pour l'introduction (optionnel)
     default: []
   - name: instructions_personnalisees
     type: str
+    label: Instructions personnalisées
     description: Instructions personnalisées pour la génération de l'introduction (optionnel)
     default: ""
 
