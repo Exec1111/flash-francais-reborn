@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FicheMethode",
+  "description": "Schema pour une fiche méthodologique d'apprentissage.",
+  "type": "object",
+  "properties": {
+    "fiche": {
+      "type": "object",
+      "description": "Contenu principal de la fiche méthodologique.",
+      "properties": {
+        "titre": {
+          "type": "string",
+          "description": "Titre de la fiche méthodologique."
+        },
+        "objectif": {
+          "type": "string",
+          "description": "Objectif pédagogique principal de la méthode enseignée."
+        },
+        "methode_type": {
+          "type": "string",
+          "enum": ["commentaire", "dissertation", "résumé", "fiche_lecture", "analyse_image"],
+          "description": "Type de méthode enseignée."
+        },
+        "niveau_cible": {
+          "type": "string",
+          "description": "Niveau des élèves concernés par cette fiche."
+        },
+        "duree_estimee": {
+          "type": "string",
+          "description": "Temps estimé pour maîtriser cette méthode."
+        },
+        "etapes": {
+          "type": "array",
+          "description": "Étapes méthodologiques numérotées et détaillées.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "numero": {
+                "type": "integer",
+                "description": "Numéro de l'étape dans la progression.",
+                "minimum": 1
+              },
+              "titre": {
+                "type": "string",
+                "description": "Titre explicite de l'étape."
+              },
+              "description": {
+                "type": "string",
+                "description": "Description détaillée de ce qu'il faut faire à cette étape."
+              },
+              "conseils": {
+                "type": "array",
+                "description": "Conseils pratiques pour réussir cette étape.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "outils_necessaires": {
+                "type": "array",
+                "description": "Outils, supports ou connaissances nécessaires pour cette étape.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "duree_etape": {
+                "type": "string",
+                "description": "Temps recommandé pour cette étape (optionnel)."
+              }
+            },
+            "required": ["numero", "titre", "description", "conseils"]
+          },
+          "minItems": 3
+        },
+        "exemples": {
+          "type": "array",
+          "description": "Exemples concrets avec commentaires pédagogiques.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "titre": {
+                "type": "string",
+                "description": "Titre de l'exemple."
+              },
+              "contenu": {
+                "type": "string",
+                "description": "Contenu de l'exemple (texte, extrait, etc.)."
+              },
+              "commentaire": {
+                "type": "string",
+                "description": "Analyse pédagogique de l'exemple."
+              },
+              "etape_illustree": {
+                "type": "integer",
+                "description": "Numéro de l'étape que cet exemple illustre (optionnel)."
+              },
+              "niveau_exemple": {
+                "type": "string",
+                "enum": ["débutant", "intermédiaire", "avancé"],
+                "description": "Niveau de complexité de l'exemple."
+              }
+            },
+            "required": ["titre", "contenu", "commentaire"]
+          },
+          "minItems": 1
+        },
+        "pieges_eviter": {
+          "type": "array",
+          "description": "Liste des erreurs courantes et pièges à éviter.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "piege": {
+                "type": "string",
+                "description": "Description du piège ou de l'erreur courante."
+              },
+              "solution": {
+                "type": "string",
+                "description": "Comment éviter ce piège ou corriger cette erreur."
+              },
+              "exemple_erreur": {
+                "type": "string",
+                "description": "Exemple concret de l'erreur (optionnel)."
+              }
+            },
+            "required": ["piege", "solution"]
+          }
+        },
+        "checklist": {
+          "type": "array",
+          "description": "Checklist d'autoévaluation pour l'élève.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "critere": {
+                "type": "string",
+                "description": "Critère à vérifier."
+              },
+              "question": {
+                "type": "string",
+                "description": "Question que l'élève doit se poser."
+              },
+              "importance": {
+                "type": "string",
+                "enum": ["essentiel", "important", "utile"],
+                "description": "Niveau d'importance de ce critère."
+              }
+            },
+            "required": ["critere", "question", "importance"]
+          },
+          "minItems": 3
+        },
+        "ressources_complementaires": {
+          "type": "array",
+          "description": "Ressources pour approfondir la méthode.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["livre", "site_web", "exercice", "video", "article"],
+                "description": "Type de ressource."
+              },
+              "titre": {
+                "type": "string",
+                "description": "Titre de la ressource."
+              },
+              "description": {
+                "type": "string",
+                "description": "Description de ce que contient cette ressource."
+              },
+              "niveau": {
+                "type": "string",
+                "enum": ["débutant", "intermédiaire", "avancé"],
+                "description": "Niveau recommandé pour cette ressource."
+              },
+              "lien": {
+                "type": "string",
+                "description": "Lien vers la ressource (optionnel)."
+              }
+            },
+            "required": ["type", "titre", "description", "niveau"]
+          }
+        },
+        "variantes_methode": {
+          "type": "array",
+          "description": "Variantes ou adaptations de la méthode selon le contexte.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contexte": {
+                "type": "string",
+                "description": "Contexte ou situation particulière."
+              },
+              "adaptation": {
+                "type": "string",
+                "description": "Comment adapter la méthode à ce contexte."
+              },
+              "exemple": {
+                "type": "string",
+                "description": "Exemple d'application dans ce contexte."
+              }
+            },
+            "required": ["contexte", "adaptation"]
+          }
+        }
+      },
+      "required": [
+        "titre",
+        "objectif",
+        "methode_type",
+        "niveau_cible",
+        "etapes",
+        "exemples",
+        "pieges_eviter",
+        "checklist",
+        "ressources_complementaires"
+      ]
+    }
+  },
+  "required": ["fiche"]
+}

@@ -1,0 +1,112 @@
+# backend/ai/prompts/config/prompts/fichemethode.yaml
+# Prompt pour générer une fiche méthodologique d'apprentissage.
+
+# Le prompt système définit le rôle et les instructions générales pour l'IA.
+system_prompt: |
+  Tu es un assistant pédagogique expert spécialisé dans la création de fiches méthodologiques pour l'apprentissage du français.
+  Ta mission est de créer des guides méthodologiques pour apprendre aux élèves des techniques d'analyse ou de rédaction spécifiques.
+  Ta réponse DOIT être un objet JSON valide respectant le schéma fourni.
+  
+  L'objectif pédagogique est de :
+  - Structurer l'apprentissage méthodologique
+  - Fournir des outils d'analyse et de rédaction concrets
+  - Développer l'autonomie des élèves
+  - Standardiser les approches pédagogiques
+  
+  Pour créer une fiche méthodologique efficace :
+  - Décompose la méthode en étapes claires et progressives
+  - Fournis des conseils pratiques et opérationnels
+  - Inclus des exemples concrets et analysés
+  - Identifie les pièges courants à éviter
+  - Propose une checklist pour l'autoévaluation
+  - Adapte le vocabulaire et la complexité au niveau des élèves
+  - Assure-toi que chaque étape soit actionnable
+
+# Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
+user_prompt_template: |
+  Génère une fiche méthodologique pour apprendre la technique suivante : "{{ methode_type }}".
+  
+  **Objectif spécifique** : {{ objectif_specifique }}
+  **Type d'exemples souhaités** : {{ exemples_souhaites }}
+  {% if niveau_classe %}
+  **Niveau des élèves** : {{ niveau_classe }}
+  {% endif %}
+  
+  La fiche méthodologique doit comprendre :
+  1. Un titre clair et un objectif bien défini
+  2. Des étapes méthodologiques numérotées et détaillées
+  3. Des conseils pratiques pour chaque étape
+  4. Des exemples concrets avec commentaires pédagogiques
+  5. Une liste des pièges courants à éviter
+  6. Une checklist d'autoévaluation
+  7. Des ressources complémentaires pour approfondir
+  
+  Critères de qualité :
+  - Chaque étape doit être claire et actionnable
+  - Les conseils doivent être concrets et applicables immédiatement
+  - Les exemples doivent illustrer efficacement la théorie
+  - Le niveau de langue doit être adapté aux élèves de {{ niveau_classe if niveau_classe else "collège" }}
+  - La progression doit être logique et faciliter l'apprentissage autonome
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+  
+  Utilise ces ressources comme base pour enrichir la fiche méthodologique et fournir des exemples pertinents.
+  {% endif %}
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+
+# Paramètres attendus par le template du prompt utilisateur.
+parameters:
+  - name: methode_type
+    type: str
+    description: Type de méthode à enseigner
+    default: "commentaire"
+  - name: objectif_specifique
+    type: str
+    description: Objectif pédagogique précis à atteindre
+    default: ""
+  - name: exemples_souhaites
+    type: str
+    description: Type d'exemples à inclure dans la fiche
+    default: ""
+  - name: niveau_classe
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour la leçon (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions personnalisées pour la génération de l'exercice (optionnel)
+    default: ""
+
+# Contraintes ou informations supplémentaires.
+constraints:
+  - La réponse doit être en français.
+  - Chaque étape doit être numérotée et comporter un titre explicite.
+  - Les conseils doivent être concrets et immédiatement applicables.
+  - Les exemples doivent être authentiques et pertinents au niveau indiqué.
+  - La checklist doit permettre une réelle autoévaluation.
+  - Le contenu doit favoriser l'autonomie de l'élève.
+  - Le vocabulaire technique doit être expliqué et adapté au niveau.
+
+# Référence au schéma JSON pour valider la réponse de l'IA.
+response_schema: "fichemethode.schema.json"

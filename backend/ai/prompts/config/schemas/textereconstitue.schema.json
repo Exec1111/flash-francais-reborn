@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TexteReconstitue",
+  "description": "Schema pour un exercice de reconstitution de texte.",
+  "type": "object",
+  "properties": {
+    "exercice": {
+      "type": "object",
+      "description": "Contenu principal de l'exercice de reconstitution.",
+      "properties": {
+        "titre": {
+          "type": "string",
+          "description": "Titre de l'exercice."
+        },
+        "consigne": {
+          "type": "string",
+          "description": "Instructions données aux élèves pour réaliser l'exercice."
+        },
+        "theme": {
+          "type": "string",
+          "description": "Thème ou sujet du texte."
+        },
+        "type_texte": {
+          "type": "string",
+          "enum": ["narratif", "descriptif", "argumentatif", "explicatif"],
+          "description": "Type de texte utilisé pour l'exercice."
+        },
+        "difficulte": {
+          "type": "string",
+          "enum": ["facile", "moyen", "difficile"],
+          "description": "Niveau de difficulté de l'exercice."
+        },
+        "texte_original": {
+          "type": "string",
+          "description": "Texte complet dans l'ordre correct (solution de l'exercice)."
+        },
+        "elements_melanges": {
+          "type": "array",
+          "description": "Liste des éléments (phrases ou paragraphes) présentés dans le désordre.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Identifiant unique de l'élément (correspond à sa position dans l'ordre correct)."
+              },
+              "contenu": {
+                "type": "string",
+                "description": "Contenu textuel de l'élément."
+              },
+              "marqueurs_logiques": {
+                "type": "array",
+                "description": "Connecteurs ou marqueurs logiques présents dans cet élément.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["id", "contenu", "marqueurs_logiques"]
+          },
+          "minItems": 3,
+          "maxItems": 10
+        },
+        "ordre_correct": {
+          "type": "array",
+          "description": "Ordre correct des éléments (liste des IDs dans l'ordre).",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "indices": {
+          "type": "array",
+          "description": "Indices pour aider les élèves à reconstituer le texte.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["temporel", "logique", "structural", "lexical"],
+                "description": "Type d'indice fourni."
+              },
+              "description": {
+                "type": "string",
+                "description": "Description de l'indice."
+              },
+              "exemple": {
+                "type": "string",
+                "description": "Exemple concret tiré du texte (optionnel)."
+              }
+            },
+            "required": ["type", "description"]
+          }
+        },
+        "explication": {
+          "type": "object",
+          "description": "Explication pédagogique de la structure du texte.",
+          "properties": {
+            "logique_construction": {
+              "type": "string",
+              "description": "Explication de la logique de construction du texte."
+            },
+            "connecteurs_cles": {
+              "type": "array",
+              "description": "Liste des connecteurs logiques importants utilisés.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "connecteur": {
+                    "type": "string",
+                    "description": "Le connecteur logique."
+                  },
+                  "fonction": {
+                    "type": "string",
+                    "description": "Fonction ou rôle de ce connecteur dans le texte."
+                  }
+                },
+                "required": ["connecteur", "fonction"]
+              }
+            },
+            "structure_textuelle": {
+              "type": "string",
+              "description": "Description de la structure générale du texte (introduction, développement, conclusion, etc.)."
+            }
+          },
+          "required": ["logique_construction", "connecteurs_cles", "structure_textuelle"]
+        },
+        "criteres_evaluation": {
+          "type": "array",
+          "description": "Critères pour évaluer la réussite de l'exercice.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "critere": {
+                "type": "string",
+                "description": "Nom du critère d'évaluation."
+              },
+              "description": {
+                "type": "string",
+                "description": "Description détaillée du critère."
+              },
+              "points": {
+                "type": "integer",
+                "description": "Nombre de points attribués à ce critère.",
+                "minimum": 1
+              }
+            },
+            "required": ["critere", "description", "points"]
+          }
+        }
+      },
+      "required": [
+        "titre",
+        "consigne",
+        "theme",
+        "type_texte",
+        "difficulte",
+        "texte_original",
+        "elements_melanges",
+        "ordre_correct",
+        "indices",
+        "explication",
+        "criteres_evaluation"
+      ]
+    }
+  },
+  "required": ["exercice"]
+}

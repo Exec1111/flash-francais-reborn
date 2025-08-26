@@ -1,0 +1,113 @@
+# backend/ai/prompts/config/prompts/textereconstitue.yaml
+# Prompt pour générer un exercice de reconstitution de texte.
+
+# Le prompt système définit le rôle et les instructions générales pour l'IA.
+system_prompt: |
+  Tu es un assistant pédagogique expert spécialisé dans la création d'exercices de reconstitution textuelle.
+  Ta mission est de créer des exercices où les élèves doivent remettre dans l'ordre des phrases ou paragraphes mélangés pour reconstituer un texte cohérent.
+  Ta réponse DOIT être un objet JSON valide respectant le schéma fourni.
+  
+  L'objectif pédagogique est de développer :
+  - La compréhension de la structure textuelle
+  - L'amélioration de la logique narrative et argumentative
+  - Le renforcement de la compréhension des connecteurs logiques
+  - Le travail sur la cohésion et la cohérence textuelles
+  
+  Pour créer un exercice efficace :
+  - Assure-toi que le texte original a une structure logique claire
+  - Les éléments mélangés doivent pouvoir être remis en ordre grâce à des indices textuels
+  - Fournis des indices utiles sans donner directement la réponse
+  - Adapte la complexité au niveau de classe spécifié
+  - Inclus une explication pédagogique pour justifier l'ordre correct
+
+# Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
+user_prompt_template: |
+  Génère un exercice de reconstitution de texte sur le thème suivant : "{{ theme }}".
+  
+  **Type de texte** : {{ type_texte }}
+  **Nombre d'éléments à remettre en ordre** : {{ nombre_elements }}
+  **Niveau de difficulté** : {{ difficulte }}
+  {% if niveau_classe %}
+  **Niveau des élèves** : {{ niveau_classe }}
+  {% endif %}
+  
+  L'exercice doit comprendre :
+  1. Un texte original cohérent et structuré
+  2. Ce texte découpé en {{ nombre_elements }} éléments (phrases ou paragraphes selon la complexité)
+  3. Ces éléments présentés dans le désordre
+  4. Des indices pour aider les élèves à reconstituer l'ordre
+  5. Une explication pédagogique sur la logique de construction du texte
+  
+  Critères de qualité :
+  - Le texte doit être adapté au niveau {{ niveau_classe if niveau_classe else "collège" }}
+  - Chaque élément doit contenir des marqueurs logiques ou temporels
+  - La difficulté "{{ difficulte }}" doit se refléter dans la complexité des connecteurs et de la structure
+  - Les indices doivent guider sans révéler directement la solution
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+  
+  Utilise ces ressources comme base pour créer le texte à reconstituer. Le contenu doit être adapté et structuré pour l'exercice.
+  {% endif %}
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+
+# Paramètres attendus par le template du prompt utilisateur.
+parameters:
+  - name: theme
+    type: str
+    description: Sujet du texte à reconstituer
+    default: ""
+  - name: type_texte
+    type: str
+    enum: [narratif, descriptif, argumentatif, explicatif]
+    description: Type de texte à reconstituer
+    default: "narratif"
+  - name: nombre_elements
+    type: int
+    description: Nombre de phrases ou paragraphes à remettre en ordre
+    default: 5
+  - name: difficulte
+    type: str
+    enum: [facile, moyen, difficile]
+    description: Niveau de difficulté de l'exercice
+    default: "moyen"
+  - name: niveau_classe
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour l'exercice (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions personnalisées pour la génération de l'exercice (optionnel)
+    default: ""
+
+# Contraintes ou informations supplémentaires.
+constraints:
+  - La réponse doit être en français.
+  - Le texte original doit faire entre 80 et 200 mots selon le niveau.
+  - Chaque élément mélangé doit contenir au moins un connecteur logique ou temporel.
+  - Les indices ne doivent pas révéler directement l'ordre mais guider le raisonnement.
+  - L'explication doit mettre en évidence les marqueurs de cohérence utilisés.
+  - Le contenu doit être adapté à l'âge et au niveau cognitif des élèves.
+
+# Référence au schéma JSON pour valider la réponse de l'IA.
+response_schema: "textereconstitue.schema.json"

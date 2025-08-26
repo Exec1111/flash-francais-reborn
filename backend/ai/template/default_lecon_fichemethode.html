@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ fiche.titre }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .fiche-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .fiche-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #28a745 0%, #17a2b8 50%, #ffc107 100%);
+        }
+        .fiche-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .fiche-type {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+        }
+        .fiche-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+        }
+        .info-item {
+            text-align: center;
+            padding: 10px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #007bff;
+            font-weight: 500;
+        }
+        .objectif {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #2196f3;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #28a745;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .etapes-container {
+            display: grid;
+            gap: 20px;
+        }
+        .etape-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .etape-card:hover {
+            border-color: #28a745;
+            box-shadow: 0 8px 20px rgba(40,167,69,0.2);
+        }
+        .etape-numero {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .etape-titre {
+            color: #2c3e50;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            margin-top: 5px;
+        }
+        .etape-description {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .etape-conseils {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+        .conseils-titre {
+            font-weight: bold;
+            color: #e68900;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .conseil-item {
+            margin-bottom: 8px;
+            padding-left: 15px;
+            position: relative;
+        }
+        .conseil-item::before {
+            content: "💡";
+            position: absolute;
+            left: 0;
+        }
+        .etape-duree {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            float: right;
+            margin-top: -5px;
+        }
+        .exemples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .exemple-card {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+        }
+        .exemple-titre {
+            font-weight: bold;
+            color: #e68900;
+            margin-bottom: 10px;
+        }
+        .exemple-contenu {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ffc107;
+            font-style: italic;
+        }
+        .exemple-commentaire {
+            font-size: 0.95em;
+            color: #6c5500;
+            line-height: 1.5;
+        }
+        .niveau-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ffc107;
+            color: #6c5500;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+        .pieges-container {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+            border: 1px solid #dc3545;
+            border-radius: 10px;
+            padding: 25px;
+        }
+        .piege-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #dc3545;
+        }
+        .piege-titre {
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .piege-titre::before {
+            content: "⚠️";
+        }
+        .piege-solution {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 3px solid #28a745;
+        }
+        .piege-solution::before {
+            content: "✅ Solution : ";
+            font-weight: bold;
+        }
+        .checklist-container {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 1px solid #28a745;
+            border-radius: 10px;
+            padding: 25px;
+        }
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .checklist-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #28a745;
+            position: relative;
+        }
+        .importance-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+        .importance-essentiel { background-color: #dc3545; color: white; }
+        .importance-important { background-color: #ffc107; color: #6c5500; }
+        .importance-utile { background-color: #17a2b8; color: white; }
+        .checklist-critere {
+            font-weight: bold;
+            color: #155724;
+            margin-bottom: 5px;
+        }
+        .checklist-question {
+            color: #495057;
+            font-style: italic;
+        }
+        .ressources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .ressource-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        .ressource-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+        }
+        .ressource-type {
+            background-color: #007bff;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .ressource-titre {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .ressource-description {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+        .ressource-niveau {
+            font-size: 0.8em;
+            color: #495057;
+            font-style: italic;
+        }
+        .variantes-container {
+            background: linear-gradient(135deg, #e2ecf4 0%, #f8f9fa 100%);
+            border: 1px solid #6c757d;
+            border-radius: 10px;
+            padding: 25px;
+        }
+        .variante-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #6c757d;
+        }
+        .variante-contexte {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        .variante-adaptation {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .variante-exemple {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-style: italic;
+            border-left: 3px solid #6c757d;
+        }
+        @media (max-width: 768px) {
+            .fiche-info {
+                grid-template-columns: 1fr;
+            }
+            .exemples-grid, .checklist-grid, .ressources-grid {
+                grid-template-columns: 1fr;
+            }
+            .fiche-container {
+                padding: 20px;
+            }
+        }
+        .print-button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+            transition: all 0.3s ease;
+        }
+        .print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,123,255,0.4);
+        }
+        @media print {
+            body { background: white; }
+            .print-button { display: none; }
+            .fiche-container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" onclick="window.print()">🖨️ Imprimer</button>
+    
+    <div class="fiche-container">
+        <div class="fiche-header">
+            <div class="fiche-type">📚 Fiche Méthodologique</div>
+            <h1>{{ fiche.titre }}</h1>
+            
+            <div class="fiche-info">
+                <div class="info-item">
+                    <div class="info-label">Type de méthode</div>
+                    <div class="info-value">{{ fiche.methode_type|title }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Niveau cible</div>
+                    <div class="info-value">{{ fiche.niveau_cible }}</div>
+                </div>
+                {% if fiche.duree_estimee %}
+                <div class="info-item">
+                    <div class="info-label">Durée estimée</div>
+                    <div class="info-value">{{ fiche.duree_estimee }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="objectif">
+            <strong>🎯 Objectif :</strong> {{ fiche.objectif }}
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📋 Étapes méthodologiques</h2>
+            <div class="etapes-container">
+                {% for etape in fiche.etapes %}
+                <div class="etape-card">
+                    <div class="etape-numero">{{ etape.numero }}</div>
+                    {% if etape.duree_etape %}
+                    <div class="etape-duree">⏱️ {{ etape.duree_etape }}</div>
+                    {% endif %}
+                    <div class="etape-titre">{{ etape.titre }}</div>
+                    <div class="etape-description">{{ etape.description }}</div>
+                    
+                    {% if etape.conseils %}
+                    <div class="etape-conseils">
+                        <div class="conseils-titre">Conseils pratiques :</div>
+                        {% for conseil in etape.conseils %}
+                        <div class="conseil-item">{{ conseil }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if etape.outils_necessaires %}
+                    <div style="margin-top: 15px;">
+                        <strong>🛠️ Outils nécessaires :</strong>
+                        {% for outil in etape.outils_necessaires %}
+                        <span style="background-color: #e9ecef; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 5px; display: inline-block; margin-bottom: 5px;">{{ outil }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if fiche.exemples %}
+        <div class="section">
+            <h2 class="section-title">📝 Exemples concrets</h2>
+            <div class="exemples-grid">
+                {% for exemple in fiche.exemples %}
+                <div class="exemple-card">
+                    {% if exemple.niveau_exemple %}
+                    <div class="niveau-badge">{{ exemple.niveau_exemple }}</div>
+                    {% endif %}
+                    <div class="exemple-titre">{{ exemple.titre }}</div>
+                    <div class="exemple-contenu">{{ exemple.contenu }}</div>
+                    <div class="exemple-commentaire">
+                        <strong>💬 Analyse :</strong> {{ exemple.commentaire }}
+                    </div>
+                    {% if exemple.etape_illustree %}
+                    <div style="margin-top: 10px; font-size: 0.8em; color: #6c757d;">
+                        <strong>📍 Illustre l'étape {{ exemple.etape_illustree }}</strong>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fiche.pieges_eviter %}
+        <div class="section">
+            <h2 class="section-title">⚠️ Pièges à éviter</h2>
+            <div class="pieges-container">
+                {% for piege in fiche.pieges_eviter %}
+                <div class="piege-item">
+                    <div class="piege-titre">{{ piege.piege }}</div>
+                    <div class="piege-solution">{{ piege.solution }}</div>
+                    {% if piege.exemple_erreur %}
+                    <div style="margin-top: 10px; font-style: italic; color: #6c757d; font-size: 0.9em;">
+                        <strong>Exemple d'erreur :</strong> {{ piege.exemple_erreur }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fiche.checklist %}
+        <div class="section">
+            <h2 class="section-title">✅ Checklist d'autoévaluation</h2>
+            <div class="checklist-container">
+                <div class="checklist-grid">
+                    {% for item in fiche.checklist %}
+                    <div class="checklist-item">
+                        <div class="importance-badge importance-{{ item.importance }}">{{ item.importance }}</div>
+                        <div class="checklist-critere">{{ item.critere }}</div>
+                        <div class="checklist-question">{{ item.question }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fiche.ressources_complementaires %}
+        <div class="section">
+            <h2 class="section-title">📚 Ressources complémentaires</h2>
+            <div class="ressources-grid">
+                {% for ressource in fiche.ressources_complementaires %}
+                <div class="ressource-card">
+                    <div class="ressource-type">{{ ressource.type }}</div>
+                    <div class="ressource-titre">{{ ressource.titre }}</div>
+                    <div class="ressource-description">{{ ressource.description }}</div>
+                    <div class="ressource-niveau">Niveau : {{ ressource.niveau }}</div>
+                    {% if ressource.lien %}
+                    <div style="margin-top: 8px;">
+                        <a href="{{ ressource.lien }}" target="_blank" style="color: #007bff; text-decoration: none; font-size: 0.8em;">
+                            🔗 Accéder à la ressource
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fiche.variantes_methode %}
+        <div class="section">
+            <h2 class="section-title">🔄 Variantes et adaptations</h2>
+            <div class="variantes-container">
+                {% for variante in fiche.variantes_methode %}
+                <div class="variante-item">
+                    <div class="variante-contexte">📍 {{ variante.contexte }}</div>
+                    <div class="variante-adaptation">{{ variante.adaptation }}</div>
+                    {% if variante.exemple %}
+                    <div class="variante-exemple">
+                        <strong>Exemple :</strong> {{ variante.exemple }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

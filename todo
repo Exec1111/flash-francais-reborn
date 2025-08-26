@@ -9,3 +9,9 @@ Sur la page de consultation de progression, à côté de "Objets d'étude associ
 Su la page de modifications de progression enlève la possibilité de modifier les objets d'étude associés. 
 
 Le bouton "Proposer avce l'IA" sur la page de détail de séquence reste grisé
+
+
+
+L'nalyse de texte par génération manuelle ne fonctione plus (textesource à préciser en entrée)
+
+les enums ne remontent aps toujours comme telles dans la génération de ressource (exemple carte mentale)

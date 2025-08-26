@@ -28,6 +28,7 @@ PROMPT_REGISTRY = {
     ("exercice", "pendu"): "pendu",
     ("exercice", "quisuisje"): "quisuisje",
     ("exercice", "analyse_texte"): "analyse_texte",
+    ("exercice", "textereconstitue"): "textereconstitue",
     ("oeuvre", "extrait"): "extrait_oeuvre",
     ("oeuvre", "oeuvrecomp"): "oeuvre_oeuvrecomp",
     ("oeuvre", "generation"): {"config": "oeuvre_generation", "gemini_model": "flash"},
@@ -36,6 +37,8 @@ PROMPT_REGISTRY = {
     ("lecon", "leconcomplete1"): "lecon_complete1",
     ("lecon", "sequence_summary"): "sequence_summary",
     ("lecon", "introsequence"): "introsequence",
+    ("lecon", "fichemethode"): "fichemethode",
+    ("lecon", "cartemental"): "cartemental",
     ("seance", "summary"): "session_summary",
     # Ajouter d'autres mappings ici au fur et à mesure
 }
@@ -60,9 +63,12 @@ TEMPLATE_REGISTRY = {
     ("exercice", "champlex2"): "default_exercice_champlex2.html", 
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
     ("exercice", "analyse_texte"): "default_exercice_analysetexte.html",
+    ("exercice", "textereconstitue"): "default_exercice_textereconstitue.html",
     ("lecon", "leconcomplete1"): "default_lecon_complete1.html",
     ("lecon", "sequence_summary"): "default_lecon_sequencesummary.html",
     ("lecon", "introsequence"): "default_lecon_introsequence.html",
+    ("lecon", "fichemethode"): "default_lecon_fichemethode.html",
+    ("lecon", "cartemental"): "default_lecon_cartemental.html",
     ("seance", "summary"): "default_seance_summary.html",
     # Ajoutez d'autres mappings ici si nécessaire
 }

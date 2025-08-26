@@ -1,0 +1,85 @@
+# backend/ai/prompts/config/prompts/cartemental.yaml
+# Prompt pour générer une carte mentale structurée pour faciliter l'apprentissage et la mémorisation
+
+# Le prompt système définit le rôle et les instructions générales pour l'IA.
+system_prompt: |
+  Tu es un assistant pédagogique expert en création de cartes mentales éducatives.
+  Ta réponse DOIT être un objet JSON valide respectant le schéma fourni.
+  
+  Une carte mentale efficace doit :
+  - Avoir un thème central clair et engageant
+  - Présenter des branches principales logiquement organisées
+  - Utiliser des couleurs différenciées pour chaque branche
+  - Inclure des sous-branches avec des éléments concrets
+  - Proposer des consignes d'utilisation pédagogiques
+  - Suggérer des activités associées pour exploiter la carte
+  
+  Adapte le contenu et la complexité au niveau de classe spécifié.
+  Les couleurs doivent être harmonieuses et faciliter la mémorisation.
+
+# Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
+user_prompt_template: |
+  Crée une carte mentale sur le thème : "{{ theme_central }}"
+  
+  Paramètres :
+  - Profondeur : {{ profondeur }}
+  - Type de contenu : {{ type_contenu }}
+  - Niveau : {{ niveau_classe }}
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+
+  Utilise ces ressources comme base pour créer la carte mentale. Le contenu doit être basé sur les informations fournies.
+  {% endif %}
+
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+
+  {% if constraints %}
+  ## Contraintes techniques à respecter obligatoirement :
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+
+# Paramètres attendus par le template du prompt utilisateur.
+parameters:
+  - name: theme_central
+    type: str
+    description: Sujet principal de la carte mentale
+    default: ""
+  - name: profondeur
+    type: str
+    enum: [basique, approfondie, exhaustive]
+    description: Niveau de détail souhaité pour la carte mentale
+    default: "approfondie"
+  - name: niveau_classe
+    type: str
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+    default: ""
+  - name: resource_ids
+    type: list
+    description: Liste d'identifiants de ressources à utiliser comme base pour la carte (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    description: Instructions personnalisées pour la génération de la carte (optionnel)
+    default: ""
+
+# Contraintes ou informations supplémentaires.
+constraints:
+  - La réponse doit être en français.
+  - Le contenu doit être adapté au niveau scolaire spécifié.
+  - Chaque branche doit avoir une couleur différente en code hexadécimal.
+  - Les éléments doivent être concis et mémorisables.
+  - Les consignes d'utilisation doivent être claires et pratiques.
+
+# Référence au schéma JSON pour valider la réponse de l'IA.
+response_schema: "cartemental.schema.json"

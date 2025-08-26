@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CarteMentale",
+  "description": "Schema pour une carte mentale éducative structurée.",
+  "type": "object",
+  "properties": {
+    "carte": {
+      "type": "object",
+      "description": "Contenu principal de la carte mentale.",
+      "properties": {
+        "titre": {
+          "type": "string",
+          "description": "Titre accrocheur de la carte mentale."
+        },
+        "theme_central": {
+          "type": "string",
+          "description": "Sujet central de la carte mentale."
+        },
+        "branches": {
+          "type": "array",
+          "description": "Branches principales de la carte mentale.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "titre": {
+                "type": "string",
+                "description": "Titre de la branche principale."
+              },
+              "couleur": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Code couleur hexadécimal pour la branche."
+              },
+              "sous_branches": {
+                "type": "array",
+                "description": "Sous-branches de cette branche principale.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "titre": {
+                      "type": "string",
+                      "description": "Titre de la sous-branche."
+                    },
+                    "elements": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Éléments concrets de cette sous-branche."
+                    }
+                  },
+                  "required": ["titre", "elements"]
+                }
+              }
+            },
+            "required": ["titre", "couleur", "sous_branches"]
+          }
+        },
+        "consignes_utilisation": {
+          "type": "string",
+          "description": "Instructions pédagogiques pour utiliser efficacement la carte mentale."
+        },
+        "activites_associees": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Suggestions d'activités pédagogiques à réaliser avec cette carte."
+        }
+      },
+      "required": [
+        "titre",
+        "theme_central", 
+        "branches",
+        "consignes_utilisation",
+        "activites_associees"
+      ]
+    }
+  },
+  "required": ["carte"]
+}
