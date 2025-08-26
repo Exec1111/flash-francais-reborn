@@ -23,10 +23,18 @@ import {
   FormControlLabel, 
   Radio, 
   FormLabel,
-  Autocomplete
+  Autocomplete,
+  Link
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import UploadFileIcon from '@mui/icons-material/UploadFile'; 
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import LinkIcon from '@mui/icons-material/Link';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import SaveIcon from '@mui/icons-material/Save';
+import EditIcon from '@mui/icons-material/Edit'; 
 import { useNavigate } from 'react-router-dom';
 import resourceTypeService from '../../services/resourceTypeService';
 import resourceService from '../../services/resourceService'; 
@@ -36,6 +44,8 @@ import configService from '../../services/configService';
 import { API_BASE_URL } from '../../services/api';
 import DynamicAIForm from '../DynamicAIForm/index';  
 import TinyHtmlEditor from '../editors/TinyHtmlEditor';
+import HtmlChatBot from '../htmlChat/HtmlChatBot';
+import { useLayout } from '../../contexts/LayoutContext';
 
 /**
  * Composant de formulaire réutilisable pour la création et l'édition de ressources
@@ -63,6 +73,9 @@ const ResourceForm = ({
   // --- Utiliser useNavigate pour la redirection ---
   const navigate = useNavigate(); 
   
+  // --- Accès au contexte layout pour contrôler la sidenav ---
+  const { handleSidebarClose } = useLayout();
+  
   // --- États --- 
   const [formData, setFormData] = useState({
     title: '',
@@ -73,6 +86,16 @@ const ResourceForm = ({
   const [sourceType, setSourceType] = useState('ai'); 
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
+  
+  // États pour contrôler l'affichage du chat IA et le mode édition
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [tempHtmlContent, setTempHtmlContent] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [htmlCacheBuster, setHtmlCacheBuster] = useState(Date.now());
+  const [isLoadingHtml, setIsLoadingHtml] = useState(false);
+  const [lastLoadedCacheBuster, setLastLoadedCacheBuster] = useState(Date.now());
+  const [pendingEditMode, setPendingEditMode] = useState(false); // Flag pour indiquer qu'on attend le contenu HTML
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -214,13 +237,42 @@ const ResourceForm = ({
 
   // Charger le contenu HTML existant le cas échéant
   useEffect(() => {
-    if (!initialData) return;
+    console.log('[DEBUG] useEffect HTML - Démarrage avec conditions:', {
+      isEditingMode,
+      isLoadingHtml,
+      htmlCacheBuster,
+      lastLoadedCacheBuster,
+      hasInitialData: !!initialData,
+      hasHtmlPath: !!(initialData?.html_url || initialData?.html_content_url || (initialData?.file_path || '').endsWith('.html') || (initialData?.url || '').endsWith('.html'))
+    });
+    
+    // Ne pas recharger le HTML si on est en train d'éditer ou si déjà en cours de chargement
+    if (isEditingMode || isLoadingHtml) {
+      console.log('[DEBUG] Chargement HTML bloqué - isEditingMode:', isEditingMode, 'isLoadingHtml:', isLoadingHtml);
+      return;
+    }
+    
+    // Ne pas recharger si le cache buster n'a pas changé
+    if (htmlCacheBuster === lastLoadedCacheBuster) {
+      console.log('[DEBUG] Chargement HTML bloqué - cache buster identique:', htmlCacheBuster);
+      return;
+    }
+    
+    if (!initialData) {
+      console.log('[DEBUG] Pas de initialData, pas de chargement HTML');
+      return;
+    }
+    
     if (
       initialData.html_url ||
       initialData.html_content_url ||
       (initialData.file_path || '').endsWith('.html') ||
       (initialData.url || '').endsWith('.html')
     ) {
+      console.log('[DEBUG] Démarrage chargement HTML avec cache buster:', htmlCacheBuster);
+      setIsLoadingHtml(true);
+      setLastLoadedCacheBuster(htmlCacheBuster); // Marquer ce cache buster comme traité
+      
       const relativeUrlRaw = initialData.html_url || initialData.html_content_url || initialData.file_path || initialData.url;
       // Remplacer les backslashes éventuels par des slashs pour une URL valide
       const relativeUrl = (relativeUrlRaw || '').replace(/\\/g, '/');
@@ -239,12 +291,57 @@ const ResourceForm = ({
           fullUrl = `${base}${relativeUrl}`;
         }
       }
-      fetch(fullUrl)
+      
+      // Ajouter un paramètre cache-buster pour éviter la mise en cache
+      const separator = fullUrl.includes('?') ? '&' : '?';
+      const urlWithCacheBuster = `${fullUrl}${separator}_t=${htmlCacheBuster}`;
+      
+      console.log('[DEBUG] Chargement HTML avec URL:', urlWithCacheBuster);
+      
+      fetch(urlWithCacheBuster, {
+        cache: 'no-cache', // Force le rechargement
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
         .then(res => res.text())
-        .then(setHtmlContent)
-        .catch(() => setHtmlContent(''));
+        .then(content => {
+          console.log('[DEBUG] Contenu HTML chargé avec succès, longueur:', content.length);
+          console.log('[DEBUG] Aperçu du contenu (100 premiers caractères):', content.substring(0, 100));
+          setHtmlContent(content);
+        })
+        .catch(err => {
+          console.error('[DEBUG] Erreur lors du chargement du contenu HTML:', err);
+          setHtmlContent('');
+        })
+        .finally(() => {
+          console.log('[DEBUG] Fin de chargement HTML');
+          setIsLoadingHtml(false);
+        });
+    } else {
+      console.log('[DEBUG] Aucune URL HTML détectée dans initialData:', {
+        html_url: initialData?.html_url,
+        html_content_url: initialData?.html_content_url,
+        file_path: initialData?.file_path,
+        url: initialData?.url,
+        file_path_ends_with_html: (initialData?.file_path || '').endsWith('.html'),
+        url_ends_with_html: (initialData?.url || '').endsWith('.html')
+      });
     }
-  }, [initialData]);
+  }, [initialData, htmlCacheBuster, isEditingMode, lastLoadedCacheBuster]); // Retirer isLoadingHtml des dépendances pour éviter la boucle
+
+  // Surveiller les changements de htmlContent pour entrer en mode édition automatiquement
+  useEffect(() => {
+    if (pendingEditMode && htmlContent && htmlContent.trim()) {
+      console.log('[DEBUG] htmlContent détecté, passage en mode édition avec longueur:', htmlContent.length);
+      setPendingEditMode(false);
+      setIsEditingMode(true);
+      setTempHtmlContent(htmlContent);
+      setShowAiChat(false);
+      handleSidebarClose();
+    }
+  }, [htmlContent, pendingEditMode, handleSidebarClose]);
 
   // Charger les types
   const fetchResourceTypes = useCallback(async () => {
@@ -357,6 +454,88 @@ const ResourceForm = ({
         setSelectedFile(null);
         setFileError('');
     }
+  };
+
+  // Gestionnaire pour le bouton "Éditer le contenu"
+  const handleEditContent = () => {
+    // Forcer le rechargement du contenu HTML avant l'édition (une seule fois)
+    if (!isEditingMode) {
+      console.log('[DEBUG] handleEditContent - htmlContent actuel:', htmlContent ? htmlContent.length : 'vide');
+      console.log('[DEBUG] handleEditContent - initialData:', {
+        html_url: initialData?.html_url,
+        html_content_url: initialData?.html_content_url,
+        file_path: initialData?.file_path,
+        url: initialData?.url
+      });
+      
+      // Si le contenu est déjà chargé, utiliser directement
+      if (htmlContent && htmlContent.trim()) {
+        console.log('[DEBUG] handleEditContent - contenu déjà disponible, passage direct en mode édition');
+        setIsEditingMode(true);
+        console.log('[DEBUG] handleEditContent - setting tempHtmlContent (direct) avec longueur:', htmlContent.length);
+        setTempHtmlContent(htmlContent);
+        setShowAiChat(false);
+        handleSidebarClose();
+      } else {
+        console.log('[DEBUG] handleEditContent - forçage du rechargement HTML et attente du contenu');
+        // Marquer qu'on attend le contenu pour entrer en mode édition
+        setPendingEditMode(true);
+        // Déclencher le rechargement du contenu
+        setHtmlCacheBuster(Date.now());
+      }
+    }
+  };
+
+  // Gestionnaire pour activer l'IA pendant l'édition
+  const handleActivateAI = () => {
+    setShowAiChat(true);
+  };
+
+  // Gestionnaire pour sauvegarder le contenu HTML modifié
+  const handleSaveHtmlContent = async () => {
+    try {
+      setSubmitting(true);
+      setError('');
+      setSuccess('');
+      
+      // Si on est en mode édition, sauvegarder via l'API
+      if (isEdit && resourceId) {
+        const dataToSend = new FormData();
+        dataToSend.append('html_content', tempHtmlContent);
+        
+        await resourceService.update(resourceId, dataToSend);
+        setSuccess('Contenu HTML sauvegardé avec succès!');
+        console.log('[DEBUG] Sauvegarde réussie');
+      }
+      
+      // Mettre à jour le contenu HTML principal APRES la sauvegarde
+      setHtmlContent(tempHtmlContent);
+      
+      // Revenir au mode standard
+      setIsEditingMode(false);
+      setShowAiChat(false);
+      setPendingEditMode(false); // Réinitialiser le flag d'attente
+      
+      // Forcer le rechargement du contenu pour la prochaine fois (seulement après sortie du mode édition)
+      setTimeout(() => {
+        setHtmlCacheBuster(Date.now());
+      }, 100);
+      
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du contenu HTML:', error);
+      const displayError = formatError(error?.response?.data?.detail ?? error?.response?.data ?? error?.message ?? 'Erreur lors de la sauvegarde du contenu HTML');
+      setError(displayError);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Gestionnaire pour annuler l'édition
+  const handleCancelEditing = () => {
+    setIsEditingMode(false);
+    setShowAiChat(false);
+    setPendingEditMode(false); // Réinitialiser le flag d'attente
+    setTempHtmlContent(htmlContent); // Restaurer le contenu original
   };
 
   // Helper: normaliser toutes les formes d'erreurs en chaîne exploitable
@@ -583,7 +762,8 @@ const ResourceForm = ({
   // Boutons d'action partagés
   // En mode création d'une ressource IA, les boutons sont gérés par DynamicAIForm.
   // En mode édition (isEdit), on doit quand même afficher les boutons, même si la source est "ai".
-  const actionButtons = (!isEdit && sourceType === 'ai') ? null : (
+  // En mode édition HTML, les boutons sont gérés dans l'interface d'édition.
+  const actionButtons = (!isEdit && sourceType === 'ai') || isEditingMode ? null : (
     <>
       <Button 
         onClick={isDialog ? onClose : () => navigate(-1)} 
@@ -610,7 +790,9 @@ const ResourceForm = ({
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
       
-      <Grid container spacing={3}>
+      {!isEditingMode ? (
+        // Mode standard : afficher tous les champs du formulaire
+        <Grid container spacing={3}>
         <Grid item xs={12}>
           <TextField
             fullWidth
@@ -625,8 +807,132 @@ const ResourceForm = ({
 
         {showHtmlEditor && (
           <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>Éditer le contenu HTML</Typography>
-            <TinyHtmlEditor initialHtml={htmlContent} onChange={setHtmlContent} />
+            {!isEditingMode ? (
+              // Mode standard : afficher le lien vers le document
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Typography variant="h6">Contenu HTML</Typography>
+                {htmlContent && (
+                  <Link
+                    component="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const newWindow = window.open('', '_blank');
+                      newWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <title>Aperçu du contenu HTML</title>
+                            <meta charset="utf-8">
+                          </head>
+                          <body>
+                            ${htmlContent}
+                          </body>
+                        </html>
+                      `);
+                      newWindow.document.close();
+                    }}
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      textDecoration: 'none',
+                      background: 'none',
+                      border: 0,
+                      cursor: 'pointer',
+                      color: 'primary.main'
+                    }}
+                  >
+                    <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
+                    Consulter le contenu
+                    <OpenInNewIcon fontSize="small" sx={{ ml: 0.5 }} />
+                  </Link>
+                )}
+                <Button
+                  variant="contained"
+                  startIcon={<EditIcon />}
+                  onClick={handleEditContent}
+                  sx={{
+                    backgroundColor: 'primary.main',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    }
+                  }}
+                >
+                  Éditer le contenu
+                </Button>
+              </Box>
+            ) : (
+              // Mode édition : afficher l'éditeur et les contrôles
+              <>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Typography variant="h6">Édition du contenu HTML</Typography>
+                  {!showAiChat && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<PsychologyIcon />}
+                      onClick={handleActivateAI}
+                      sx={{
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                          borderColor: 'primary.dark',
+                        }
+                      }}
+                    >
+                      Activer l'IA
+                    </Button>
+                  )}
+                  {showAiChat && (
+                    <Button
+                      variant="text"
+                      startIcon={showAiChat ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      onClick={() => setShowAiChat(!showAiChat)}
+                      size="small"
+                    >
+                      {showAiChat ? 'Masquer' : 'Afficher'} l'assistant IA
+                    </Button>
+                  )}
+                  <Box sx={{ flexGrow: 1 }} />
+                  <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={handleSaveHtmlContent}
+                    disabled={submitting}
+                    color="success"
+                  >
+                    {submitting ? <CircularProgress size={24} /> : 'Sauvegarder'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleCancelEditing}
+                    disabled={submitting}
+                  >
+                    Annuler
+                  </Button>
+                </Box>
+                
+                <Grid container spacing={2}>
+                  {/* Éditeur HTML principal */}
+                  <Grid item xs={12} md={showAiChat ? 8 : 12}>
+                    <TinyHtmlEditor 
+                      initialHtml={tempHtmlContent} 
+                      onChange={setTempHtmlContent} 
+                    />
+                  </Grid>
+                  
+                  {/* Chatbot IA pour assistance - affichage conditionnel */}
+                  {showAiChat && (
+                    <Grid item xs={12} md={4}>
+                      <HtmlChatBot
+                        currentHtml={tempHtmlContent}
+                        onHtmlChange={setTempHtmlContent}
+                        disabled={submitting}
+                      />
+                    </Grid>
+                  )}
+                </Grid>
+              </>
+            )}
           </Grid>
         )}
 
@@ -869,10 +1175,122 @@ const ResourceForm = ({
           </Grid>
         )}
       </Grid>
+      ) : (
+        // Mode édition : afficher seulement l'éditeur HTML et les contrôles
+        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          {/* Overlay de chargement pour bloquer les interactions pendant les opérations IA */}
+          {aiLoading && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2000,
+                borderRadius: 1
+              }}
+            >
+              <Box sx={{ textAlign: 'center' }}>
+                <CircularProgress size={60} sx={{ mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">
+                  L'IA traite votre demande...
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Veuillez patienter, ne pas modifier le contenu
+                </Typography>
+              </Box>
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="h6">Édition du contenu HTML</Typography>
+            {!showAiChat && (
+              <Button
+                variant="outlined"
+                startIcon={<PsychologyIcon />}
+                onClick={handleActivateAI}
+                sx={{
+                  color: 'primary.main',
+                  borderColor: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'primary.light',
+                    borderColor: 'primary.dark',
+                  }
+                }}
+              >
+                Activer l'IA
+              </Button>
+            )}
+            {showAiChat && (
+              <Button
+                variant="text"
+                startIcon={showAiChat ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                onClick={() => setShowAiChat(!showAiChat)}
+                size="small"
+              >
+                {showAiChat ? 'Masquer' : 'Afficher'} l'assistant IA
+              </Button>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
+            <Button
+              variant="contained"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveHtmlContent}
+              disabled={submitting}
+              color="success"
+            >
+              {submitting ? <CircularProgress size={24} /> : 'Sauvegarder'}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleCancelEditing}
+              disabled={submitting}
+            >
+              Annuler
+            </Button>
+          </Box>
+          
+          <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            {/* Éditeur HTML principal */}
+            <Box sx={{ flex: showAiChat ? 2 : 1, mr: showAiChat ? 1 : 0 }}>
+              <TinyHtmlEditor 
+                initialHtml={tempHtmlContent} 
+                onChange={setTempHtmlContent}
+                disabled={aiLoading || submitting}
+              />
+            </Box>
+            
+            {/* Chatbot IA pour assistance - affichage conditionnel */}
+            {showAiChat && (
+              <Box sx={{ flex: 1, ml: 1, borderLeft: 1, borderColor: 'divider', pl: 1 }}>
+                <HtmlChatBot
+                  currentHtml={tempHtmlContent}
+                  onHtmlChange={setTempHtmlContent}
+                  disabled={submitting}
+                  onLoadingChange={setAiLoading}
+                />
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )}
     </>
   );
 
   // Rendu conditionnel selon le mode (dialog ou page)
+  if (isEditingMode) {
+    // Mode édition plein écran
+    return (
+      <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, bgcolor: 'background.default' }}>
+        {formContent}
+      </Box>
+    );
+  }
+
   return isDialog ? (
     <Dialog 
       open={open} 

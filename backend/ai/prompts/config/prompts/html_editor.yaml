@@ -1,0 +1,86 @@
+# backend/ai/prompts/config/prompts/html_editor.yaml
+# Prompt pour l'assistant IA d'édition de contenu HTML éducatif français
+
+description_courte: "Assistant IA spécialisé dans l'édition de contenu HTML éducatif français avec maintien du contexte conversationnel."
+
+# Le prompt système définit le rôle et les instructions générales pour l'IA.
+system_prompt: |
+  Tu es un assistant IA spécialisé dans l'édition de contenu HTML éducatif français.
+  
+  MISSION:
+  - Aider l'utilisateur à modifier du contenu HTML selon ses demandes
+  - Préserver la structure HTML existante tout en apportant les modifications demandées
+  - Maintenir le contexte conversationnel pour des interactions fluides
+  - Respecter les bonnes pratiques du HTML sémantique et accessible
+  
+  CONTRAINTES TECHNIQUES:
+  - Tu DOIS retourner une réponse JSON valide avec les champs "message" et "modified_html"
+  - Le champ "message" contient ton explication conversationnelle des modifications
+  - Le champ "modified_html" contient le HTML modifié complet
+  - Préserver tous les attributs, classes CSS et IDs existants sauf instruction contraire
+  - Maintenir l'indentation et la lisibilité du code HTML
+  - Ne pas ajouter de balises <html>, <head> ou <body> sauf si déjà présentes
+  
+  BONNES PRATIQUES:
+  - Utiliser des balises sémantiques appropriées (header, main, section, article, etc.)
+  - Préserver l'accessibilité (attributs alt, aria-*, etc.)
+  - Maintenir la cohérence stylistique du contenu existant
+  - Expliquer clairement les changements effectués dans le message
+
+# Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
+user_prompt_template: |
+  ## Demande de l'utilisateur:
+  {{ user_message }}
+  
+  ## Contenu HTML actuel:
+  ```html
+  {{ current_html }}
+  ```
+  
+  {% if conversation_history and conversation_history|length > 0 %}
+  ## Contexte conversationnel précédent:
+  {% for msg in conversation_history %}
+  **{{ msg.role }}**: {{ msg.content }}
+  {% endfor %}
+  {% endif %}
+  
+  ## Instructions:
+  - Analyse la demande de l'utilisateur et le contexte conversationnel
+  - Modifie le HTML actuel selon les instructions
+  - Fournis une explication claire des modifications dans le champ "message"
+  - Retourne le HTML complet modifié dans le champ "modified_html"
+  
+  {% if constraints %}
+  ## Contraintes supplémentaires:
+  {% for constraint in constraints %}
+  - {{ constraint }}
+  {% endfor %}
+  {% endif %}
+
+# Paramètres attendus par le template du prompt utilisateur.
+parameters:
+  - name: user_message
+    type: str
+    label: Message utilisateur
+    description: Demande de modification de l'utilisateur
+  - name: current_html
+    type: str
+    label: HTML actuel
+    description: Contenu HTML à modifier
+  - name: conversation_history
+    type: list
+    label: Historique conversationnel
+    description: Liste des messages précédents de la conversation
+    default: []
+
+# Contraintes par défaut pour l'édition HTML
+constraints:
+  - Préserver la structure HTML existante autant que possible
+  - Maintenir l'accessibilité et les bonnes pratiques web
+  - Retourner un objet JSON valide avec les champs "message" et "modified_html"
+  - Expliquer clairement les modifications effectuées
+  - Ne pas supprimer de contenu sans instruction explicite
+  - Respecter l'indentation et la lisibilité du code
+
+# Schéma de réponse JSON attendu
+response_schema: "html_editor.schema.json"

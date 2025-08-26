@@ -40,6 +40,8 @@ PROMPT_REGISTRY = {
     ("lecon", "fichemethode"): "fichemethode",
     ("lecon", "cartemental"): "cartemental",
     ("seance", "summary"): "session_summary",
+    # Prompts spécialisés pour l'édition et l'assistance
+    ("html", "editor"): {"config": "html_editor", "gemini_model": "flash"},
     # Ajouter d'autres mappings ici au fur et à mesure
 }
 

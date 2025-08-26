@@ -35,6 +35,7 @@ import NewResource from './pages/resources/NewResource';
 import ResourceEdit from './pages/resources/ResourceEdit';
 import ResourceView from './pages/ResourceView';
 import ObjectiveList from './pages/objectives/ObjectiveList';
+import LayoutContext from './contexts/LayoutContext';
 import NewObjective from './pages/objectives/NewObjective';
 import ObjectiveEdit from './pages/objectives/ObjectiveEdit';
 import ObjectiveDetailPage from './pages/objectives/ObjectiveDetailPage';
@@ -143,6 +144,16 @@ function ProtectedLayout() {
   const handleToggleChatbox = () => setIsChatboxOpen(!isChatboxOpen);
   const handleCloseChatbox = () => setIsChatboxOpen(false);
 
+  // Valeurs du contexte layout
+  const layoutContextValue = {
+    isSidebarOpen,
+    handleSidebarOpen,
+    handleSidebarClose,
+    isChatboxOpen,
+    handleToggleChatbox,
+    handleCloseChatbox
+  };
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <CssBaseline /> 
@@ -210,7 +221,8 @@ function ProtectedLayout() {
       </MuiAppBar>
 
       {/* Remettre le Provider ici */}
-      <TreeDataContext.Provider value={{ treeData, isTreeLoading, treeError, refreshTreeData }}>
+      <LayoutContext.Provider value={layoutContextValue}>
+        <TreeDataContext.Provider value={{ treeData, isTreeLoading, treeError, refreshTreeData }}>
         <SideNav
           open={isSidebarOpen}
           handleDrawerOpen={handleSidebarOpen}
@@ -263,6 +275,7 @@ function ProtectedLayout() {
           <Chatbox onClose={handleCloseChatbox} /> 
         </Drawer>
       </TreeDataContext.Provider>
+      </LayoutContext.Provider>
     </Box>
   );
 }
