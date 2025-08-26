@@ -133,7 +133,7 @@ const HtmlChatBot = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: 'rgba(255, 255, 255, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -202,7 +202,7 @@ const HtmlChatBot = ({
                     elevation={1}
                     sx={{
                       p: 2,
-                      backgroundColor: message.role === 'user' ? 'primary.light' : 'background.paper',
+                      backgroundColor: message.role === 'user' ? 'primary.light' : '#ffffff',
                       color: message.role === 'user' ? 'primary.contrastText' : '#000000',
                       border: message.role === 'assistant' ? '1px solid' : 'none',
                       borderColor: message.role === 'assistant' ? 'grey.300' : 'transparent'
