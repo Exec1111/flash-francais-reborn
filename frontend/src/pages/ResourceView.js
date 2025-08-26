@@ -5,7 +5,8 @@ import resourceTypeService from '../services/resourceTypeService';
 import { API_BASE_URL } from '../services/api';
 import { 
     Box, Typography, CircularProgress, Alert, Button, Link, Divider, List, ListItem,
-    Container, Card, CardContent, IconButton, Chip, Stack, FormControlLabel, Checkbox
+    Container, Card, CardContent, IconButton, Chip, Stack, FormControlLabel, Checkbox,
+    Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, PictureAsPdf as PictureAsPdfIcon, Description as DescriptionIcon, InsertDriveFile as InsertDriveFileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import StudyObjectChips from '../components/studyObjects/StudyObjectChips';
@@ -41,6 +42,10 @@ function ResourceView() {
     const [polling, setPolling] = useState(false);
     const [reextractOpts, setReextractOpts] = useState({ force: false });
     const intervalRef = useRef(null);
+    
+    // Delete confirmation dialog
+    const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         const fetchResource = async () => {
@@ -176,6 +181,30 @@ function ResourceView() {
         }
     };
 
+    // Delete functionality
+    const handleDeleteResource = () => {
+        setOpenConfirmDialog(true);
+    };
+
+    const confirmDelete = async () => {
+        setDeleting(true);
+        try {
+            await resourceService.delete(id);
+            // Navigate back to resources list after successful deletion
+            navigate('/resources');
+        } catch (err) {
+            console.error('Erreur lors de la suppression de la ressource:', err);
+            setError(err.response?.data?.detail || err.message || 'Erreur lors de la suppression de la ressource');
+        } finally {
+            setDeleting(false);
+            setOpenConfirmDialog(false);
+        }
+    };
+
+    const cancelDelete = () => {
+        setOpenConfirmDialog(false);
+    };
+
     // Effet pour récupérer les informations de type et sous-type
     useEffect(() => {
         const fetchTypeInfo = async () => {
@@ -284,7 +313,7 @@ function ResourceView() {
                             >
                                 Modifier
                             </Button>
-                            <IconButton color="error">
+                            <IconButton color="error" onClick={handleDeleteResource} disabled={deleting}>
                                 <DeleteIcon />
                             </IconButton>
                         </Box>
@@ -359,6 +388,31 @@ function ResourceView() {
                 )}
                 </CardContent>
             </Card>
+            
+            {/* Dialog de confirmation de suppression */}
+            <Dialog
+                open={openConfirmDialog}
+                onClose={cancelDelete}
+                aria-labelledby="confirm-delete-dialog-title"
+            >
+                <DialogTitle id="confirm-delete-dialog-title">
+                    Confirmation de suppression
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Êtes-vous sûr de vouloir supprimer cette ressource ?
+                        Cette action est irréversible.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={cancelDelete} color="primary" disabled={deleting}>
+                        Annuler
+                    </Button>
+                    <Button onClick={confirmDelete} color="error" variant="contained" disabled={deleting}>
+                        {deleting ? 'Suppression...' : 'Supprimer'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
