@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Grid,
   Box,
   Button,
   Typography,
   Link,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -14,8 +19,10 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import SaveIcon from '@mui/icons-material/Save';
+import SaveAsIcon from '@mui/icons-material/SaveAs';
 import TinyHtmlEditor from '../../editors/TinyHtmlEditor';
 import HtmlChatBot from '../../htmlChat/HtmlChatBot';
+import { API_BASE_URL } from '../../../services/api';
 
 /**
  * Component for HTML editing interface
@@ -33,10 +40,26 @@ const ResourceHtmlEditor = ({
   handleEditContent,
   handleActivateAI,
   handleSaveHtmlContent,
+  handleSaveAsHtmlContent,
   handleCancelEditing,
-  setAiLoading
+  setAiLoading,
+  initialData // Add initialData prop
 }) => {
+  // State for Save As dialog
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [newResourceName, setNewResourceName] = useState('');
+  const [saveAsSubmitting, setSaveAsSubmitting] = useState(false);
+
+  // Debug logging for "Consulter le contenu" button visibility
+  console.log('[DEBUG ResourceHtmlEditor] Conditions check:', {
+    showHtmlEditor,
+    isEditingMode,
+    htmlContent: htmlContent ? `${htmlContent.length} caractères` : 'vide',
+    htmlContentTrimmed: htmlContent && htmlContent.trim() ? `${htmlContent.trim().length} caractères trimmed` : 'vide après trim'
+  });
+
   if (!showHtmlEditor) {
+    console.log('[DEBUG ResourceHtmlEditor] showHtmlEditor est false, composant masqué');
     return null;
   }
 
@@ -46,41 +69,47 @@ const ResourceHtmlEditor = ({
       <Grid item xs={12}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <Typography variant="h6">Contenu HTML</Typography>
-          {htmlContent && (
-            <Link
-              component="button"
-              onClick={(e) => {
-                e.preventDefault();
-                const newWindow = window.open('', '_blank');
-                newWindow.document.write(`
-                  <!DOCTYPE html>
-                  <html>
-                    <head>
-                      <title>Aperçu du contenu HTML</title>
-                      <meta charset="utf-8">
-                    </head>
-                    <body>
-                      ${htmlContent}
-                    </body>
-                  </html>
-                `);
-                newWindow.document.close();
-              }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-                background: 'none',
-                border: 0,
-                cursor: 'pointer',
-                color: 'primary.main'
-              }}
-            >
-              <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
-              Consulter le contenu
-              <OpenInNewIcon fontSize="small" sx={{ ml: 0.5 }} />
-            </Link>
-          )}
+          <Link
+            component="button"
+            onClick={(e) => {
+              e.preventDefault();
+              
+              // Build the URL to the HTML document using the same logic as ResourceView.js
+              const relativeUrlRaw = initialData?.html_url || initialData?.html_content_url || 
+                                     initialData?.file_path || initialData?.url;
+              
+              if (relativeUrlRaw) {
+                const relativeUrl = relativeUrlRaw.replace(/\\/g, '/');
+                let fullUrl;
+                
+                if (relativeUrl.startsWith('http')) {
+                  fullUrl = relativeUrl;
+                } else {
+                  // Use the same URL construction pattern as ResourceView.js
+                  const cleanPath = relativeUrl.startsWith('/') ? relativeUrl.substring(1) : relativeUrl;
+                  fullUrl = `${API_BASE_URL}/media/uploads/${cleanPath}`;
+                }
+                
+                // Open in new tab
+                window.open(fullUrl, '_blank');
+              } else {
+                alert('Aucun document HTML trouvé pour cette ressource.');
+              }
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              background: 'none',
+              border: 0,
+              cursor: 'pointer',
+              color: 'primary.main'
+            }}
+          >
+            <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
+            Consulter le contenu
+            <OpenInNewIcon fontSize="small" sx={{ ml: 0.5 }} />
+          </Link>
           <Button
             variant="contained"
             startIcon={<EditIcon />}
@@ -102,6 +131,35 @@ const ResourceHtmlEditor = ({
   // Editing mode: show editor with controls (handled by parent for full-screen)
   return (
     <>
+      {/* Blocking overlay during Save As operation */}
+      {saveAsSubmitting && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            borderRadius: 1
+          }}
+        >
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Sauvegarde en cours...
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Création de la nouvelle ressource
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <Typography variant="h6">Édition du contenu HTML</Typography>
         {!showAiChat && (
@@ -143,6 +201,18 @@ const ResourceHtmlEditor = ({
         </Button>
         <Button
           variant="outlined"
+          startIcon={<SaveAsIcon />}
+          onClick={() => {
+            setNewResourceName(initialData?.title ? `${initialData.title} (copie)` : 'Nouvelle ressource');
+            setSaveAsDialogOpen(true);
+          }}
+          disabled={submitting || saveAsSubmitting}
+          color="primary"
+        >
+          Sauvegarder sous
+        </Button>
+        <Button
+          variant="outlined"
           onClick={handleCancelEditing}
           disabled={submitting}
         >
@@ -171,6 +241,58 @@ const ResourceHtmlEditor = ({
           </Grid>
         )}
       </Grid>
+      
+      {/* Save As Dialog */}
+      <Dialog
+        open={saveAsDialogOpen}
+        onClose={() => !saveAsSubmitting && setSaveAsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Sauvegarder sous</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Nom de la nouvelle ressource"
+            fullWidth
+            variant="outlined"
+            value={newResourceName}
+            onChange={(e) => setNewResourceName(e.target.value)}
+            disabled={saveAsSubmitting}
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setSaveAsDialogOpen(false)}
+            disabled={saveAsSubmitting}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={async () => {
+              if (newResourceName.trim() && handleSaveAsHtmlContent) {
+                setSaveAsSubmitting(true);
+                try {
+                  await handleSaveAsHtmlContent(newResourceName.trim());
+                  setSaveAsDialogOpen(false);
+                  setNewResourceName('');
+                } catch (error) {
+                  console.error('Erreur lors de la sauvegarde sous:', error);
+                } finally {
+                  setSaveAsSubmitting(false);
+                }
+              }
+            }}
+            variant="contained"
+            disabled={!newResourceName.trim() || saveAsSubmitting}
+            startIcon={saveAsSubmitting ? <CircularProgress size={16} /> : <SaveAsIcon />}
+          >
+            {saveAsSubmitting ? 'Sauvegarde...' : 'Sauvegarder'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

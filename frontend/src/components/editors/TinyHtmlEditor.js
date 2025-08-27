@@ -101,7 +101,31 @@ const TinyHtmlEditor = ({ initialHtml = '', onChange }) => {
         }}
         onEditorChange={(html) => {
           setData(html);
-          onChange?.(html);
+          
+          // Reconstruct complete HTML with styles for saving
+          let completeHtml = html;
+          
+          // Add styles back if they exist
+          if (savedStylesRef.current && savedStylesRef.current.trim()) {
+            completeHtml = `<style>\n${savedStylesRef.current}\n</style>\n${html}`;
+          }
+          
+          // Add link tags back if they exist
+          if (savedLinksRef.current && savedLinksRef.current.length > 0) {
+            const linkTags = savedLinksRef.current.map(href => 
+              `<link rel="stylesheet" href="${href}">`
+            ).join('\n');
+            completeHtml = `${linkTags}\n${completeHtml}`;
+          }
+          
+          debug('onChange: sending complete HTML with styles', {
+            originalLength: html.length,
+            completeLength: completeHtml.length,
+            hasStyles: Boolean(savedStylesRef.current),
+            stylesLength: savedStylesRef.current ? savedStylesRef.current.length : 0
+          });
+          
+          onChange?.(completeHtml);
         }}
         init={{
           language: 'fr_FR',
