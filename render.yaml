@@ -19,6 +19,18 @@ services:
         value: 10000
       - key: RENDER
         value: true
+  - type: cron
+    name: temp-files-cleanup
+    env: python
+    rootDir: backend
+    schedule: "0 */12 * * *"  # Toutes les 12 heures
+    buildCommand: pip install -r requirements.txt
+    startCommand: python ../scripts/cleanup_temp_files.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: RENDER
+        value: true
 
 databases:
   - name: flash-francais-db

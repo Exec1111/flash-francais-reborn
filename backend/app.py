@@ -43,6 +43,9 @@ from routers.docling import router as docling_router
 from schemas.sequence import SequenceRead
 from schemas.objective import ObjectiveRead
 
+# Import du scheduler de nettoyage des fichiers temporaires
+from backend.ai.services.temp_scheduler import lifespan_manager
+
 # Création des tables dans la base de données
 Base.metadata.create_all(bind=engine)
 
@@ -73,9 +76,11 @@ async def lifespan(app: FastAPI):
     print("Application startup: rebuilding Pydantic models...")
     rebuild_models_deferred()
     print("Pydantic models rebuilt successfully.")
-    
-    yield
-    
+
+    # Démarrage du scheduler de nettoyage
+    async with lifespan_manager(app):
+        yield
+
     # Shutdown
     print("Application shutdown...")
 
@@ -145,6 +150,10 @@ app = FastAPI(
         {
             "name": "admin",
             "description": "Opérations d'administration"
+        },
+        {
+            "name": "maintenance",
+            "description": "Opérations de maintenance système"
         }
     ],
     docs_url=settings.DOCS_URL,
@@ -337,6 +346,14 @@ app.include_router(
     tags=["config"]
 )
 
+# Inclusion des routes de maintenance
+from routers.maintenance import router as maintenance_router
+app.include_router(
+    maintenance_router,
+    prefix="/api/v1/maintenance",
+    tags=["maintenance"]
+)
+
 # Inclusion des routes admin
 app.include_router(admin.router)
 
@@ -353,19 +370,6 @@ _uploads_app = _Cors(
 app.mount(settings.MEDIA_URL_PREFIX, _uploads_app, name="user_uploads")
 logger.info(f"Montage des médias (avec CORS) depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
 # --- Fin montage Render Disk --- 
-
-# --- Montage du dossier des ressources générées IA ---
-import os
-STATIC_GEN_DIR = os.path.join(os.path.dirname(__file__), "static", "generated_resources")
-os.makedirs(STATIC_GEN_DIR, exist_ok=True)
-app.mount("/static/generated_resources", StaticFiles(directory=STATIC_GEN_DIR), name="generated_resources")
-logger.info(f"Montage des ressources générées IA sur /static/generated_resources depuis {STATIC_GEN_DIR}")
-
-# --- Montage du dossier temporaire pour les ressources générées IA avant copie ---
-STATIC_TMP_DIR = os.path.join(os.path.dirname(__file__), "static", "tmp")
-os.makedirs(STATIC_TMP_DIR, exist_ok=True)
-app.mount("/static/tmp", StaticFiles(directory=STATIC_TMP_DIR), name="tmp_resources")
-logger.info(f"Montage du dossier temporaire sur /static/tmp depuis {STATIC_TMP_DIR}")
 
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])
