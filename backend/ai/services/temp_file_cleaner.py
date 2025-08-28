@@ -36,6 +36,11 @@ class TempFileCleaner:
         self.temp_dir = Path(temp_dir)
         self.max_age_hours = max_age_hours
         self.max_age_seconds = max_age_hours * 3600
+        # S'assurer que le répertoire de base existe pour éviter les logs d'absence
+        try:
+            self.temp_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Impossible de créer le répertoire temporaire de base {self.temp_dir}: {e}")
 
     async def clean_old_files(self) -> Tuple[int, int, List[str]]:
         """
@@ -45,8 +50,13 @@ class TempFileCleaner:
             Tuple (fichiers_supprimes, dossiers_supprimes, erreurs)
         """
         if not self.temp_dir.exists():
-            logger.info(f"Répertoire temporaire inexistant: {self.temp_dir}")
-            return 0, 0, []
+            # Tenter une création tardive si supprimé
+            try:
+                self.temp_dir.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Répertoire temporaire créé: {self.temp_dir}")
+            except Exception:
+                logger.info(f"Répertoire temporaire inexistant: {self.temp_dir}")
+                return 0, 0, []
 
         logger.info(f"Début du nettoyage dans: {self.temp_dir}")
         logger.info(f"Suppression des fichiers de plus de {self.max_age_hours}h")

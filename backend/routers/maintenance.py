@@ -10,6 +10,7 @@ from typing import Dict, Any
 from backend.ai.services.temp_file_cleaner import get_temp_cleaner
 from backend.ai.services.temp_scheduler import get_temp_scheduler
 from database import get_db
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,59 @@ async def get_temp_files_stats() -> Dict[str, Any]:
             detail=f"Erreur lors de la récupération des statistiques: {str(e)}"
         )
 
+
+@router.get("/temp-files/list", tags=["maintenance"])
+async def list_temp_files(user_id: str | None = None, max_items: int = 200) -> Dict[str, Any]:
+    """
+    Lister les fichiers du répertoire temporaire.
+    - Optionnel: `user_id` pour cibler `/static/tmp/{user_id}`
+    - `max_items` pour limiter le nombre d'éléments retournés
+    """
+    try:
+        cleaner = get_temp_cleaner()
+        base_dir: Path = cleaner.temp_dir
+        target: Path = base_dir / user_id if user_id else base_dir
+
+        if not target.exists():
+            return {
+                "success": True,
+                "path": str(target),
+                "files": [],
+                "message": "Répertoire inexistant"
+            }
+
+        items = []
+        for entry in target.iterdir():
+            try:
+                stat = entry.stat()
+                items.append({
+                    "name": entry.name,
+                    "path": str(entry.relative_to(base_dir)),
+                    "is_dir": entry.is_dir(),
+                    "size": stat.st_size,
+                    "mtime": int(stat.st_mtime)
+                })
+            except Exception as e:
+                items.append({
+                    "name": entry.name,
+                    "path": str(entry.relative_to(base_dir)),
+                    "error": str(e)
+                })
+            if len(items) >= max_items:
+                break
+
+        return {
+            "success": True,
+            "path": str(target),
+            "count": len(items),
+            "files": items
+        }
+    except Exception as e:
+        logger.error(f"Erreur lors du listing du dossier temporaire: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du listing du dossier temporaire: {str(e)}"
+        )
 
 @router.post("/temp-files/clean", tags=["maintenance"])
 async def trigger_manual_cleanup() -> Dict[str, Any]:

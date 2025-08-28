@@ -371,6 +371,12 @@ app.mount(settings.MEDIA_URL_PREFIX, _uploads_app, name="user_uploads")
 logger.info(f"Montage des médias (avec CORS) depuis '{settings.UPLOADS_BASE_DIR}' sur l'URL '{settings.MEDIA_URL_PREFIX}'")
 # --- Fin montage Render Disk --- 
 
+# --- Montage du dossier temporaire des ressources générées IA (/static/tmp) ---
+_tmp_dir = os.path.join(os.path.dirname(__file__), "static", "tmp")
+os.makedirs(_tmp_dir, exist_ok=True)
+app.mount("/static/tmp", StaticFiles(directory=_tmp_dir), name="tmp_resources")
+logger.info(f"Montage du dossier temporaire sur /static/tmp depuis {_tmp_dir}")
+
 # Route de test
 @app.get("/api/v1/sequences/test-route", tags=["test"])
 def test_sequence_route():
