@@ -104,6 +104,32 @@ export const authService = {
     } catch (error) {
       throw error.response?.data || { detail: "Erreur lors de la demande de réinitialisation" };
     }
+  },
+
+  /**
+   * Prolonge la session utilisateur
+   * @returns {Promise} - Promesse avec le nouveau token
+   */
+  extendSession: async () => {
+    try {
+      const response = await api.post(`${AUTH_ENDPOINT}/extend-session`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la prolongation de session" };
+    }
+  },
+
+  /**
+   * Récupère le statut de la session
+   * @returns {Promise} - Promesse avec le statut de session
+   */
+  getSessionStatus: async () => {
+    try {
+      const response = await api.get(`${AUTH_ENDPOINT}/session-status`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { detail: "Erreur lors de la récupération du statut de session" };
+    }
   }
 };
 

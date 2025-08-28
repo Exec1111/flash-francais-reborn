@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv('SECRET_KEY', 'your-secret-key')
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # Paramètres de prolongation de session
+    SESSION_WARNING_MINUTES: int = int(os.getenv('SESSION_WARNING_MINUTES', '5'))  # Warning 5 min avant expiration
+    SESSION_EXTEND_MINUTES: int = int(os.getenv('SESSION_EXTEND_MINUTES', '30'))   # Prolongation de 30 min
 
     # Configuration de l'IA
     OPENAI_API_KEY: str = os.getenv('OPENAI_API_KEY', '')

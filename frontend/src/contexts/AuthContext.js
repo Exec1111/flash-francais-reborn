@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/auth';
+import SessionWarningModal from '../components/auth/SessionWarningModal';
+import useSessionManager from '../hooks/useSessionManager';
 
 const AuthContext = createContext(null);
 
@@ -7,6 +9,23 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
+
+  // Définir logout avant useSessionManager
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+    setToken(null);
+    setIsAuthenticated(false);
+  };
+
+  // Gestionnaire de session
+  const {
+    showWarning,
+    timeRemaining,
+    isExtending,
+    extendSession,
+    handleLogout: sessionLogout
+  } = useSessionManager(token, logout);
 
   useEffect(() => {
     // Vérifier l'authentification au démarrage
@@ -33,11 +52,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
-    setToken(null);
-    setIsAuthenticated(false);
+  const handleExtendSession = async () => {
+    await extendSession();
+    // Mettre à jour le token dans le state après prolongation
+    const newToken = localStorage.getItem('token');
+    setToken(newToken);
   };
 
   const value = {
@@ -51,6 +70,14 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {/* Modal de warning de session */}
+      <SessionWarningModal
+        open={showWarning && isAuthenticated}
+        timeRemaining={timeRemaining}
+        onExtendSession={handleExtendSession}
+        onLogout={sessionLogout}
+        isExtending={isExtending}
+      />
     </AuthContext.Provider>
   );
 };

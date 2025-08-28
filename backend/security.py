@@ -37,13 +37,61 @@ def authenticate_user(db: Session, email: str, password: str):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Crée un token JWT pour l'authentification."""
     to_encode = data.copy()
+    now = datetime.utcnow()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "iat": now})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+def get_token_expiration(token: str) -> Optional[datetime]:
+    """Récupère la date d'expiration d'un token JWT."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp_timestamp = payload.get("exp")
+        if exp_timestamp:
+            return datetime.utcfromtimestamp(exp_timestamp)
+        return None
+    except JWTError:
+        return None
+
+def extend_token(token: str) -> Optional[str]:
+    """Prolonge un token JWT existant."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # Supprimer les claims temporels pour créer un nouveau token
+        payload.pop("exp", None)
+        payload.pop("iat", None)
+        
+        # Créer un nouveau token avec une nouvelle durée
+        new_expires_delta = timedelta(minutes=settings.SESSION_EXTEND_MINUTES)
+        return create_access_token(payload, new_expires_delta)
+    except JWTError:
+        logger.warning("Impossible de prolonger le token: token invalide")
+        return None
+
+def get_token_time_remaining(token: str) -> Optional[int]:
+    """Retourne le temps restant avant expiration du token en minutes."""
+    expiration = get_token_expiration(token)
+    if expiration:
+        remaining = expiration - datetime.utcnow()
+        remaining_minutes = max(0, round(remaining.total_seconds() / 60))
+        logger.info(f"[SESSION DEBUG] Expiration: {expiration}, Now: {datetime.utcnow()}, Remaining: {remaining_minutes} minutes (exact: {remaining.total_seconds()/60:.2f})")
+        return remaining_minutes
+    return None
+
+def should_show_warning(token: str) -> bool:
+    """Détermine si le warning de session doit être affiché."""
+    time_remaining = get_token_time_remaining(token)
+    if time_remaining is not None:
+        # Afficher le warning seulement si le temps restant est inférieur ou égal au seuil
+        # ET supérieur à 0 (pour éviter l'affichage immédiat sur une nouvelle session)
+        should_warn = 0 < time_remaining <= settings.SESSION_WARNING_MINUTES
+        logger.info(f"[SESSION DEBUG] Time remaining: {time_remaining}min, Warning threshold: {settings.SESSION_WARNING_MINUTES}min, Should warn: {should_warn}")
+        return should_warn
+    return False
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Récupère l'utilisateur actuel à partir du token JWT."""
