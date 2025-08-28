@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -39,6 +39,9 @@ const ResourceHtmlEditingMode = ({
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newResourceName, setNewResourceName] = useState('');
   const [saveAsSubmitting, setSaveAsSubmitting] = useState(false);
+  
+  // Ref to access TinyHtmlEditor methods directly
+  const editorRef = useRef(null);
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Loading overlay for AI operations */}
@@ -165,6 +168,7 @@ const ResourceHtmlEditingMode = ({
         {/* Main HTML editor */}
         <Box sx={{ flex: showAiChat ? 2 : 1, mr: showAiChat ? 1 : 0 }}>
           <TinyHtmlEditor
+            ref={editorRef}
             initialHtml={tempHtmlContent}
             onChange={setTempHtmlContent}
             disabled={aiLoading || submitting}
@@ -176,7 +180,13 @@ const ResourceHtmlEditingMode = ({
           <Box sx={{ flex: 1, ml: 1, borderLeft: 1, borderColor: 'divider', pl: 1 }}>
             <HtmlChatBot
               currentHtml={tempHtmlContent}
-              onHtmlChange={setTempHtmlContent}
+              onHtmlChange={(newHtml) => {
+                // Use direct editor update instead of prop change
+                if (editorRef.current) {
+                  editorRef.current.updateContent(newHtml);
+                }
+                setTempHtmlContent(newHtml);
+              }}
               disabled={submitting}
               onLoadingChange={setAiLoading}
             />

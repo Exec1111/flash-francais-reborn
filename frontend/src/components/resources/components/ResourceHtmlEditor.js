@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Grid,
   Box,
@@ -10,7 +10,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Alert
 } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -43,12 +44,15 @@ const ResourceHtmlEditor = ({
   handleSaveAsHtmlContent,
   handleCancelEditing,
   setAiLoading,
-  initialData // Add initialData prop
+  initialData
 }) => {
   // State for Save As dialog
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newResourceName, setNewResourceName] = useState('');
   const [saveAsSubmitting, setSaveAsSubmitting] = useState(false);
+
+  // Ref to access TinyHtmlEditor methods directly
+  const editorRef = useRef(null);
 
   // Debug logging for "Consulter le contenu" button visibility
   console.log('[DEBUG ResourceHtmlEditor] Conditions check:', {
@@ -224,6 +228,7 @@ const ResourceHtmlEditor = ({
         {/* Main HTML editor */}
         <Grid item xs={12} md={showAiChat ? 8 : 12}>
           <TinyHtmlEditor
+            ref={editorRef}
             initialHtml={tempHtmlContent}
             onChange={setTempHtmlContent}
           />
@@ -234,7 +239,13 @@ const ResourceHtmlEditor = ({
           <Grid item xs={12} md={4}>
             <HtmlChatBot
               currentHtml={tempHtmlContent}
-              onHtmlChange={setTempHtmlContent}
+              onHtmlChange={(newHtml) => {
+                // Use direct editor update instead of prop change
+                if (editorRef.current) {
+                  editorRef.current.updateContent(newHtml);
+                }
+                setTempHtmlContent(newHtml);
+              }}
               disabled={submitting}
               onLoadingChange={setAiLoading}
             />
