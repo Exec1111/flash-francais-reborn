@@ -445,48 +445,6 @@ def rebuild_models_deferred():
 
 
 
-# --- ROUTE CATCH-ALL POUR SPA (DERNIÈRE ROUTE ABSOLUMENT) ---
-# Cette route doit être LA DERNIÈRE définie pour capturer toutes les routes non-API
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    """
-    Route catch-all pour servir l'application React (SPA).
-    Redirige toutes les routes non-API vers index.html pour que React Router les gère.
-    """
-    # Ne pas interférer avec les routes API ou les ressources statiques
-    if full_path.startswith(("api/", "static/", "_next/", "favicon", ".well-known")):
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=404,
-            content={"detail": "Not found", "message": "Cette ressource n'existe pas"}
-        )
-
-    # Servir index.html pour toutes les autres routes (SPA)
-    try:
-        # Chemin absolu vers index.html
-        index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "public", "index.html")
-        logger.info(f"Tentative de service de SPA: {index_path}")
-
-        if os.path.exists(index_path):
-            from fastapi.responses import HTMLResponse
-            with open(index_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            logger.info(f"SPA servie avec succès depuis: {index_path}")
-            return HTMLResponse(content=content, status_code=200)
-        else:
-            logger.error(f"index.html non trouvé: {index_path}")
-            return HTMLResponse(
-                content="<h1>Application en cours de chargement...</h1><p>L'application React n'est pas encore disponible.</p>",
-                status_code=503
-            )
-    except Exception as e:
-        logger.error(f"Erreur lors du service de l'application SPA: {e}")
-        return HTMLResponse(
-            content=f"<h1>Erreur de chargement</h1><p>Une erreur s'est produite: {str(e)}</p>",
-            status_code=500
-        )
-
-
 
 if __name__ == "__main__":
     import uvicorn
