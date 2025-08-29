@@ -61,10 +61,23 @@ class TempFileCleaner:
         logger.info(f"Début du nettoyage dans: {self.temp_dir}")
         logger.info(f"Suppression des fichiers de plus de {self.max_age_hours}h")
 
+        # Debug: lister tous les répertoires et fichiers trouvés
+        try:
+            all_items = list(self.temp_dir.iterdir())
+            logger.info(f"RÉPERTOIRES TROUVÉS dans {self.temp_dir}: {[item.name for item in all_items if item.is_dir()]}")
+            for user_dir in all_items:
+                if user_dir.is_dir():
+                    files_in_dir = list(user_dir.iterdir())
+                    logger.info(f"FICHIERS dans {user_dir.name}: {[f.name for f in files_in_dir if f.is_file()]}")
+                    for file_path in files_in_dir:
+                        if file_path.is_file():
+                            file_stat = file_path.stat()
+                            age_hours = (time.time() - file_stat.st_mtime) / 3600
+                            logger.info(f"  - {file_path.name}: âge={age_hours:.1f}h, mtime={file_stat.st_mtime}, cutoff={cutoff_time}")
+        except Exception as e:
+            logger.error(f"Erreur lors du debug: {e}")
+
         files_deleted = 0
-        dirs_deleted = 0
-        errors = []
-        cutoff_time = time.time() - self.max_age_seconds
 
         try:
             # Parcourir tous les sous-répertoires utilisateur
