@@ -377,7 +377,44 @@ os.makedirs(_tmp_dir, exist_ok=True)
 app.mount("/static/tmp", StaticFiles(directory=_tmp_dir), name="tmp_resources")
 logger.info(f"Montage du dossier temporaire sur /static/tmp depuis {_tmp_dir}")
 
-# Route de test
+# --- Route catch-all pour SPA (Single Page Application) ---
+# Cette route doit être LA DERNIÈRE route définie pour ne pas interférer avec les API
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """
+    Route catch-all pour servir l'application React (SPA).
+    Redirige toutes les routes non-API vers index.html pour que React Router les gère.
+    """
+    # Ne pas interférer avec les routes API ou les ressources statiques
+    if full_path.startswith(("api/", "static/", "_next/", "favicon", ".well-known")):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Not found", "message": "Cette ressource n'existe pas"}
+        )
+
+    # Servir index.html pour toutes les autres routes (SPA)
+    try:
+        index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "public", "index.html")
+        if os.path.exists(index_path):
+            from fastapi.responses import HTMLResponse
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return HTMLResponse(content=content, status_code=200)
+        else:
+            logger.warning(f"index.html non trouvé: {index_path}")
+            return HTMLResponse(
+                content="<h1>Application en cours de chargement...</h1><p>L'application React n'est pas encore disponible.</p>",
+                status_code=503
+            )
+    except Exception as e:
+        logger.error(f"Erreur lors du service de l'application SPA: {e}")
+        return HTMLResponse(
+            content="<h1>Erreur de chargement</h1><p>Une erreur s'est produite lors du chargement de l'application.</p>",
+            status_code=500
+        )
+
+# --- Route de test (doit être avant la route catch-all) ---
 @app.get("/api/v1/sequences/test-route", tags=["test"])
 def test_sequence_route():
     return {"message": "Route de test Séquence OK"}
