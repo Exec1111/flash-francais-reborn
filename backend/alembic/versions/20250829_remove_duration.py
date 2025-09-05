@@ -1,6 +1,6 @@
 """Remove duration column from sessions table
 
-Revision ID: 20250829_2310_remove_duration_from_sessions
+Revision ID: 20250829_remove_duration
 Revises: c684c7dc89f4
 Create Date: 2025-08-29 23:10:00.000000
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '20250829_2310_remove_duration_from_sessions'
+revision = '20250829_remove_duration'
 down_revision = 'c684c7dc89f4'
 branch_labels = None
 depends_on = None
