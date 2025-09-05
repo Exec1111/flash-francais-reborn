@@ -88,10 +88,13 @@ const SequenceDetails = () => {
         // Récupérer les séances associées à la séquence
         if (sequenceData.id) {
           try {
+            console.log(`[DEBUG] Appel getSequenceSessions pour séquence ID: ${sequenceData.id}`);
             const sessionsData = await sequenceService.getSequenceSessions(sequenceData.id);
+            console.log(`[DEBUG] Réponse getSequenceSessions:`, sessionsData);
             setSessions(sessionsData || []);
           } catch (sessionsError) {
             console.error('Erreur lors du chargement des séances:', sessionsError);
+            console.error('Détails de l\'erreur:', sessionsError.response?.data || sessionsError.message);
             setSessions([]);
           }
         }

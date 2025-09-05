@@ -252,7 +252,6 @@ def get_sequence_sessions_route(
         "title": session.title,
         "description": session.description,
         "order": session.order,
-        "duration": session.duration,
         "date": session.date.isoformat() if session.date else None,
         "notes": session.notes
     } for session in db_sequence.sessions]
