@@ -27,6 +27,29 @@
       },
       "required": ["heading", "content"]
     },
+    "personal_questioning": {
+      "type": "object",
+      "description": "Section de questionnement personnel pour amener les élèves à réfléchir sur leurs propres connaissances et expériences.",
+      "properties": {
+        "heading": {
+          "type": "string",
+          "description": "Titre de la section de questionnement personnel."
+        },
+        "introduction_text": {
+          "type": "string",
+          "description": "Texte d'introduction au questionnement personnel."
+        },
+        "questions": {
+          "type": "array",
+          "description": "Liste des questions personnelles pour la réflexion des élèves.",
+          "items": {
+            "type": "string",
+            "description": "Question ouverte et bienveillante pour inviter à la réflexion personnelle."
+          }
+        }
+      },
+      "required": ["heading", "introduction_text", "questions"]
+    },
     "literary_references": {
       "type": "object",
       "description": "Section des références littéraires.",
@@ -189,6 +212,7 @@
     "title",
     "subtitle",
     "introduction",
+    "personal_questioning",
     "literary_references",
     "artistic_references",
     "cultural_context",

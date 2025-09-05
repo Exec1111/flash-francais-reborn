@@ -87,6 +87,54 @@
             font-size: 1.1em;
             line-height: 1.7;
         }
+        .personal-questioning {
+            background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #ff6f00;
+            margin: 15px 0;
+        }
+        .questioning-intro {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #e65100;
+            font-weight: 500;
+            text-align: center;
+            background-color: rgba(255,255,255,0.7);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .personal-questions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .personal-question {
+            background-color: rgba(255,255,255,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-left: 3px solid #ff8f00;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .personal-question:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 111, 0, 0.2);
+        }
+        .question-icon {
+            font-size: 1.2em;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .question-text {
+            color: #bf360c;
+            font-weight: 500;
+            font-size: 1.05em;
+            line-height: 1.5;
+        }
         .literary-extract {
             background-color: #fff8e1;
             padding: 20px;
@@ -277,6 +325,36 @@
                     {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
                 {% endfor %}
                 {{ ns.text|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Section de questionnement personnel -->
+        {% if personal_questioning %}
+        <div class="section">
+            <h2>🤔 {{ personal_questioning.heading }}</h2>
+            <div class="personal-questioning">
+                <div class="questioning-intro">
+                    {% set ns = namespace(text=personal_questioning.introduction_text) %}
+                    {% for keyword in highlight_keywords %}
+                        {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                    {% endfor %}
+                    {{ ns.text|safe }}
+                </div>
+                <div class="personal-questions">
+                    {% for question in personal_questioning.questions %}
+                    <div class="personal-question">
+                        <span class="question-icon">💭</span>
+                        <span class="question-text">
+                            {% set ns = namespace(text=question) %}
+                            {% for keyword in highlight_keywords %}
+                                {% set ns.text = ns.text|replace(keyword, '<span class="highlight">' + keyword + '</span>') %}
+                            {% endfor %}
+                            {{ ns.text|safe }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         {% endif %}

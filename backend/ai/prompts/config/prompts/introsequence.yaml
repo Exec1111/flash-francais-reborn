@@ -34,11 +34,12 @@ user_prompt_template: |
   
   Structure attendue :
   1. Une accroche engageante qui présente le sujet
-  2. Des extraits littéraires ou références d'œuvres en lien avec le thème
-  3. Des références à d'autres arts (peinture, BD, cinéma, musique, etc.)
-  4. Des éléments de contexte culturel et historique
-  5. Des questions d'ouverture pour stimuler la réflexion
-  6. Une conclusion qui annonce les apprentissages à venir
+  2. **OBLIGATOIRE** : Un questionnement personnel pour amener les élèves à réfléchir sur leurs propres connaissances et expériences liées à la notion
+  3. Des extraits littéraires ou références d'œuvres en lien avec le thème
+  4. Des références à d'autres arts (peinture, BD, cinéma, musique, etc.)
+  5. Des éléments de contexte culturel et historique
+  6. Des questions d'ouverture pour stimuler la réflexion
+  7. Une conclusion qui annonce les apprentissages à venir
   
   {% if resource_content %}
   ## Contenu des ressources de référence :
@@ -101,6 +102,8 @@ constraints:
   - La réponse doit être en français.
   - Le contenu doit être adapté au niveau scolaire spécifié (collège par défaut).
   - Le ton doit être pédagogique, engageant et accessible.
+  - OBLIGATOIRE : Inclure une section de questionnement personnel qui invite les élèves à réfléchir sur leurs propres connaissances, expériences ou représentations liées à la notion abordée.
+  - Les questions du questionnement personnel doivent être ouvertes, bienveillantes et permettre à chaque élève de s'exprimer à partir de son vécu.
   - Les références artistiques et littéraires doivent être authentiques et pertinentes.
   - Les extraits littéraires doivent être courts (2-3 phrases maximum).
   - Chaque référence artistique doit être accompagnée d'une explication de son lien avec le sujet.
