@@ -57,7 +57,6 @@ const NewSession = () => {
   const initialData = {
     name: 'Nouvelle séance',
     description: '',
-    duration: 60,
     order: nextOrder,
     sequence_id: effectiveSequenceId // Déjà converti en nombre ci-dessus
   };

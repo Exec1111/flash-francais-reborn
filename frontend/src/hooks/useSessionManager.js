@@ -7,6 +7,7 @@ const useSessionManager = (token, logout) => {
   const [isExtending, setIsExtending] = useState(false);
   const intervalRef = useRef(null);
   const warningShownRef = useRef(false);
+  const tokenRef = useRef(token);
   const logoutRef = useRef(logout);
   const configRef = useRef({
     warningThresholdMinutes: 5,
@@ -14,20 +15,26 @@ const useSessionManager = (token, logout) => {
     checkIntervalSeconds: 30
   });
 
-  // Mettre à jour la référence de logout
+  // Mettre à jour les références sans déclencher de re-renders
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
   useEffect(() => {
     logoutRef.current = logout;
   }, [logout]);
 
+  // Fonction de vérification stable (pas de dépendances)
   const checkSessionStatus = useCallback(async () => {
-    if (!token) return;
+    const currentToken = tokenRef.current;
+    if (!currentToken) return;
 
     try {
       const status = await authService.getSessionStatus();
       console.log('[SESSION DEBUG FRONTEND] Status from backend:', status);
       setTimeRemaining(status.time_remaining_minutes);
       
-      // Mettre à jour la configuration depuis le backend (sans déclencher de re-render)
+      // Mettre à jour la configuration depuis le backend
       configRef.current = {
         ...configRef.current,
         warningThresholdMinutes: status.warning_threshold_minutes,
@@ -56,16 +63,18 @@ const useSessionManager = (token, logout) => {
         logoutRef.current();
       }
     }
-  }, [token]);
+  }, []);
 
+  // Fonction d'extension stable
   const extendSession = useCallback(async () => {
-    if (!token) return;
+    const currentToken = tokenRef.current;
+    if (!currentToken) return;
 
     setIsExtending(true);
     try {
       const response = await authService.extendSession();
       
-      // Mettre à jour le token dans le localStorage et le contexte
+      // Mettre à jour le token dans le localStorage
       localStorage.setItem('token', response.access_token);
       
       // Fermer le modal de warning
@@ -73,7 +82,7 @@ const useSessionManager = (token, logout) => {
       warningShownRef.current = false;
       
       // Vérifier immédiatement le nouveau statut
-      await checkSessionStatus();
+      setTimeout(checkSessionStatus, 100);
       
     } catch (error) {
       console.error('Erreur lors de la prolongation de session:', error);
@@ -81,7 +90,7 @@ const useSessionManager = (token, logout) => {
     } finally {
       setIsExtending(false);
     }
-  }, [token, checkSessionStatus]);
+  }, [checkSessionStatus]);
 
   const handleLogout = useCallback(() => {
     setShowWarning(false);
@@ -89,36 +98,40 @@ const useSessionManager = (token, logout) => {
     logoutRef.current();
   }, []);
 
-  // Démarrer/arrêter la surveillance de session
+  // Gestion de l'intervalle - se déclenche quand le token change
   useEffect(() => {
+    // Nettoyer l'intervalle existant
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (token) {
       // Vérification immédiate
       checkSessionStatus();
       
-      // Démarrer l'intervalle de vérification
-      intervalRef.current = setInterval(
-        checkSessionStatus, 
-        configRef.current.checkIntervalSeconds * 1000
-      );
+      // Démarrer l'intervalle
+      intervalRef.current = setInterval(() => {
+        if (tokenRef.current) {
+          checkSessionStatus();
+        }
+      }, configRef.current.checkIntervalSeconds * 1000);
     } else {
-      // Nettoyer l'intervalle si pas de token
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      // Pas de token - nettoyer l'état
       setShowWarning(false);
       warningShownRef.current = false;
       setTimeRemaining(null);
     }
 
-    // Cleanup à la destruction du composant
+    // Cleanup
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [token, checkSessionStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]); // Se déclenche quand le token change
 
   return {
     showWarning,

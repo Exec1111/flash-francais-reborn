@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import timedelta, datetime
+from datetime import datetime
 
 # Importer les identifiants depuis common.py
 from .common import ObjectiveIdentifier, ResourceIdentifier, TypeIdentifier, SubTypeIdentifier
@@ -20,7 +20,6 @@ class SessionBase(BaseModel):
     title: str
     date: datetime
     notes: str | None = None
-    duration: int | None = None  # Durée en minutes (entier)
     order: Optional[int] = None # Pour gérer l'ordre des séances
     sequence_id: int
 
@@ -33,7 +32,6 @@ class SessionUpdate(BaseModel): # Permettre les mises à jour partielles
     title: str | None = None
     date: datetime | None = None
     notes: str | None = None
-    duration: int | None = None  # Durée en minutes (entier)
     sequence_id: int | None = None # Moins courant à mettre à jour, mais possible
     objective_ids: List[int] | None = None # Ajout du champ pour la mise à jour des liens
     resource_ids: List[int] | None = None # Ajout pour mettre à jour les ressources liées

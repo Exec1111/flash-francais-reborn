@@ -97,7 +97,7 @@ const SessionSummaryResourceGenerator = ({
 
     const dummyPhase = {
       nom: 'Séance',
-      duree: sessionData.duration || 60,
+      duree: 60,
       objectif: sessionData.objectives?.[0]?.description || '',
       activites: sessionData.notes || '',
       modalites: '',
@@ -107,7 +107,7 @@ const SessionSummaryResourceGenerator = ({
       titre_sequence: sessionData.sequence_title || '',
       titre_seance: sessionData.title,
       niveau: sessionData.level || 'B1',
-      duree: sessionData.duration || 60,
+      duree: 60,
       objectifs: (sessionData.objectives || []).map((o) => o.description),
       ressources: (sessionData.resources || []).map((r) => ({
         titre: r.title,

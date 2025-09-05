@@ -62,7 +62,6 @@ const SessionForm = ({
     title: '',
     notes: '',
     date: new Date().toISOString().split('T')[0], // Date au format YYYY-MM-DD
-    duration: 60, // Durée par défaut en minutes
     order: 1, // Ordre de la séance dans la séquence
     sequence_id: sequenceId || null,
     resource_ids: [] // Ajout pour les IDs des ressources
@@ -90,7 +89,6 @@ const SessionForm = ({
         title: initialData.title || '',
         notes: initialData.notes || '',
         date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        duration: initialData.duration ? (typeof initialData.duration === 'string' ? parseInt(initialData.duration.replace(/PT(\d+)M/, '$1')) : initialData.duration) : 60,
         order: initialData.order || 1,
         sequence_id: initialData.sequence_id || sequenceId || null,
         resource_ids: initialData.resources ? initialData.resources.map(res => res.id) : [] // Ajout pour les IDs des ressources
@@ -130,7 +128,6 @@ const SessionForm = ({
             notes: data.notes || '',
             // Assurer la conversion correcte de la date
             date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            duration: data.duration ? (typeof data.duration === 'string' ? parseInt(data.duration.replace(/PT(\d+)M/, '$1')) : data.duration) : 60,
             order: data.order || 1,
             sequence_id: data.sequence_id || null,
             resource_ids: data.resources ? data.resources.map(res => res.id) : [],
@@ -251,8 +248,6 @@ const SessionForm = ({
     // Inclure les IDs des objectifs sélectionnés
     const sessionData = {
        ...formData,
-       // Assurer que duration est un nombre entier
-       duration: formData.duration ? parseInt(formData.duration, 10) : null,
        // Assurer que order est un nombre entier
        order: formData.order ? parseInt(formData.order, 10) : 1,
        // Explicitement ajouter les IDs des objectifs sélectionnés
@@ -265,16 +260,7 @@ const SessionForm = ({
     if (!sessionData.sequence_id) {
       delete sessionData.sequence_id; // Ou le mettre à null selon l'API
     }
-    if (!sessionData.duration) {
-      delete sessionData.duration; // Ou le mettre à null
-    }
 
-    // Valider la durée si nécessaire (doit être un entier)
-    if (formData.duration && isNaN(sessionData.duration)) {
-        setError("La durée doit être un nombre entier (en minutes).");
-        setSubmitting(false);
-        return;
-    }
 
     try {
       const token = localStorage.getItem('token');
@@ -385,18 +371,6 @@ const SessionForm = ({
           />
         </Grid>
         
-        <Grid item xs={12} sm={6} md={4}>
-           <TextField
-             fullWidth
-             label="Durée (minutes)"
-             name="duration"
-             type="number"
-             value={formData.duration}
-             onChange={handleInputChange}
-             disabled={submitting}
-             InputProps={{ inputProps: { min: 5, step: 5 } }}
-           />
-         </Grid>
 
          <Grid item xs={12} sm={6} md={4}>
            <TextField

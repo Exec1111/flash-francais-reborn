@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Interval, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -14,7 +14,6 @@ class Session(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     date = Column(DateTime, default=datetime.utcnow)
-    duration = Column(Integer)  # Durée en minutes
     notes = Column(Text, nullable=True)
     # Foreign Key to Sequence
     sequence_id = Column(Integer, ForeignKey("sequences.id"), nullable=False)

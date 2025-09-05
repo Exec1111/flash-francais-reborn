@@ -298,12 +298,6 @@ const SessionDetailPage = () => {
           </Typography>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Durée
-              </Typography>
-              <Typography variant="body1">
-                {session.duration ? `${session.duration} minutes` : 'Non spécifiée'}
-              </Typography>
             </Grid>
           </Grid>
 

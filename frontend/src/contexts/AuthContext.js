@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import authService from '../services/auth';
 import SessionWarningModal from '../components/auth/SessionWarningModal';
 import useSessionManager from '../hooks/useSessionManager';
@@ -10,13 +10,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
 
-  // Définir logout avant useSessionManager
-  const logout = () => {
+  // Définir logout avant useSessionManager avec useCallback pour éviter les re-créations
+  const logout = useCallback(() => {
     authService.logout();
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
-  };
+  }, []);
 
   // Gestionnaire de session
   const {
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     try {
       const userData = await authService.login(email, password);
       setUser(userData);
@@ -50,22 +50,22 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
+  }, []);
 
-  const handleExtendSession = async () => {
+  const handleExtendSession = useCallback(async () => {
     await extendSession();
     // Mettre à jour le token dans le state après prolongation
     const newToken = localStorage.getItem('token');
     setToken(newToken);
-  };
+  }, [extendSession]);
 
-  const value = {
+  const value = useMemo(() => ({
     isAuthenticated,
     user,
     token,
     login,
     logout,
-  };
+  }), [isAuthenticated, user, token, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>
