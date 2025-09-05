@@ -2,7 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "titre": {"type": "string"},
+    "titre": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 80,
+      "description": "Titre clair et concis du QCM"
+    },
     "description": {"type": "string"},
     "niveau": {"type": "string", "enum": ["6ème faible", "6ème", "6ème élevé", "5ème faible", "5ème", "5ème élevé", "4ème faible", "4ème", "4ème élevé", "3ème faible", "3ème", "3ème élevé"]},
     "theme": {"type": "string"},

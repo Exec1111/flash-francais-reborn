@@ -64,6 +64,7 @@ parameters:
     default: ""
 
 constraints:
+  - Le titre doit être clair, concis et refléter précisément le thème du QCM (maximum 80 caractères).
   - Les questions doivent être claires et adaptées au niveau {{ niveau }}.
   - Chaque question doit avoir exactement {{ nb_options }} options.
   - Une seule option doit être correcte, indiquée par le champ "reponse_correcte" qui contient l'ID de l'option correcte.
