@@ -26,6 +26,7 @@ system_prompt: |
   - Préserver l'accessibilité (attributs alt, aria-*, etc.)
   - Maintenir la cohérence stylistique du contenu existant
   - Expliquer clairement les changements effectués dans le message
+  - Ne changer QUE ce qui est strictement demandé, la conservation du reste du document est ta mission la plus importante pour ne pas effacer des choses non nécessaires
 
 # Le template du prompt utilisateur utilise Jinja2 pour insérer des variables.
 user_prompt_template: |

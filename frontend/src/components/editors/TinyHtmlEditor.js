@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import PropTypes from 'prop-types';
-import { CircularProgress, Box } from '@mui/material';
+import { CircularProgress, Box, Snackbar, Alert } from '@mui/material';
 import { Editor } from '@tinymce/tinymce-react';
+import { API_BASE_URL } from '../../services/api';
 
 /**
  * Éditeur HTML basé sur TinyMCE optimisé pour les performances :
@@ -60,6 +61,30 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
   const staticInitialValueRef = useRef(cleanedHtml); // Static value that never changes
   const lastOnChangeHtmlRef = useRef(''); // Track last HTML sent via onChange
   const isUserTypingRef = useRef(false); // Track if user is actively typing
+
+  // Toast d'erreur pour l'upload d'images
+  const [uploadErrorOpen, setUploadErrorOpen] = useState(false);
+  const [uploadErrorMsg, setUploadErrorMsg] = useState('');
+  const showUploadError = (msg) => {
+    setUploadErrorMsg(msg || "Erreur d'upload d'image");
+    setUploadErrorOpen(true);
+  };
+  const handleUploadErrorClose = (_, reason) => {
+    if (reason === 'clickaway') return;
+    setUploadErrorOpen(false);
+  };
+
+  // Toast de succès pour l'upload d'images
+  const [uploadSuccessOpen, setUploadSuccessOpen] = useState(false);
+  const [uploadSuccessMsg, setUploadSuccessMsg] = useState('');
+  const showUploadSuccess = (msg) => {
+    setUploadSuccessMsg(msg || 'Image uploadée avec succès.');
+    setUploadSuccessOpen(true);
+  };
+  const handleUploadSuccessClose = (_, reason) => {
+    if (reason === 'clickaway') return;
+    setUploadSuccessOpen(false);
+  };
 
   // Expose methods to parent components via ref
   useImperativeHandle(ref, () => ({
@@ -216,6 +241,17 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
              // Add cached style and link tags
              completeHtml = linkTagsCache.current + styleTagCache.current + html;
 
+             // Normaliser les URLs d'images pour éviter les chemins relatifs cassés
+            // 1) Ajouter un slash initial si l'URL commence par media/uploads sans http(s) ni slash
+            // 2) Convertir les chemins relatifs avec ./ ou ../ vers un chemin root /media/uploads
+            completeHtml = completeHtml
+              .replace(/src="(?!https?:)(?!\/)media\/uploads/gi, 'src="/media/uploads')
+              .replace(/src='(?!https?:)(?!\/)media\/uploads/gi, "src='/media/uploads")
+              .replace(/src="(?:\.\.\/)+media\/uploads/gi, 'src="/media/uploads')
+              .replace(/src='(?:\.\.\/)+media\/uploads/gi, "src='/media/uploads")
+              .replace(/src="\.\/media\/uploads/gi, 'src="/media/uploads')
+              .replace(/src='\.\/media\/uploads/gi, "src='/media/uploads");
+
              debug('onChange: reconstructed HTML with cached styles', {
                originalLength: html.length,
                completeLength: completeHtml.length,
@@ -238,9 +274,113 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
           content_style: defaultContentStyle,
           skin: 'oxide', // thème clair pour éviter texte blanc
           menubar: false,
-          plugins: 'lists link table',
+          plugins: 'lists link image table',
           toolbar:
-            'undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | removeformat',
+            'undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link image | removeformat',
+          image_advtab: true,
+          contextmenu: 'link image table',
+          automatic_uploads: true,
+          file_picker_types: 'image',
+          // Eviter que TinyMCE transforme des URLs absolues en relatives
+          relative_urls: false,
+          remove_script_host: false,
+          document_base_url: API_BASE_URL,
+          images_upload_handler: async (blobInfo, progress) => {
+            try {
+              const token = localStorage.getItem('token');
+              const formData = new FormData();
+              formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+              const resp = await fetch(`${API_BASE_URL}/api/v1/resources/upload-image`, {
+                method: 'POST',
+                headers: {
+                  Authorization: token ? `Bearer ${token}` : undefined,
+                },
+                body: formData,
+              });
+              if (!resp.ok) {
+                const text = await resp.text();
+                if (resp.status === 413) {
+                  if (text && text.toLowerCase().includes('quota de stockage dépassé')) {
+                    showUploadError(text);
+                  } else {
+                    showUploadError("Image trop volumineuse. Limite 1 Mo (configurable).");
+                  }
+                } else if (resp.status === 400) {
+                  showUploadError("Type d'image non supporté ou requête invalide.");
+                } else {
+                  showUploadError(`Upload échoué (${resp.status}).`);
+                }
+                throw new Error(`Upload échoué (${resp.status}): ${text}`);
+              }
+              const data = await resp.json();
+              if (data && data.location) {
+                // Toujours renvoyer une URL absolue pour éviter les résolutions relatives
+                const absoluteUrl = data.location.startsWith('http')
+                  ? data.location
+                  : `${API_BASE_URL}${data.location.startsWith('/') ? '' : '/'}${data.location}`;
+                showUploadSuccess('Image uploadée avec succès.');
+                return absoluteUrl;
+              }
+              showUploadError("Réponse upload invalide: URL manquante.");
+              throw new Error('Réponse upload invalide: champ location manquant');
+            } catch (e) {
+              console.error('TinyMCE image upload error', e);
+              if (!uploadErrorOpen) {
+                showUploadError("Impossible d'uploader l'image. Vérifiez la taille/format.");
+              }
+              throw e;
+            }
+          },
+          file_picker_callback: (cb, value, meta) => {
+            if (meta.filetype !== 'image') return;
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              try {
+                const url = await (async () => {
+                  const token = localStorage.getItem('token');
+                  const formData = new FormData();
+                  formData.append('file', file, file.name);
+                  const resp = await fetch(`${API_BASE_URL}/api/v1/resources/upload-image`, {
+                    method: 'POST',
+                    headers: { Authorization: token ? `Bearer ${token}` : undefined },
+                    body: formData,
+                  });
+                  if (!resp.ok) {
+                    const text = await resp.text();
+                    if (resp.status === 413) {
+                      if (text && text.toLowerCase().includes('quota de stockage dépassé')) {
+                        showUploadError(text);
+                      } else {
+                        showUploadError("Image trop volumineuse. Limite 1 Mo (configurable).");
+                      }
+                    } else if (resp.status === 400) {
+                      showUploadError("Type d'image non supporté ou requête invalide.");
+                    } else {
+                      showUploadError(`Upload échoué (${resp.status}).`);
+                    }
+                    throw new Error(`Upload échoué (${resp.status}): ${text}`);
+                  }
+                  const data = await resp.json();
+                  if (!data.location) throw new Error('Réponse upload invalide');
+                  const absoluteUrl = data.location.startsWith('http')
+                    ? data.location
+                    : `${API_BASE_URL}${data.location.startsWith('/') ? '' : '/'}${data.location}`;
+                  return absoluteUrl;
+                })();
+                cb(url, { title: file.name });
+                showUploadSuccess('Image uploadée avec succès.');
+              } catch (err) {
+                console.error('file_picker_callback upload error', err);
+                showUploadError("Impossible d'uploader l'image. Vérifiez la taille/format.");
+              }
+            };
+            input.click();
+          },
           // Important pour accepter tout le HTML
           valid_elements: '*[*]',
           valid_children: '+body[style]',
@@ -295,6 +435,26 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
           }
         }}
       />
+      <Snackbar
+        open={uploadErrorOpen}
+        autoHideDuration={6000}
+        onClose={handleUploadErrorClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleUploadErrorClose} severity="error" sx={{ width: '100%' }}>
+          {uploadErrorMsg}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={uploadSuccessOpen}
+        autoHideDuration={3000}
+        onClose={handleUploadSuccessClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleUploadSuccessClose} severity="success" sx={{ width: '100%' }}>
+          {uploadSuccessMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 });

@@ -9,6 +9,7 @@ import asyncio
 from typing import List, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,54 @@ async def scheduled_cleanup():
 
     except Exception as e:
         logger.error(f"Erreur lors du nettoyage périodique: {e}")
+
+    # Étape 2: purge des corbeilles utilisateurs (.trash)
+    try:
+        await _scheduled_trash_cleanup()
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des corbeilles: {e}")
+
+
+async def _scheduled_trash_cleanup():
+    """Supprime les fichiers dans uploads/<user_id>/.trash plus vieux que TRASH_RETENTION_DAYS."""
+    settings = get_settings()
+    retention_days = getattr(settings, 'TRASH_RETENTION_DAYS', 30)
+    cutoff = time.time() - (retention_days * 24 * 3600)
+    base = Path(settings.UPLOADS_BASE_DIR) / 'uploads'
+    if not base.exists():
+        return
+    deleted = 0
+    try:
+        for user_dir in base.iterdir():
+            if not user_dir.is_dir():
+                continue
+            trash = user_dir / '.trash'
+            if not trash.exists() or not trash.is_dir():
+                continue
+            for item in trash.iterdir():
+                try:
+                    st = item.stat()
+                    if st.st_mtime < cutoff:
+                        if item.is_file():
+                            item.unlink(missing_ok=True)
+                            deleted += 1
+                        elif item.is_dir():
+                            # sécurité: ne pas supprimer récursivement des dossiers non attendus
+                            try:
+                                item.rmdir()
+                            except OSError:
+                                pass
+                except Exception as e:
+                    logger.warning(f"Erreur suppression dans corbeille {item}: {e}")
+            # tenter suppression du dossier .trash s'il est vide
+            try:
+                if not any(trash.iterdir()):
+                    trash.rmdir()
+            except Exception:
+                pass
+    finally:
+        if deleted:
+            logger.info(f"Purge corbeilles: {deleted} fichiers supprimés (> {retention_days} jours)")
 
 
 def get_temp_cleaner() -> TempFileCleaner:

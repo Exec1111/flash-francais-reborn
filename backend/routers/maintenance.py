@@ -11,6 +11,9 @@ from backend.ai.services.temp_file_cleaner import get_temp_cleaner
 from backend.ai.services.temp_scheduler import get_temp_scheduler
 from database import get_db
 from pathlib import Path
+from backend.config import get_settings
+from routers.auth import get_current_active_user
+from models import User as UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -205,3 +208,79 @@ async def maintenance_health_check() -> Dict[str, Any]:
             "error": str(e),
             "message": "Problème détecté dans les services de maintenance"
         }
+
+
+# --- Nouveaux endpoints: usage de stockage & corbeille ---
+
+def _compute_user_usage(user_id: int) -> Dict[str, Any]:
+    settings = get_settings()
+    base = Path(settings.UPLOADS_BASE_DIR) / 'uploads' / str(user_id)
+    total = 0
+    trash_total = 0
+    if base.exists():
+        for p in base.rglob('*'):
+            try:
+                if p.is_file():
+                    size = p.stat().st_size
+                    if '.trash' in p.parts:
+                        trash_total += size
+                    else:
+                        total += size
+            except Exception:
+                continue
+    quota_mb = getattr(settings, 'USER_STORAGE_QUOTA_MB', 0)
+    return {
+        'user_id': user_id,
+        'used_bytes': total,
+        'used_mb': round(total / (1024*1024), 2),
+        'trash_bytes': trash_total,
+        'trash_mb': round(trash_total / (1024*1024), 2),
+        'quota_mb': quota_mb,
+        'quota_bytes': quota_mb * 1024 * 1024 if quota_mb else 0,
+        'percent': (round((total / (quota_mb*1024*1024))*100, 2) if quota_mb else None)
+    }
+
+
+@router.get("/storage/usage", tags=["maintenance"])
+async def get_my_storage_usage(
+    current_user: UserModel = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """Retourne l'usage de stockage de l'utilisateur courant (hors corbeille) et la corbeille."""
+    try:
+        usage = _compute_user_usage(current_user.id)
+        return { 'success': True, 'usage': usage }
+    except Exception as e:
+        logger.error(f"Erreur get_my_storage_usage: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors du calcul de l'usage de stockage")
+
+
+@router.post("/trash/empty", tags=["maintenance"])
+async def empty_my_trash(
+    current_user: UserModel = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """Vide la corbeille (.trash) de l'utilisateur courant."""
+    settings = get_settings()
+    trash = Path(settings.UPLOADS_BASE_DIR) / 'uploads' / str(current_user.id) / '.trash'
+    deleted = 0
+    if trash.exists() and trash.is_dir():
+        for item in trash.iterdir():
+            try:
+                if item.is_file():
+                    item.unlink(missing_ok=True)
+                    deleted += 1
+                elif item.is_dir():
+                    # sécurité: supprimer seulement dossiers vides
+                    try:
+                        item.rmdir()
+                    except OSError:
+                        pass
+            except Exception as e:
+                logger.warning(f"Erreur suppression dans la corbeille {item}: {e}")
+        # tenter de supprimer .trash si vide
+        try:
+            if not any(trash.iterdir()):
+                trash.rmdir()
+        except Exception:
+            pass
+
+    return { 'success': True, 'deleted': deleted }

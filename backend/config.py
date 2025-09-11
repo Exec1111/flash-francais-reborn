@@ -45,10 +45,21 @@ class Settings(BaseSettings):
 
     # --- Ajout des paramètres d'upload manquants ---
     MAX_UPLOAD_SIZE_MB: int = int(os.getenv('MAX_UPLOAD_SIZE_MB', '10')) # Taille max en Mo, défaut 10 Mo
+    IMAGE_MAX_UPLOAD_SIZE_MB: int = int(os.getenv('IMAGE_MAX_UPLOAD_SIZE_MB', '1'))  # Taille max spécifique pour les images (défaut 1 Mo)
+    IMAGE_COMPRESSION_ENABLED: bool = os.getenv('IMAGE_COMPRESSION_ENABLED', 'true').lower() == 'true'
+    IMAGE_MAX_WIDTH: int = int(os.getenv('IMAGE_MAX_WIDTH', '1920'))
+    IMAGE_MAX_HEIGHT: int = int(os.getenv('IMAGE_MAX_HEIGHT', '1080'))
+    IMAGE_JPEG_QUALITY_START: int = int(os.getenv('IMAGE_JPEG_QUALITY_START', '85'))
+    IMAGE_JPEG_QUALITY_MIN: int = int(os.getenv('IMAGE_JPEG_QUALITY_MIN', '60'))
+    IMAGE_QUALITY_STEP: int = int(os.getenv('IMAGE_QUALITY_STEP', '5'))
+    TRASH_RETENTION_DAYS: int = int(os.getenv('TRASH_RETENTION_DAYS', '30'))
+    USER_STORAGE_QUOTA_MB: int = int(os.getenv('USER_STORAGE_QUOTA_MB', '0'))  # 0 = pas de quota
     ALLOWED_UPLOAD_MIME_TYPES: List[str] = [
         "image/jpeg",
         "image/png",
         "image/gif",
+        "image/webp",
+        "image/svg+xml",
         "application/pdf",
         "text/plain",
         "audio/mpeg", # Pour les MP3

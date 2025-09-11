@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button } from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon, MenuBook as MenuBookIcon, Add as AddIcon } from '@mui/icons-material';
+import { Drawer, IconButton, Box, Typography, useTheme, CircularProgress, Divider, Button, Badge } from '@mui/material';
+import { ChevronLeft as ChevronLeftIcon, Flag as FlagIcon, MenuBook as MenuBookIcon, Add as AddIcon, Settings as SettingsIcon } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTreeData } from '../../contexts/TreeDataContext';
@@ -11,6 +11,7 @@ import DraggableProgressionNode from './DraggableProgressionNode';
 import DraggableSequenceNode from './DraggableSequenceNode';
 import DraggableSessionNode from './DraggableSessionNode';
 import { updateNodeStateRecursive, transformNode } from './utils';
+import MaintenanceService from '../../services/maintenance';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -37,6 +38,25 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
   const { treeData, isTreeLoading, treeError, refreshTreeData } = useTreeData();
   const theme = useTheme();
   const navigate = useNavigate();
+  // Pourcentage d'utilisation du quota (si activé côté backend)
+  const [storagePercent, setStoragePercent] = useState(null);
+  const quotaBadgeColor = storagePercent !== null
+    ? (storagePercent >= 90 ? 'error' : storagePercent >= 70 ? 'warning' : 'success')
+    : 'secondary';
+
+  // Charger le pourcentage de stockage une fois (best-effort)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await MaintenanceService.getStorageUsage();
+        if (res && res.success && res.usage && typeof res.usage.percent === 'number') {
+          setStoragePercent(Math.min(100, Math.max(0, Math.round(res.usage.percent))));
+        }
+      } catch (e) {
+        // Silencieux: ne bloque pas la nav si indisponible
+      }
+    })();
+  }, []);
 
   // État local pour les nœuds transformés avec état d'expansion
   const [processedNodes, setProcessedNodes] = useState([]);
@@ -511,6 +531,33 @@ function SideNav({ open, handleDrawerOpen, handleDrawerClose }) {
         >
           Œuvres
         </Button>
+        {storagePercent !== null ? (
+          <Badge color={quotaBadgeColor} badgeContent={`${storagePercent}%`} overlap="circular" sx={{ width: '100%' }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SettingsIcon />}
+              component={RouterLink}
+              to="/dashboard/settings/storage"
+              fullWidth
+              sx={{ justifyContent: 'flex-start' }}
+            >
+              Stockage
+            </Button>
+          </Badge>
+        ) : (
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<SettingsIcon />}
+            component={RouterLink}
+            to="/dashboard/settings/storage"
+            fullWidth
+            sx={{ justifyContent: 'flex-start' }}
+          >
+            Stockage
+          </Button>
+        )}
       </Box>
 
       <Divider sx={{ my: 2 }} />

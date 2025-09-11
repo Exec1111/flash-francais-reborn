@@ -70,6 +70,7 @@ import NewOeuvre from './pages/oeuvres/NewOeuvre';
 import EditOeuvre from './pages/oeuvres/EditOeuvre';
 import OeuvreDetail from './pages/oeuvres/OeuvreDetail';
 import OeuvreWizard from './components/OeuvreWizard';
+import SettingsStorage from './pages/SettingsStorage';
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -320,6 +321,8 @@ function App() {
         <Route path="dashboard" element={<Dashboard />} />
         {/* Route protégée pour les logs LLM admin */}
         <Route path="admin/llm-logs" element={<AdminLLMLogs />} />
+        {/* Paramètres: Stockage */}
+        <Route path="settings/storage" element={<SettingsStorage />} />
         {/* <Route path="profile" element={<Profile />} /> */}
         {/* <Route path="settings" element={<Settings />} /> */}
         {/* Route pour le constructeur de progression */}
