@@ -15,14 +15,21 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Collapse,
+  Grid
 } from '@mui/material';
 import {
   Send as SendIcon,
   Psychology as PsychologyIcon,
   Person as PersonIcon,
   Clear as ClearIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import HtmlChatService from '../../services/htmlChatService';
 
@@ -38,6 +45,25 @@ const HtmlChatBot = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  
+  // États pour la sélection de modèle IA
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState('google');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  
+  // Modèles disponibles par fournisseur
+  const availableModels = {
+    openai: [
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-5-mini', label: 'GPT-5 Mini' }
+    ],
+    google: [
+      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' }
+    ]
+  };
   
   // Références
   const messagesEndRef = useRef(null);
@@ -75,7 +101,11 @@ const HtmlChatBot = ({
       const response = await HtmlChatService.processHtmlModification(
         messageText,
         currentHtml,
-        newMessages // Envoyer l'historique complet
+        newMessages, // Envoyer l'historique complet
+        {
+          provider: selectedProvider,
+          model: selectedModel
+        }
       );
 
       // Ajouter la réponse de l'assistant
@@ -156,7 +186,14 @@ const HtmlChatBot = ({
         title="Assistant IA pour l'édition HTML"
         subheader={`${messages.length} message(s) dans la conversation`}
         action={
-          <Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton 
+              onClick={() => setShowModelSelector(!showModelSelector)}
+              title="Paramètres du modèle IA"
+              color={showModelSelector ? 'primary' : 'default'}
+            >
+              <SettingsIcon />
+            </IconButton>
             <IconButton 
               onClick={clearConversation} 
               disabled={messages.length === 0}
@@ -167,6 +204,115 @@ const HtmlChatBot = ({
           </Box>
         }
       />
+
+      {/* Sélecteur de modèle IA */}
+      <Collapse in={showModelSelector}>
+        <Box sx={{ 
+          p: 3, 
+          backgroundColor: 'primary.main', 
+          color: 'primary.contrastText',
+          borderBottom: '1px solid', 
+          borderColor: 'primary.dark' 
+        }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+            🤖 Configuration du modèle IA
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: 'primary.contrastText', '&.Mui-focused': { color: 'primary.contrastText' } }}>
+                  Fournisseur
+                </InputLabel>
+                <Select
+                  value={selectedProvider}
+                  label="Fournisseur"
+                  onChange={(e) => {
+                    setSelectedProvider(e.target.value);
+                    // Réinitialiser le modèle au premier disponible pour le nouveau fournisseur
+                    setSelectedModel(availableModels[e.target.value][0].value);
+                  }}
+                  sx={{
+                    color: 'primary.contrastText',
+                    '.MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '.MuiSvgIcon-root': {
+                      color: 'primary.contrastText',
+                    },
+                  }}
+                >
+                  <MenuItem value="google">🔍 Google</MenuItem>
+                  <MenuItem value="openai">🧠 OpenAI</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: 'primary.contrastText', '&.Mui-focused': { color: 'primary.contrastText' } }}>
+                  Modèle
+                </InputLabel>
+                <Select
+                  value={selectedModel}
+                  label="Modèle"
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  sx={{
+                    color: 'primary.contrastText',
+                    '.MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.contrastText',
+                    },
+                    '.MuiSvgIcon-root': {
+                      color: 'primary.contrastText',
+                    },
+                  }}
+                >
+                  {availableModels[selectedProvider].map((model) => (
+                    <MenuItem key={model.value} value={model.value}>
+                      {model.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+          <Box sx={{ 
+            mt: 2, 
+            p: 2, 
+            backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              ✨ Modèle sélectionné:
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+              px: 1.5, 
+              py: 0.5, 
+              borderRadius: 0.5,
+              fontWeight: 600
+            }}>
+              {availableModels[selectedProvider].find(m => m.value === selectedModel)?.label}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              ({selectedProvider === 'google' ? '🔍 Google' : '🧠 OpenAI'})
+            </Typography>
+          </Box>
+        </Box>
+      </Collapse>
 
       {/* Alertes */}
       {error && (

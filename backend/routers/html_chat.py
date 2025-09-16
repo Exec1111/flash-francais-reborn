@@ -47,7 +47,8 @@ async def process_html_modification(
             user_message=request.message,
             current_html=request.current_html,
             conversation_history=conversation_history,
-            user_id=current_user.id
+            user_id=current_user.id,
+            model_config=request.ai_model_config
         )
         
         # Créer le message de réponse pour l'historique

@@ -7,6 +7,11 @@ class HtmlChatMessage(BaseModel):
     content: str = Field(..., description="Contenu textuel du message")
     timestamp: Optional[str] = Field(None, description="Timestamp du message")
 
+class ModelConfig(BaseModel):
+    """Configuration du modèle IA"""
+    provider: str = Field(..., description="Fournisseur IA (openai ou google)")
+    model: str = Field(..., description="Nom du modèle à utiliser")
+
 class HtmlChatRequest(BaseModel):
     """Schéma pour une requête de chat HTML avec modification"""
     message: str = Field(..., description="Message de l'utilisateur")
@@ -14,6 +19,10 @@ class HtmlChatRequest(BaseModel):
     conversation_history: List[HtmlChatMessage] = Field(
         default=[], 
         description="Historique des messages précédents (géré côté frontend)"
+    )
+    ai_model_config: Optional[ModelConfig] = Field(
+        None, 
+        description="Configuration du modèle IA à utiliser"
     )
 
 class HtmlChatResponse(BaseModel):

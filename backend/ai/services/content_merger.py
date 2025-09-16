@@ -13,6 +13,7 @@ from google.genai.errors import ServerError
 
 from backend.ai.prompts.prompt_generator import PromptGenerator
 from backend.ai.services.registry import ResourceGenerationError
+from backend.ai.utils.html_cleaner import preserve_content_spaces
 from config import get_settings
 from backend.database import SessionLocal
 from backend.models.llm_interaction_log import LLMInteractionLog
@@ -102,6 +103,15 @@ async def merge_ai_resource_content(
 
         # Extraire le HTML généré
         html_generated = response.text.strip()
+        
+        # Nettoyer le HTML généré pour supprimer les espaces et retours à la ligne inutiles
+        if html_generated:
+            original_length = len(html_generated)
+            html_generated = preserve_content_spaces(html_generated)
+            cleaned_length = len(html_generated)
+            if original_length != cleaned_length:
+                logger.debug(f"HTML fusionné nettoyé : {original_length} -> {cleaned_length} caractères")
+        
         # Logging LLMInteractionLog
         try:
             db = SessionLocal()

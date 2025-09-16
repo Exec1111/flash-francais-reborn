@@ -18,7 +18,8 @@ import json # Pour parser session_ids
 from fastapi import status
 from werkzeug.utils import secure_filename # Sécurité: importer depuis werkzeug.utils
 from config import get_settings
-from ai.services.docling_background import run_docling_extraction
+from backend.ai.services.ai_service_factory import AIServiceFactory
+from backend.ai.utils.html_cleaner import preserve_content_spaces, clean_html, remove_empty_blocks_and_breaks
 from schemas.docling import DoclingStatusResponse, DoclingTable
 import re
 import hashlib
@@ -672,6 +673,19 @@ async def update_resource_route(
 
             old_imgs = _extract_image_srcs(original_html) if original_html else set()
             new_imgs = _extract_image_srcs(html_content)
+
+            # Nettoyer le HTML avant sauvegarde pour supprimer les espaces et retours à la ligne inutiles
+            # Utiliser un nettoyage plus agressif lors de la sauvegarde pour minimiser les retours à la ligne superflus
+            if html_content:
+                original_length = len(html_content)
+                html_content = clean_html(html_content)
+                mid_length = len(html_content)
+                # Seconde passe: supprimer blocs vides (<p>&nbsp;</p>, <p><br></p>, <div><br></div>) et compacter <br>
+                html_content = remove_empty_blocks_and_breaks(html_content)
+                cleaned_length = len(html_content)
+                logger.info(f"HTML nettoyé (clean_html -> remove_empty_blocks_and_breaks) : {original_length} -> {mid_length} -> {cleaned_length} caractères")
+                if original_length != cleaned_length:
+                    logger.info(f"Nettoyage sauvegarde effectué : {original_length - cleaned_length} caractères supprimés")
 
             full_path.write_text(html_content, encoding="utf-8")
             logger.info(f"Fichier HTML {full_path} mis à jour avec succès pour la ressource {resource_id}.")

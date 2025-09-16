@@ -21,6 +21,10 @@ class GoogleService(BaseAIService):
         if not model_name:
             raw_model_name = os.getenv("GEMINI_FLASH_CHAT_MODEL") or os.getenv("GEMINI_CHAT_MODEL", "gemini-1.5-flash-latest")
             model_name = f"models/{raw_model_name}" if not raw_model_name.startswith("models/") else raw_model_name
+        else:
+            # Si un modèle spécifique est fourni, s'assurer qu'il a le préfixe models/
+            if not model_name.startswith("models/"):
+                model_name = f"models/{model_name}"
             
         super().__init__(model_name, api_key)
         
