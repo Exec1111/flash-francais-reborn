@@ -48,7 +48,7 @@ const extractStyles = (html) => {
 };
 
 
-const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = false }, ref) => {
+const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = false, contentKey, forceUpdateOnInitialHtmlChange = false }, ref) => {
   const editorRef = useRef(null);
   const apiKey = process.env.REACT_APP_TINY_MCE_API_KEY || process.env.TINY_MCE_API_KEY || '';
   const { styles: initialStyles, links: initialLinks, cleanedHtml } = extractStyles(initialHtml);
@@ -121,7 +121,15 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
     },
     getContent: () => {
       if (editorRef.current && isInitialized) {
-        return editorRef.current.getContent();
+        // Reconstruire le HTML complet au moment de la sauvegarde
+        const html = editorRef.current.getContent();
+        const linkTags = (savedLinksRef.current && savedLinksRef.current.length)
+          ? savedLinksRef.current.map(href => `<link rel="stylesheet" href="${href}">`).join('\n') + '\n'
+          : '';
+        const styleTag = (savedStylesRef.current && savedStylesRef.current.trim())
+          ? `<style>\n${savedStylesRef.current}\n<\/style>\n`
+          : '';
+        return `${linkTags}${styleTag}${html}`;
       }
       return '';
     },
@@ -166,27 +174,56 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
     callback();
   }, 100); // Reduced to 100ms for better responsiveness
 
-  // DISABLED: Completely ignore initialHtml changes to prevent cursor issues
-  // AI updates will need to be handled differently if needed
+  // Par défaut: on ignore les changements d'initialHtml pour préserver le curseur.
+  // Si forceUpdateOnInitialHtmlChange=true: on applique la mise à jour (utile après un retour IA).
   useEffect(() => {
     if (initialHtml !== lastInitialHtmlRef.current) {
-      debug('TinyHtmlEditor: initialHtml changed but IGNORED to preserve cursor stability');
       lastInitialHtmlRef.current = initialHtml;
-      
-      // Only update styles if needed, never content
-      const { styles } = extractStyles(initialHtml);
-      if (styles && styles.length && isInitialized && editorRef.current) {
-        savedStylesRef.current = styles;
-        const head = editorRef.current.getDoc().head;
-        const old = head.querySelector('style[data-inline]');
-        if (old) head.removeChild(old);
-        const tag = editorRef.current.getDoc().createElement('style');
-        tag.setAttribute('data-inline', 'true');
-        tag.innerHTML = styles;
-        head.appendChild(tag);
+      const { styles, links, cleanedHtml } = extractStyles(initialHtml);
+
+      if (isInitialized && editorRef.current) {
+        if (forceUpdateOnInitialHtmlChange) {
+          debug('TinyHtmlEditor: initialHtml changed and APPLIED due to forceUpdateOnInitialHtmlChange');
+          // Mettre à jour caches styles/links
+          if (styles && styles.length) {
+            savedStylesRef.current = styles;
+          }
+          savedLinksRef.current = links || [];
+
+          // Mettre le contenu sans déclencher onChange
+          isSettingContentRef.current = true;
+          editorRef.current.setContent(cleanedHtml || '');
+          setTimeout(() => {
+            isSettingContentRef.current = false;
+          }, 50);
+
+          // Ré-injecter les styles inline dans l'iframe
+          if (styles && styles.length) {
+            const head = editorRef.current.getDoc().head;
+            const old = head.querySelector('style[data-inline]');
+            if (old) head.removeChild(old);
+            const tag = editorRef.current.getDoc().createElement('style');
+            tag.setAttribute('data-inline', 'true');
+            tag.innerHTML = styles;
+            head.appendChild(tag);
+          }
+        } else {
+          debug('TinyHtmlEditor: initialHtml changed but IGNORED to preserve cursor stability');
+          // Mettre à jour uniquement les styles si présents
+          if (styles && styles.length) {
+            savedStylesRef.current = styles;
+            const head = editorRef.current.getDoc().head;
+            const old = head.querySelector('style[data-inline]');
+            if (old) head.removeChild(old);
+            const tag = editorRef.current.getDoc().createElement('style');
+            tag.setAttribute('data-inline', 'true');
+            tag.innerHTML = styles;
+            head.appendChild(tag);
+          }
+        }
       }
     }
-  }, [initialHtml, isInitialized]);
+  }, [initialHtml, isInitialized, forceUpdateOnInitialHtmlChange]);
 
   const contentCss = [process.env.PUBLIC_URL + '/tinymce-content.css'];
   if (savedLinksRef.current && savedLinksRef.current.length) {
@@ -206,6 +243,7 @@ const TinyHtmlEditor = forwardRef(({ initialHtml = '', onChange, disabled = fals
 
 
       <Editor
+        key={contentKey || 'default'}
         apiKey={apiKey}
         tinymceScriptSrc={`https://cdn.tiny.cloud/1/${apiKey || 'no-api-key'}/tinymce/6/tinymce.min.js` }
         initialValue={staticInitialValueRef.current}
@@ -463,6 +501,8 @@ TinyHtmlEditor.propTypes = {
   initialHtml: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
+  contentKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  forceUpdateOnInitialHtmlChange: PropTypes.bool,
 };
 
 TinyHtmlEditor.displayName = 'TinyHtmlEditor';
