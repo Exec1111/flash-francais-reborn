@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Champs lexicaux - Activité</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; }
+    .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 28px; }
+    h1 { color: #0056b3; text-align: center; margin-top: 0; }
+    p.desc { text-align: center; color: #555; }
+    #mots-a-placer { border: 2px dashed #ccc; padding: 15px; min-height: 80px; margin: 20px 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; background-color: #e9e9e9; border-radius: 5px; }
+    .mot-draggable { background-color: #007bff; color: #fff; padding: 8px 12px; border-radius: 4px; cursor: grab; user-select: none; border: 1px solid transparent; transition: transform .1s, background-color .2s; }
+    .mot-draggable:active { cursor: grabbing; transform: scale(1.05); }
+    #champs-cible { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .champ-cible { border: 2px solid #0056b3; padding: 15px; border-radius: 5px; background-color: #eef; display: flex; flex-direction: column; }
+    .champ-cible h3 { margin: 0 0 10px; color: #0056b3; text-align: center; padding-bottom: 10px; border-bottom: 1px solid #cee; }
+    .drop-area { border: 2px dashed #a0a0a0; min-height: 100px; padding: 10px; flex-grow: 1; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; background-color: #f8f8f8; border-radius: 4px; transition: border-color .2s, background-color .2s; }
+    .drop-area.drag-over { border-color: #28a745; background-color: #d4edda; }
+    .drop-area .mot-draggable { margin: 3px; background-color: #6c757d; }
+    .mot-draggable.correctly-placed { background-color: #28a745 !important; }
+    .mot-draggable.incorrectly-placed { background-color: #dc3545 !important; }
+    .buttons { text-align: center; margin-top: 24px; }
+    button { padding: 10px 20px; margin: 0 10px; font-size: 1em; cursor: pointer; border: none; border-radius: 5px; transition: background-color .2s; }
+    #check-button { background-color: #28a745; color: #fff; }
+    #check-button:hover { background-color: #218838; }
+    #reset-button { background-color: #ffc107; color: #212529; }
+    #reset-button:hover { background-color: #e0a800; }
+    #feedback { margin-top: 16px; padding: 10px; border-radius: 4px; text-align: center; min-height: 1.5em; }
+    #feedback.correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    #feedback.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    #feedback:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="runtime-title">Exercice sur les champs lexicaux</h1>
+    <p id="runtime-desc" class="desc">Glissez et déposez chaque mot dans la zone du champ lexical correspondant. Cliquez sur "Vérifier" pour voir vos réponses, puis rectifiez si nécessaire.</p>
+
+    <div id="mots-a-placer"></div>
+    <div id="champs-cible"></div>
+
+    <div class="buttons">
+      <button id="check-button">Vérifier les réponses</button>
+      <button id="reset-button">Recommencer</button>
+    </div>
+
+    <div id="feedback"></div>
+  </div>
+
+  <script>
+    // Données injectées au build runtime
+    window.CHAMPLEX_DATA = <!--ACTIVITY_DATA_JSON-->;
+
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function getAllShuffledWords(config) {
+      const all = [];
+      (config || []).forEach(ch => {
+        (ch.words || []).forEach(w => all.push({ word: w, correctField: ch.name }));
+      });
+      return shuffleArray(all);
+    }
+
+    function initializeExercise() {
+      const data = window.CHAMPLEX_DATA || {};
+      const configChampsLexicaux = Array.isArray(data.champs) ? data.champs : [];
+      // Titre/description dynamiques si fournis
+      const titleEl = document.getElementById('runtime-title');
+      const descEl = document.getElementById('runtime-desc');
+      if (data.title && typeof data.title === 'string') {
+        titleEl.textContent = data.title;
+      }
+      if (data.description && typeof data.description === 'string') {
+        descEl.textContent = data.description;
+      }
+
+      const motsAPlacerDiv = document.getElementById('mots-a-placer');
+      const champsCibleDiv = document.getElementById('champs-cible');
+      const feedbackDiv = document.getElementById('feedback');
+      motsAPlacerDiv.innerHTML = '';
+      champsCibleDiv.innerHTML = '';
+      feedbackDiv.innerHTML = '';
+      feedbackDiv.className = '';
+
+      if (!Array.isArray(configChampsLexicaux) || configChampsLexicaux.length === 0) {
+        feedbackDiv.textContent = "Erreur de configuration : aucune donnée d'exercice trouvée.";
+        feedbackDiv.classList.add('error');
+        return;
+      }
+
+      const shuffledWords = getAllShuffledWords(configChampsLexicaux);
+      if (shuffledWords.length === 0) {
+        feedbackDiv.textContent = "Erreur de configuration : aucun mot défini.";
+        feedbackDiv.classList.add('error');
+        return;
+      }
+
+      shuffledWords.forEach((item, idx) => {
+        const motSpan = document.createElement('span');
+        motSpan.className = 'mot-draggable';
+        motSpan.setAttribute('draggable', true);
+        motSpan.id = 'mot-' + idx;
+        motSpan.textContent = item.word;
+        motSpan.dataset.correctField = item.correctField;
+        motsAPlacerDiv.appendChild(motSpan);
+      });
+
+      configChampsLexicaux.forEach(champ => {
+        const champDiv = document.createElement('div');
+        champDiv.className = 'champ-cible';
+        const title = document.createElement('h3');
+        title.textContent = champ.name.charAt(0).toUpperCase() + champ.name.slice(1);
+        const dropArea = document.createElement('div');
+        dropArea.className = 'drop-area';
+        dropArea.dataset.fieldName = champ.name;
+        champDiv.appendChild(title);
+        champDiv.appendChild(dropArea);
+        champsCibleDiv.appendChild(champDiv);
+      });
+    }
+
+    // Drag & Drop handlers
+    let draggedElement = null;
+
+    document.addEventListener('dragstart', (e) => {
+      if (e.target.classList.contains('mot-draggable')) {
+        draggedElement = e.target;
+        e.dataTransfer.setData('text/plain', e.target.id);
+        setTimeout(() => { e.target.style.opacity = '0.5'; }, 0);
+        draggedElement.classList.remove('correctly-placed', 'incorrectly-placed');
+        const fb = document.getElementById('feedback');
+        fb.innerHTML = '';
+        fb.className = '';
+      } else {
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('dragend', () => {
+      if (draggedElement) {
+        draggedElement.style.opacity = '1';
+        draggedElement = null;
+      }
+    });
+
+    document.addEventListener('dragover', (e) => {
+      const targetDropArea = e.target.closest('.drop-area, #mots-a-placer');
+      if (targetDropArea) {
+        e.preventDefault();
+        targetDropArea.classList.add('drag-over');
+      }
+    });
+
+    document.addEventListener('dragleave', (e) => {
+      const targetDropArea = e.target.closest('.drop-area, #mots-a-placer');
+      if (targetDropArea && !targetDropArea.contains(e.relatedTarget)) {
+        targetDropArea.classList.remove('drag-over');
+      }
+    });
+
+    document.addEventListener('drop', (e) => {
+      const targetDropArea = e.target.closest('.drop-area, #mots-a-placer');
+      if (targetDropArea) {
+        e.preventDefault();
+        targetDropArea.classList.remove('drag-over');
+        const id = e.dataTransfer.getData('text/plain');
+        const el = document.getElementById(id);
+        if (el && el.classList.contains('mot-draggable')) {
+          targetDropArea.appendChild(el);
+          el.classList.remove('correctly-placed', 'incorrectly-placed');
+          const fb = document.getElementById('feedback');
+          fb.innerHTML = '';
+          fb.className = '';
+        }
+      }
+    });
+
+    document.getElementById('check-button').addEventListener('click', () => {
+      const fb = document.getElementById('feedback');
+      fb.innerHTML = '';
+      fb.className = '';
+      const mots = document.querySelectorAll('.mot-draggable');
+      let correctCount = 0;
+      let placedCount = 0;
+      mots.forEach(mot => {
+        mot.classList.remove('correctly-placed', 'incorrectly-placed');
+        const currentDropArea = mot.closest('.drop-area');
+        if (currentDropArea) {
+          placedCount++;
+          const correctField = mot.dataset.correctField;
+          const targetField = currentDropArea.dataset.fieldName;
+          if (correctField === targetField) {
+            mot.classList.add('correctly-placed');
+            correctCount++;
+          } else {
+            mot.classList.add('incorrectly-placed');
+          }
+        }
+      });
+      const totalMots = mots.length;
+      const motsRestants = totalMots - placedCount;
+      if (totalMots === 0) {
+        fb.textContent = 'Aucun mot à placer dans cet exercice.';
+        fb.classList.add('error');
+        return;
+      }
+      if (correctCount === totalMots) {
+        fb.textContent = `Bravo ! Tous les ${totalMots} mots sont correctement placés !`;
+        fb.classList.add('correct');
+      } else if (placedCount === totalMots) {
+        fb.textContent = `Tu as placé tous les mots (${totalMots}). ${correctCount} correct(s). Réessaie !`;
+        fb.classList.add('error');
+      } else {
+        fb.textContent = `Tu as placé ${placedCount}/${totalMots}. ${correctCount} correct(s). ${motsRestants} restant(s).`;
+        fb.classList.add('error');
+      }
+    });
+
+    document.getElementById('reset-button').addEventListener('click', initializeExercise);
+
+    document.addEventListener('DOMContentLoaded', initializeExercise);
+  </script>
+</body>
+</html>

@@ -3,13 +3,15 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse, ResourceFileUpload, ResourceListResponse
 from schemas.resource import ResourceTypeSchema, ResourceSubTypeSchema
-from schemas.study_object import StudyObjectReadShort # Import global
+from schemas.docling import DoclingStatusResponse, DoclingTable
+from schemas.study_object import StudyObjectReadShort  # Import global
 from schemas.pagination import PaginatedResponse # AJOUT
 from database import get_db
 import crud.resource # Importer spécifiquement le module requis
 from crud.resource import get_upload_path
 from dependencies import get_current_active_user # Import absolu
 from models import User as UserModel # Pour l'info utilisateur
+from ai.services.template_resolver import TemplateResolver
 import logging
 import os
 import shutil
@@ -18,13 +20,16 @@ import json # Pour parser session_ids
 from fastapi import status
 from werkzeug.utils import secure_filename # Sécurité: importer depuis werkzeug.utils
 from config import get_settings
+from backend.ai.services.qcm_parser import html_to_qcm_json
+from backend.ai.services.champlex_parser import html_to_champlex_json
 from backend.ai.services.ai_service_factory import AIServiceFactory
 from backend.ai.utils.html_cleaner import preserve_content_spaces, clean_html, remove_empty_blocks_and_breaks
-from schemas.docling import DoclingStatusResponse, DoclingTable
+from backend.ai.services.docling_background import run_docling_extraction
 import re
 import hashlib
 from PIL import Image
 from io import BytesIO
+import json as jsonlib
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
@@ -470,6 +475,49 @@ async def create_resource_route(
             db.add(db_resource)
             db.commit()
             db.refresh(db_resource)
+
+            # Générer automatiquement le runtime pour les exercices dynamiques (qcm, champlex)
+            try:
+                st = getattr(db_resource, 'sub_type', None)
+                st_key = (getattr(st, 'key', '') or '').strip().lower()
+                t = getattr(db_resource, 'type', None)
+                t_key = (getattr(t, 'key', '') or '').strip().lower()
+                if t_key == 'exercice' and st_key in ['qcm', 'champlex']:
+                    # Lire le HTML que nous venons de copier
+                    html_content_created = dest.read_text(encoding='utf-8', errors='ignore')
+                    parsed_data_json = None
+                    if st_key == 'qcm':
+                        parsed_data_json = html_to_qcm_json(html_content_created)
+                        logger.info(f"[CREATE/QCM] data_json parsé depuis HTML pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []))})")
+                    elif st_key == 'champlex':
+                        parsed_data_json = html_to_champlex_json(html_content_created)
+                        logger.info(f"[CREATE/CHAMPLEX] data_json parsé depuis HTML pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
+
+                    # Résoudre le template runtime et générer le HTML autonome
+                    _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
+                    if runtime_template_path and runtime_template_path.exists():
+                        raw_template = runtime_template_path.read_text(encoding='utf-8')
+                        injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
+                        runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
+                        runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
+                        runtime_abs.parent.mkdir(parents=True, exist_ok=True)
+                        runtime_abs.write_text(injected, encoding='utf-8')
+
+                        # Persister champs liés au runtime
+                        db_resource.runtime_html_path = runtime_rel
+                        db_resource.data_json = parsed_data_json
+                        # Figer template
+                        if not getattr(db_resource, 'template_key', None):
+                            db_resource.template_key = resolved_template_key
+                            db_resource.template_version = 1
+                        db.add(db_resource)
+                        db.commit()
+                        db.refresh(db_resource)
+                        logger.info(f"[CREATE/{st_key.upper()}] Runtime généré: {runtime_abs}")
+                    else:
+                        logger.warning(f"[CREATE/{st_key.upper()}] Template runtime non trouvé: {runtime_template_path}")
+            except Exception as e_create_rt:
+                logger.warning(f"[CREATE/{st_key.upper() if 'st_key' in locals() else '?'}] Échec génération runtime auto pour resource_id={db_resource.id}: {e_create_rt}")
         # Déclencher extraction Docling en tâche de fond si PDF uploadé
         try:
             if db_resource and db_resource.source_type == 'file' and (db_resource.file_type == "application/pdf"):
@@ -601,7 +649,6 @@ def read_resource(
     if db_resource.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resource")
     # Construction de la liste des objets d'étude associés (id, title, description)
-    from schemas.study_object import StudyObjectReadShort
     study_objects = [StudyObjectReadShort.from_orm(obj) for obj in getattr(db_resource, "study_objects", [])]
     study_object_ids = [obj.id for obj in study_objects]
     # Construction de la réponse enrichie
@@ -610,6 +657,14 @@ def read_resource(
     # Sérialisation explicite des objets Pydantic
     response_dict['study_objects'] = [obj.model_dump() for obj in study_objects]
     response_dict['study_object_ids'] = study_object_ids
+    # Ajouter runtime_html_url si disponible
+    try:
+        runtime_rel = getattr(db_resource, 'runtime_html_path', None)
+        if runtime_rel:
+            # Construit URL publique via MEDIA_URL_PREFIX
+            response_dict['runtime_html_url'] = f"{settings.MEDIA_URL_PREFIX}/{str(runtime_rel).lstrip('/')}".replace('\\\\', '/').replace('\\', '/')
+    except Exception:
+        pass
     return response_dict
 
 @resource_router.put("/{resource_id}", response_model=ResourceResponse)
@@ -716,6 +771,76 @@ async def update_resource_route(
             logger.error(f"Erreur lors de l'écriture du fichier HTML pour la ressource {resource_id}: {e}")
             raise HTTPException(status_code=500, detail="Erreur lors de l'enregistrement du contenu HTML")
 
+    # Préparer un éventuel data_json parsé depuis le HTML (pour exercices interactifs)
+    parsed_data_json = None
+    runtime_rel_path: Optional[str] = None
+    template_key_to_use: Optional[str] = None
+    template_version_to_use: Optional[int] = None
+    try:
+        if html_content is not None:
+            # Détecter un QCM: baser sur le sous-type lié s'il existe
+            st = getattr(db_resource_check, 'sub_type', None)
+            st_key = (getattr(st, 'key', '') or '').strip().lower()
+            t = getattr(db_resource_check, 'type', None)
+            t_key = (getattr(t, 'key', '') or '').strip().lower()
+            # Gestion des exercices interactifs (exclut analysetexte et dictee qui sont statiques)
+            if t_key == 'exercice' and st_key in ['qcm', 'champlex']:
+                # Parser selon le type d'exercice
+                if st_key == 'qcm':
+                    parsed_data_json = html_to_qcm_json(html_content)
+                    logger.info(f"[QCM] data_json parsé depuis HTML pour resource_id={resource_id} (questions={len(parsed_data_json.get('questions', []))})")
+                elif st_key == 'champlex':
+                    parsed_data_json = html_to_champlex_json(html_content)
+                    champs_count = len(parsed_data_json.get('champs', []) or [])
+                    logger.info(f"[CHAMPLEX] data_json parsé depuis HTML pour resource_id={resource_id} (champs={champs_count})")
+                
+                # Déterminer et figer le template utilisé (clé par défaut si absent)
+                try:
+                    existing_tpl_key = getattr(db_resource_check, 'template_key', None)
+                    existing_tpl_version = getattr(db_resource_check, 'template_version', None)
+                except Exception:
+                    existing_tpl_key = None
+                    existing_tpl_version = None
+                if not existing_tpl_key:
+                    # Résoudre automatiquement la clé de template
+                    _, _, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
+                    template_key_to_use = resolved_template_key
+                    template_version_to_use = 1
+                else:
+                    template_key_to_use = existing_tpl_key
+                    template_version_to_use = existing_tpl_version or 1
+                
+                # Générer le HTML runtime à partir du template résolu automatiquement
+                try:
+                    # Résoudre le template runtime via TemplateResolver
+                    _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
+                    
+                    if runtime_template_path and runtime_template_path.exists():
+                        # Utiliser le template_key résolu si pas encore défini
+                        if not template_key_to_use:
+                            template_key_to_use = resolved_template_key
+                            template_version_to_use = 1
+                        
+                        raw_template = runtime_template_path.read_text(encoding='utf-8')
+                        injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
+                        # Écrire dans uploads/<user_id>/runtime_{subtype}_{resource_id}.html
+                        rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
+                        abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
+                        abs_path.parent.mkdir(parents=True, exist_ok=True)
+                        abs_path.write_text(injected, encoding='utf-8')
+                        runtime_rel_path = rel
+                        logger.info(f"[{t_key.upper()}/{st_key.upper()}] Runtime HTML généré: {abs_path} (template: {runtime_template_path.name})")
+                    else:
+                        logger.warning(f"[{t_key.upper()}/{st_key.upper()}] Template runtime non trouvé: {runtime_template_path}")
+                except Exception as e_gen:
+                    logger.warning(f"[{t_key.upper()}/{st_key.upper()}] Échec génération HTML runtime pour resource_id={resource_id}: {e_gen}")
+            
+            # L'analyse de texte est statique - pas de runtime dynamique nécessaire
+            elif t_key == 'exercice' and st_key == 'analysetexte':
+                logger.info(f"[ANALYSETEXTE] Type statique détecté - pas de runtime dynamique pour resource_id={resource_id}")
+    except Exception as e_parse:
+        logger.warning(f"[EXERCICE] Échec parsing HTML→JSON pour resource_id={resource_id}: {e_parse}")
+
     # --- Parsing des IDs de session --- 
     session_ids: Optional[List[int]] = None # Default à None pour indiquer pas de changement
     if session_ids_json is not None:
@@ -810,6 +935,14 @@ async def update_resource_route(
         # La logique est: si json=None, on ne touche pas à la relation.
         # Si json="[]", on passe une liste vide pour supprimer les relations.
     }
+    # Injecter data_json si on a pu parser
+    if parsed_data_json is not None:
+        update_data_dict["data_json"] = parsed_data_json
+    if runtime_rel_path is not None:
+        update_data_dict["runtime_html_path"] = runtime_rel_path
+    if template_key_to_use is not None:
+        update_data_dict["template_key"] = template_key_to_use
+        update_data_dict["template_version"] = template_version_to_use
     if session_ids_json is not None:
         update_data_dict["session_ids"] = session_ids
     if objective_ids_json is not None:

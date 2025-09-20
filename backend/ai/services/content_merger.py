@@ -7,6 +7,7 @@ import os
 import uuid
 import json
 import time
+import re
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
@@ -103,6 +104,30 @@ async def merge_ai_resource_content(
 
         # Extraire le HTML généré
         html_generated = response.text.strip()
+
+        # Sanitation: suppression des scripts, attributs d'événements et balises <template>
+        def sanitize_static_html(html: str) -> str:
+            if not html:
+                return html
+            original = html
+            # 1) Supprimer toutes les balises <script>...</script>
+            html = re.sub(r"<script\b[\s\S]*?</script>", "", html, flags=re.IGNORECASE)
+            # 2) Supprimer les attributs d'événements on*="..." ou on*='...'
+            #    Exemple: onclick="...", onload='...'
+            html = re.sub(r"\s+on[a-zA-Z]+\s*=\s*\"[\s\S]*?\"", "", html)
+            html = re.sub(r"\s+on[a-zA-Z]+\s*=\s*'[^']*'", "", html)
+            # 3) Supprimer les balises <template>...</template>
+            html = re.sub(r"<template\b[\s\S]*?</template>", "", html, flags=re.IGNORECASE)
+            # 4) Supprimer les marqueurs spéciaux éventuels (ex: <!--PROTECTED_SCRIPT_*-->)
+            html = re.sub(r"<!--\s*PROTECTED_SCRIPT_[^>]*-->", "", html, flags=re.IGNORECASE)
+            # 5) Trim basique
+            html = html.strip()
+            removed = len(original) - len(html)
+            if removed > 0:
+                logger.debug(f"[Fusion][Sanitize] Suppressions effectuées: -{removed} caractères")
+            return html
+
+        html_generated = sanitize_static_html(html_generated)
         
         # Nettoyer le HTML généré pour supprimer les espaces et retours à la ligne inutiles
         if html_generated:

@@ -15,6 +15,14 @@ from urllib.parse import urlparse
 
 settings = get_settings()
 
+class QCMParseRequest(BaseModel):
+    html: str
+
+class QCMParseResponse(BaseModel):
+    titre: str | None = None
+    description: str | None = None
+    questions: list[dict]
+
 from backend.ai.schemas import ChatInput, ChatOutput
 from backend.ai.schemas import AIResourceTypesListResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
 from backend.ai import generation_service
@@ -36,6 +44,7 @@ import os
 import uuid
 from pathlib import Path
 from backend.ai.services.docling_service import extract_from_pdf_bytes, extract_from_pdf_path
+from backend.ai.services.qcm_parser import html_to_qcm_json
 from backend.schemas.docling import DoclingExtractResponse
 
 # Configure logging (optional, if not handled globally)
@@ -46,6 +55,75 @@ router = APIRouter(
     # prefix="/ai", # Supprimé car géré dans app.py
     tags=["AI"], # Tag for Swagger UI grouping
 )
+
+@router.get(
+    "/runtime/qcm/{resource_id}",
+    summary="Retourne le JSON canonique d'un QCM (runtime)",
+    description="Permet d'alimenter une vue interactive à partir de data_json pour une ressource de type exercice/qcm."
+)
+async def get_qcm_runtime(
+    resource_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user),
+):
+    # Récupérer la ressource et vérifier l'accès
+    from backend.crud.resource import get_resource as crud_get_resource
+    db_resource = crud_get_resource(db, resource_id=resource_id)
+    if db_resource is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    if db_resource.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resource")
+
+    # Vérifier type et sous-type
+    t_key = (getattr(db_resource.type, 'key', '') or '').strip().lower()
+    st_key = (getattr(db_resource.sub_type, 'key', '') or '').strip().lower()
+    if not (t_key == 'exercice' and st_key == 'qcm'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resource is not an exercice/qcm")
+
+    return {
+        "id": db_resource.id,
+        "title": db_resource.title,
+        "data_json": getattr(db_resource, 'data_json', None)
+    }
+
+@router.post(
+    "/parse-qcm-html",
+    response_model=QCMParseResponse,
+    summary="Parse un HTML QCM statique en JSON canonique",
+    description="Accepte un champ form 'html' ou un body JSON {html: ...} et renvoie le JSON QCM (titre, description, questions)."
+)
+async def parse_qcm_html(request: Request):
+    try:
+        html: str | None = None
+        # Essayer de lire un form-data (TinyMCE/Frontend peut envoyer en Form)
+        try:
+            form = await request.form()
+            html = form.get('html') if form else None
+        except Exception:
+            html = None
+
+        # Fallback: JSON body
+        if not html:
+            try:
+                body = await request.json()
+                if isinstance(body, dict):
+                    html = body.get('html')
+            except Exception:
+                pass
+
+        if not html or not isinstance(html, str):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Champ 'html' manquant ou invalide")
+
+        parsed = html_to_qcm_json(html)
+        # Validation minimale
+        if not parsed.get('questions'):
+            logger.warning("[QCMParse] Aucune question détectée dans le HTML fourni")
+        return QCMParseResponse(**parsed)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[QCMParse] Erreur lors du parsing QCM: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erreur parsing QCM: {e}")
 
 @router.post(
     "/chat", 

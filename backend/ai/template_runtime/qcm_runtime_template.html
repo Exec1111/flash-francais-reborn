@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QCM - Activité</title>
+    <style>
+        /* Style aligné sur backend/ai/template/default_exercice_qcm.html */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 32px 40px 40px 40px;
+        }
+        h1 {
+            color: #286090;
+            font-size: 2.2rem;
+            margin-bottom: 0.2em;
+        }
+        .description {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1.5em;
+        }
+        .question {
+            margin-bottom: 2em;
+            padding: 15px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        .question-title {
+            font-weight: bold;
+            margin-bottom: 0.7em;
+        }
+        .options {
+            list-style: none;
+            padding: 0;
+        }
+        .options li {
+            margin-bottom: 0.5em;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .options li:hover {
+            background-color: #f9f9f9;
+        }
+        .explication {
+            margin-top: 0.7em;
+            color: #31708f;
+            font-size: 0.98em;
+            background-color: #e8f4f8;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #66a3ff;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+        .submit-btn:hover {
+            background-color: #558dcc;
+        }
+        .reset-btn {
+            display: none;
+            width: 100%;
+            padding: 15px;
+            background-color: #f0ad4e;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .reset-btn:hover {
+            background-color: #ec971f;
+        }
+        .results {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #dff0d8;
+            color: #3c763d;
+            text-align: center;
+            font-weight: bold;
+        }
+        .correct {
+            background-color: #dff0d8;
+            transition: background-color 0.3s ease;
+        }
+        .incorrect {
+            background-color: #f2dede;
+            transition: background-color 0.3s ease;
+        }
+        .option-correct {
+            background-color: #dff0d8;
+            border-left: 3px solid #5cb85c;
+        }
+        .option-incorrect {
+            background-color: #f2dede;
+            border-left: 3px solid #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">QCM</h1>
+        <div id="desc" class="description"></div>
+        <div id="questions"></div>
+        <div class="results" id="results"></div>
+        <button class="submit-btn" id="validateBtn">Valider</button>
+        <button class="reset-btn" id="resetBtn">Recommencer</button>
+    </div>
+  <script>
+    // Données injectées
+    window.QCM_DATA = <!--QCM_DATA_JSON-->;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const data = window.QCM_DATA || {};
+            const questions = Array.isArray(data.questions) ? data.questions : [];
+            
+            const validateBtn = document.getElementById('validateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const resultsDiv = document.getElementById('results');
+            const titleEl = document.getElementById('title');
+            const descEl = document.getElementById('desc');
+            const questionsContainer = document.getElementById('questions');
+            
+            // Initialiser le titre et la description
+            titleEl.textContent = data.titre || 'QCM';
+            descEl.textContent = data.description || '';
+            
+            // Générer les questions dynamiquement
+            questions.forEach((question, idx) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question';
+                questionDiv.dataset.id = question.id;
+                questionDiv.dataset.correct = question.reponse_correcte;
+                
+                const questionTitle = document.createElement('div');
+                questionTitle.className = 'question-title';
+                questionTitle.textContent = `${idx + 1}. ${question.texte}`;
+                questionDiv.appendChild(questionTitle);
+                
+                const optionsList = document.createElement('ul');
+                optionsList.className = 'options';
+                
+                question.options.forEach(option => {
+                    const optionLi = document.createElement('li');
+                    optionLi.dataset.optionId = option.id;
+                    
+                    const label = document.createElement('label');
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `q${question.id}`;
+                    radio.value = option.id;
+                    
+                    label.appendChild(radio);
+                    label.appendChild(document.createTextNode(` ${option.texte}`));
+                    optionLi.appendChild(label);
+                    optionsList.appendChild(optionLi);
+                });
+                
+                questionDiv.appendChild(optionsList);
+                
+                const explication = document.createElement('div');
+                explication.className = 'explication';
+                explication.textContent = question.explication;
+                questionDiv.appendChild(explication);
+                
+                questionsContainer.appendChild(questionDiv);
+            });
+            
+            // Masquer les explications au chargement
+            document.querySelectorAll('.explication').forEach(exp => {
+                exp.style.display = 'none';
+            });
+            
+            validateBtn.addEventListener('click', function() {
+                let score = 0;
+                let totalQuestions = questions.length;
+                
+                document.querySelectorAll('.question').forEach(question => {
+                    const questionId = question.dataset.id;
+                    const correctAnswer = question.dataset.correct;
+                    const selectedOption = document.querySelector(`input[name="q${questionId}"]:checked`);
+                    
+                    if (selectedOption) {
+                        const optionId = selectedOption.value;
+                        const isCorrect = optionId === correctAnswer;
+                        
+                        // Marquer la question comme correcte ou incorrecte
+                        question.classList.add(isCorrect ? 'correct' : 'incorrect');
+                        
+                        // Marquer toutes les options
+                        question.querySelectorAll('li').forEach(li => {
+                            const liOptionId = li.dataset.optionId;
+                            if (liOptionId === correctAnswer) {
+                                li.classList.add('option-correct');
+                            } else if (liOptionId === optionId && !isCorrect) {
+                                li.classList.add('option-incorrect');
+                            }
+                        });
+                        
+                        // Afficher l'explication
+                        question.querySelector('.explication').style.display = 'block';
+                        
+                        if (isCorrect) {
+                            score++;
+                        }
+                    }
+                });
+                
+                // Afficher le score
+                resultsDiv.style.display = 'block';
+                resultsDiv.textContent = `Votre score : ${score}/${totalQuestions}`;
+                
+                // Désactiver les inputs et le bouton Valider
+                document.querySelectorAll('input[type="radio"]').forEach(input => {
+                    input.disabled = true;
+                });
+                validateBtn.style.display = 'none';
+                resetBtn.style.display = 'block';
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                // Réinitialiser les styles et les sélections
+                document.querySelectorAll('.question').forEach(question => {
+                    question.classList.remove('correct', 'incorrect');
+                    question.querySelectorAll('li').forEach(li => {
+                        li.classList.remove('option-correct', 'option-incorrect');
+                    });
+                    question.querySelector('.explication').style.display = 'none';
+                });
+                
+                // Décocher les boutons radio
+                document.querySelectorAll('input[type="radio"]').forEach(input => {
+                    input.checked = false;
+                    input.disabled = false;
+                });
+                
+                // Réinitialiser l'affichage des boutons et résultats
+                resultsDiv.style.display = 'none';
+                validateBtn.style.display = 'block';
+                resetBtn.style.display = 'none';
+            });
+        });
+  </script>
+</body>
+</html>

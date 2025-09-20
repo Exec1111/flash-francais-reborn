@@ -11,6 +11,23 @@ user_prompt_template: |
   Retourne uniquement le code HTML complet, sans explications et sans balises markdown '''html
   You cannot style your responces with markdown in any way!
 
+  Règles générales IMPORTANTES pour la sortie (édition WYSIWYG dans un éditeur HTML):
+  - La sortie doit être 100% statique: INTERDIT d'inclure toute balise <script>, tout attribut d'événement (onload, onclick, etc.), toute balise <template> ou contenu nécessitant une exécution JavaScript.
+  - Tout le contenu visible doit être directement présent dans le <body> final (aucune reconstruction dynamique du DOM).
+  - Si le modèle contient des marqueurs/sections destinés à être remplis par du JS (ex: placeholders, données JSON embarquées), tu dois à la place insérer directement le contenu final déjà calculé (HTML prêt à éditer).
+  - Conserve les classes CSS et la structure HTML utile à la mise en forme. Respecte le style inline présent dans <style> et les liens CSS <link> du modèle.
+  - Pas d’attributs d’événements (on*) ni d’éléments interactifs nécessitant JS pour fonctionner.
+
+  Directives spécifiques si applicable:
+  - Cas QCM (présence de questions/options dans les données JSON):
+    * Rends la liste des questions en HTML statique (titres, options radio, explication associée) sans bouton ni script.
+    * Les explications peuvent être affichées directement sous chaque question (ou dans un bloc descriptif), mais aucun comportement dynamique n’est attendu.
+    * Les identifiants utiles (data-id, data-option-id) peuvent être conservés en attributs data-* purement informatifs.
+  - Cas Dictée (présence d’un texte, de mots-clés et d’explications):
+    * Insère le titre et le texte de la dictée directement dans le HTML final.
+    * Mets en évidence les mots-clés directement dans le HTML en les entourant de <span class="mot-cle">mot</span> aux positions pertinentes.
+    * Génère la liste des explications (points, textes, exemples) comme du HTML statique.
+
 parameters:
   - name: json_data
     type: str
@@ -18,6 +35,10 @@ parameters:
     description: Les données JSON à injecter dans le modèle HTML.
     default: ""
 
-constraints: []
+constraints:
+  - "Sortie 100% statique: aucune balise <script>, aucun attribut d’événement (on*), pas de balise <template>."
+  - "Tout le contenu visible doit être directement dans le HTML final (aucune logique ou dépendance à du JavaScript)."
+  - "Conserver les classes CSS et la structure HTML du modèle pour préserver la mise en forme."
+  - "Renvoyer un document HTML complet et prêt à éditer dans un éditeur WYSIWYG."
 
 response_schema: null

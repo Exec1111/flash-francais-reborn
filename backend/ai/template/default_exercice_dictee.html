@@ -149,96 +149,41 @@
             <h1>Dictée</h1>
         </header>
 
-        <!-- START_DICTEE_DATA -->
-        <script>
-            const dicteeData = {
-                "dictee": {
-                    "titre": "Le titre de la dictée",
-                    "texte": "Texte de la dictée avec les mots-clés mis en évidence.",
-                    "mots_cles": ["mot1", "mot2", "mot3"],
-                    "explications": [
-                        {
-                            "point": "Point grammatical 1",
-                            "explication": "Explication du point grammatical 1",
-                            "exemples": ["Exemple 1", "Exemple 2"]
-                        },
-                        {
-                            "point": "Point grammatical 2",
-                            "explication": "Explication du point grammatical 2",
-                            "exemples": ["Exemple 3", "Exemple 4"]
-                        }
-                    ]
-                }
-            };
-        </script>
-        <!-- END_DICTEE_DATA -->
-
-        <div class="dictee-titre" id="dictee-titre"></div>
-        <div class="dictee-texte" id="dictee-texte"></div>
+        <div class="dictee-titre" id="dictee-titre">Le titre de la dictée</div>
+        <div class="dictee-texte" id="dictee-texte">
+            Dans une petite rue de Paris, Mathilde marchait d’un pas pressé vers la boutique de <span class="mot-cle">bijoux</span>. 
+            Le soir, elle devait se rendre à un bal et ne voulait pas paraître sans éclat. 
+            Elle emprunta un <span class="mot-cle">collier</span> qu’elle jugea magnifique. Mais, au retour, la chaîne se brisa et la parure disparut. 
+            Dès lors, sa vie bascula : le couple s’endetta pour remplacer le <span class="mot-cle">collier</span>, travailla sans relâche, et ne retrouva jamais son ancienne tranquillité.
+        </div>
 
         <h2>Explications grammaticales et orthographiques</h2>
-        <div class="explications" id="explications"></div>
+        <div class="explications" id="explications">
+            <div class="explication-item">
+                <div class="point-grammatical">Accord du participe passé avec l’auxiliaire « être »</div>
+                <div class="explication-texte">Avec l’auxiliaire « être », le participe passé s’accorde en genre et en nombre avec le sujet.</div>
+                <div class="exemples">
+                    <div class="exemple">Elle est <em>arrivée</em> en retard.</div>
+                    <div class="exemple">Ils sont <em>partis</em> tôt.</div>
+                </div>
+            </div>
+            <div class="explication-item">
+                <div class="point-grammatical">Homophones « sans » / « s’en »</div>
+                <div class="explication-texte">« sans » est une préposition exprimant l’absence ; « s’en » est un pronom réfléchi + « en ».</div>
+                <div class="exemples">
+                    <div class="exemple">Elle part <em>sans</em> manteau.</div>
+                    <div class="exemple">Elle <em>s’en</em> va.</div>
+                </div>
+            </div>
+            <div class="explication-item">
+                <div class="point-grammatical">Majuscules et ponctuation</div>
+                <div class="explication-texte">La phrase commence par une majuscule et se termine par un signe de ponctuation fort (point, point d’interrogation, point d’exclamation).</div>
+            </div>
+        </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Récupérer les éléments DOM
-            const titreElement = document.getElementById('dictee-titre');
-            const texteElement = document.getElementById('dictee-texte');
-            const explicationsElement = document.getElementById('explications');
-            
-            // Extraire les données
-            const { titre, texte, mots_cles, explications } = dicteeData.dictee;
-            
-            // Afficher le titre
-            titreElement.textContent = titre;
-            
-            // Mettre en évidence les mots-clés dans le texte
-            let texteAvecMotsCles = texte;
-            mots_cles.forEach(mot => {
-                // Création d'une expression régulière pour trouver le mot (sensible à la casse)
-                // Il faut s'assurer de ne pas remplacer les mots à l'intérieur d'autres mots
-                const regex = new RegExp(`\\b${mot}\\b`, 'gi');
-                texteAvecMotsCles = texteAvecMotsCles.replace(regex, `<span class="mot-cle">$&</span>`);
-            });
-            
-            // Afficher le texte avec les mots-clés mis en évidence
-            texteElement.innerHTML = texteAvecMotsCles;
-            
-            // Générer les explications
-            explications.forEach(explication => {
-                const explicationItem = document.createElement('div');
-                explicationItem.className = 'explication-item';
-                
-                const pointElement = document.createElement('div');
-                pointElement.className = 'point-grammatical';
-                pointElement.textContent = explication.point;
-                
-                const texteElement = document.createElement('div');
-                texteElement.className = 'explication-texte';
-                texteElement.textContent = explication.explication;
-                
-                explicationItem.appendChild(pointElement);
-                explicationItem.appendChild(texteElement);
-                
-                // Ajouter les exemples s'ils existent
-                if (explication.exemples && explication.exemples.length > 0) {
-                    const exemplesContainer = document.createElement('div');
-                    exemplesContainer.className = 'exemples';
-                    
-                    explication.exemples.forEach(exemple => {
-                        const exempleElement = document.createElement('div');
-                        exempleElement.className = 'exemple';
-                        exempleElement.textContent = exemple;
-                        exemplesContainer.appendChild(exempleElement);
-                    });
-                    
-                    explicationItem.appendChild(exemplesContainer);
-                }
-                
-                explicationsElement.appendChild(explicationItem);
-            });
-        });
+        // Template statique — aucune logique d’injection JS requise.
     </script>
 </body>
 </html>

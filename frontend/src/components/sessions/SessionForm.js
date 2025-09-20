@@ -546,13 +546,6 @@ const SessionForm = ({
           initialSelectedOeuvres={selectedOeuvres} // Passer les œuvres déjà sélectionnées
           onSave={handleSaveOeuvres} // Fonction pour récupérer la sélection finale
         />
-        {/* Modal de sélection des œuvres */}
-        <OeuvreSelectorModal
-          open={isOeuvreModalOpen}
-          onClose={() => setIsOeuvreModalOpen(false)}
-          initialSelectedOeuvres={selectedOeuvres} // Passer les œuvres déjà sélectionnées
-          onSave={handleSaveOeuvres} // Fonction pour récupérer la sélection finale
-        />
       </Dialog>
     );
   }
@@ -585,6 +578,13 @@ const SessionForm = ({
         onClose={() => setIsObjectiveModalOpen(false)}
         initialSelectedObjectives={selectedObjectives} // Passer les objectifs déjà sélectionnés
         onSave={handleSaveObjectives} // Fonction pour récupérer la sélection finale
+      />
+      {/* Modal de sélection des œuvres */}
+      <OeuvreSelectorModal
+        open={isOeuvreModalOpen}
+        onClose={() => setIsOeuvreModalOpen(false)}
+        initialSelectedOeuvres={selectedOeuvres} // Passer les œuvres déjà sélectionnées
+        onSave={handleSaveOeuvres} // Fonction pour récupérer la sélection finale
       />
     </Box>
   );

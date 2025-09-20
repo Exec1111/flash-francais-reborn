@@ -168,4 +168,114 @@ Notes:
 
 ---
 
+## 11. Unification des templates d’activités
+
+Pour garantir un rendu visuel identique entre la version générée par l’IA et la version post-édition, un système d’unification avec résolution automatique des chemins a été mis en place.
+
+### 11.1. Architecture unifiée
+
+- Les artefacts persistés par ressource sont désormais:
+  - `data_json` (canonique, ex: QCM)
+  - `runtime_html_path` (HTML autonome pour l'activité)
+  - `template_key` et `template_version` (clé/version du template utilisé)
+
+- **Résolution automatique des chemins** via `TemplateResolver`:
+  - Template de base: `backend/ai/template/default_{type}_{subtype}.html`
+  - Template runtime: `backend/ai/template_runtime/{subtype}_runtime_template.html`
+  - Clé de template: `{type}_{subtype}_v{version}`
+
+- Le contenu est injecté dynamiquement depuis `data_json` via le placeholder `<!--ACTIVITY_DATA_JSON-->`.
+
+- **Exercices dynamiques** : QCM, Champlex (génération de runtime HTML interactive)
+- **Exercices statiques** : Analyse de texte, Dictée (contenu fixe, pas de runtime dynamique)
+
+- À chaque sauvegarde de ressource d'activité (`PUT /api/v1/resources/{id}`) :
+  - Le HTML édité est parsé en JSON (ex: `html_to_qcm_json()` ou `html_to_champlex_json()`).
+  - `TemplateResolver.resolve_templates(type, subtype)` détermine automatiquement les chemins et la clé.
+  - Si `template_key` est absent, il est fixé selon la résolution (ex: `exercice_qcm_v1`) et persisté.
+  - Le `runtime_html_path` est (re)généré à partir du template runtime résolu.
+
+- Lecture (`GET /api/v1/resources/{id}`) :
+  - Expose `runtime_html_url` construit depuis `runtime_html_path` et `MEDIA_URL_PREFIX`.
+
+- Frontend:
+  - Dans `ResourceView`, le bouton "Lancer l'activité" ouvre directement `runtime_html_url` si présent (sinon rafraîchit la ressource, puis fallback vers la page interne `/dashboard/runtime/qcm/:id`).
+
+### 11.1. Champs et modèles
+
+- Modèle `Resource`:
+  - `data_json: JSON`
+  - `runtime_html_path: String`
+  - `template_key: String`
+  - `template_version: Integer`
+
+- Schémas Pydantic (`schemas/resource.py`):
+  - `ResourceResponse` expose `data_json`, `runtime_html_url`, `template_key`, `template_version`.
+  - `ResourceUpdate` accepte `runtime_html_path`, `template_key`, `template_version` (renseignés côté serveur lors des sauvegardes QCM).
+
+### 11.2. Structure des dossiers
+
+```bash
+backend/ai/
+├── template/                    # Templates de base (génération IA + édition)
+│   ├── default_exercice_qcm.html
+│   ├── default_exercice_analysetexte.html  # ← Statique, pas de runtime
+│   ├── default_exercice_dictee.html
+│   └── ...
+├── template_runtime/            # Templates runtime (activités autonomes)
+│   ├── qcm_runtime_template.html
+│   ├── dictee_runtime_template.html
+│   └── ...
+└── services/
+    └── template_resolver.py     # Résolution automatique des chemins
+```
+
+### 11.3. Types d'exercices
+
+| Type | Sous-type | Template Base | Template Runtime | Statut |
+|------|-----------|---------------|------------------|--------|
+| `exercice` | `qcm` | ✅ `default_exercice_qcm.html` | ✅ `qcm_runtime_template.html` | **Dynamique** |
+| `exercice` | `champlex` | ✅ `default_exercice_champlex.html` | ✅ `champlex_runtime_template.html` | **Dynamique** |
+| `exercice` | `analysetexte` | ✅ `default_exercice_analysetexte.html` | ❌ | **Statique** |
+| `exercice` | `dictee` | ✅ `default_exercice_dictee.html` | ❌ | **Statique** |
+
+### 11.4. Migrations Alembic
+
+Exécuter dans l'ordre (si besoin) :
+
+- `20250919_1415_add_data_json_to_resources.py` (colonne `data_json`)
+- `20250919_1500_add_runtime_html_path_to_resources.py` (colonne `runtime_html_path`)
+- `20250919_1620_add_template_fields_to_resources.py` (colonnes `template_key`, `template_version`)
+
+Commandes:
+
+```bash
+alembic upgrade head
+```
+
+Sur Render, s'assurer que la commande de release/exécution des migrations est lancée avant le démarrage (voir `render.yaml`).
+
+### 11.5. Guide de conversion
+
+Pour ajouter un nouveau type d'activité runtime, voir le guide détaillé : `docs/templates-runtime.md`
+
+### 11.6. Endpoint runtime (lecture JSON canonique)
+
+- `GET /api/v1/ai/runtime/qcm/{resource_id}`: renvoie `{ id, title, data_json }` pour dépannage et usages internes.
+- Le runtime HTML public se trouve via `runtime_html_url` sur la ressource (`GET /api/v1/resources/{id}`).
+
+### 11.7. Résolution automatique (TemplateResolver)
+
+```python
+from ai.services.template_resolver import TemplateResolver
+
+# Résolution automatique pour un QCM
+base_path, runtime_path, template_key = TemplateResolver.resolve_templates('exercice', 'qcm')
+# base_path: backend/ai/template/default_exercice_qcm.html
+# runtime_path: backend/ai/template_runtime/qcm_runtime_template.html  
+# template_key: exercice_qcm_v1
+```
+
+---
+
 *Fin de la documentation AI*

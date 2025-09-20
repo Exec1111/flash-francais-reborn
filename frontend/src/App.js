@@ -71,6 +71,7 @@ import EditOeuvre from './pages/oeuvres/EditOeuvre';
 import OeuvreDetail from './pages/oeuvres/OeuvreDetail';
 import OeuvreWizard from './components/OeuvreWizard';
 import SettingsStorage from './pages/SettingsStorage';
+// Fichiers supprimés : QCMTestPage et QcmRuntimeView (remplacés par templates runtime)
 
 // --- Composant de Layout Protégé ---
 function ProtectedLayout() {
@@ -323,6 +324,7 @@ function App() {
         <Route path="admin/llm-logs" element={<AdminLLMLogs />} />
         {/* Paramètres: Stockage */}
         <Route path="settings/storage" element={<SettingsStorage />} />
+        {/* Routes supprimées : QCM test et runtime (remplacées par templates runtime HTML) */}
         {/* <Route path="profile" element={<Profile />} /> */}
         {/* <Route path="settings" element={<Settings />} /> */}
         {/* Route pour le constructeur de progression */}

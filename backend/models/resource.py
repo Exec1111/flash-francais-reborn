@@ -54,6 +54,16 @@ class Resource(Base):
     file_size = Column(Integer, nullable=True, comment='Taille du fichier en octets')
     file_type = Column(String, nullable=True, comment='Type MIME du fichier')
 
+    # Données canoniques (exercices interactifs)
+    data_json = Column(JSON, nullable=True, comment='Données JSON canoniques (ex: QCM)')
+
+    # HTML dynamique (runtime) généré à partir du template + data_json
+    runtime_html_path = Column(String, nullable=True, comment='Chemin relatif du HTML dynamique (runtime)')
+
+    # Gestion des templates (uniformisation du look)
+    template_key = Column(String, nullable=True, comment='Clé logique du template choisi (ex: exercice_qcm_v1)')
+    template_version = Column(Integer, nullable=True, comment='Version du template pour migration contrôlée')
+
     # Métadonnées Docling / cache IA
     docling_status = Column(String(20), nullable=True, comment='Statut Docling: pending|processing|ready|error')
     docling_md_path = Column(String, nullable=True, comment='Chemin relatif du markdown extrait (Docling)')

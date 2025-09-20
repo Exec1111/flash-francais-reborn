@@ -63,6 +63,7 @@ function ResourceView() {
             }
         };
 
+
         if (id) {
             fetchResource();
         } else {
@@ -70,6 +71,30 @@ function ResourceView() {
             setLoading(false);
         }
     }, [id]);
+
+    // Lancer l'activité: ouvrir runtime_html_url si dispo, sinon rafraîchir, sinon fallback UI interne
+    const handleLaunchActivity = async () => {
+        const openRuntime = (res) => {
+            const url = res?.runtime_html_url ? `${API_BASE_URL}${res.runtime_html_url}` : null;
+            if (url) {
+                window.open(url, '_blank', 'noopener,noreferrer');
+                return true;
+            }
+            return false;
+        };
+        // 1) tenter avec l'état courant
+        if (openRuntime(resource)) return;
+        // 2) rafraîchir la ressource depuis l'API
+        try {
+            const latest = await resourceService.getResourceById(id);
+            setResource(latest);
+            if (openRuntime(latest)) return;
+        } catch (e) {
+            // Aucun runtime HTML disponible
+            console.warn('Aucun runtime HTML disponible pour cette ressource');
+        }
+        // Plus de fallback : le système runtime HTML est la seule méthode
+    };
 
     // Détection PDF
     const isPdf = (() => {
@@ -313,6 +338,17 @@ function ResourceView() {
                             >
                                 Modifier
                             </Button>
+                            {/* Bouton runtime pour toute ressource disposant d'un runtime_html_url */}
+                            {Boolean(resource?.runtime_html_url) && (
+                              <Button
+                                variant="outlined"
+                                color="secondary"
+                                sx={{ mr: 1 }}
+                                onClick={handleLaunchActivity}
+                              >
+                                Lancer l'activité
+                              </Button>
+                            )}
                             <IconButton color="error" onClick={handleDeleteResource} disabled={deleting}>
                                 <DeleteIcon />
                             </IconButton>

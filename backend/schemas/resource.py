@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, computed_field
-from typing import Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING, Any
 from sqlalchemy.orm import Session
 import logging
 from datetime import datetime
@@ -89,6 +89,12 @@ class ResourceResponse(BaseModel):
     file_size: Optional[int] = None
     file_type: Optional[str] = None
     html_url: Optional[str] = None  # Ajout pour exposer l'URL du HTML généré
+    runtime_html_url: Optional[str] = None  # URL publique du HTML dynamique (runtime)
+    # Données canoniques (ex: QCM)
+    data_json: Optional[Dict[str, Any]] = None
+    # Template choisi pour uniformiser le look
+    template_key: Optional[str] = None
+    template_version: Optional[int] = None
     # Métadonnées Docling / cache IA
     docling_status: Optional[str] = None
     docling_md_path: Optional[str] = None
@@ -122,6 +128,12 @@ class ResourceUpdate(BaseModel):
     study_object_ids: Optional[List[int]] = None  # Ajout pour la gestion des objets d'étude associés
     oeuvre_ids: Optional[List[int]] = None
     html_content: Optional[str] = None  # Contenu HTML envoyé pour écraser le fichier existant
+    # Mise à jour éventuelle de l'état canonique
+    data_json: Optional[Dict[str, Any]] = None
+    # Chemin relatif du runtime HTML généré (injecté côté serveur lors d'une sauvegarde QCM)
+    runtime_html_path: Optional[str] = None
+    template_key: Optional[str] = None
+    template_version: Optional[int] = None
     # Pas de mise à jour de source_type ici, c'est généralement fixé à la création
     # Pas de file_* ici, la mise à jour de fichier est gérée séparément dans la route/CRUD
 
