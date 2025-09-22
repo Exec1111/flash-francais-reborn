@@ -59,10 +59,9 @@ TEMPLATE_REGISTRY = {
     ("exercice", "dictee"): "default_exercice_dictee.html",
     ("oeuvre", "oeuvrecomp"): "default_oeuvre_oeuvrecomp.html",
     ("exercice", "vocabulaire"): "default_exercice_vocabulaire.html",
-    ("exercice", "champlex"): "default_exercice_champlex.html",
     ("exercice", "quisuisje"): "default_exercice_quisuisje.html",
     ("exercice", "pendu"): "default_exercice_pendu.html",
-    ("exercice", "champlex2"): "default_exercice_champlex2.html", 
+    # ("exercice", "champlex2"): "default_exercice_champlex2.html",  # JSON-first: plus de template base
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
     ("exercice", "analyse_texte"): "default_exercice_analysetexte.html",
     ("exercice", "textereconstitue"): "default_exercice_textereconstitue.html",

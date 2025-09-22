@@ -239,24 +239,28 @@ const ResourceForm = ({
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
   const subtypeKey = ((selectedSubType?.key) || (initialData?.sub_type?.key) || '').toLowerCase();
   const isDynamicActivity = useMemo(() => {
-    // Considérer dynamique si:
-    // - runtime_html_path présent
-    // - données structurées présentes
-    // - sous-type connu d'exercice dynamique (champlex, champlex2, qcm, pendu)
-    // - type est 'exercice' même si le sous-type n'est pas encore chargé
-    const initialSubtypeKey = (initialData?.sub_type?.key || '').toLowerCase();
-    const initialTypeKey = (initialData?.type?.key || '').toLowerCase();
-    const selectedTypeKey = (selectedType?.key || '').toLowerCase();
-    const dynamicSubtypes = new Set(['champlex', 'champlex2', 'qcm', 'pendu']);
-    return Boolean(
-      initialData?.runtime_html_path ||
-      initialData?.data_json ||
-      dynamicSubtypes.has(subtypeKey) ||
-      dynamicSubtypes.has(initialSubtypeKey) ||
-      initialTypeKey === 'exercice' ||
-      selectedTypeKey === 'exercice'
-    );
-  }, [initialData, subtypeKey, selectedType]);
+    // Une ressource est considérée comme dynamique si elle a des indicateurs techniques :
+    // 1. runtime_html_path : fichier HTML généré dynamiquement
+    // 2. data_json : données structurées pour génération dynamique
+    // 3. runtime_html_url : URL vers un contenu généré dynamiquement
+    
+    const hasRuntimePath = Boolean(initialData?.runtime_html_path);
+    const hasDataJson = Boolean(initialData?.data_json);
+    const hasRuntimeUrl = Boolean(initialData?.runtime_html_url);
+    
+    const isDynamic = hasRuntimePath || hasDataJson || hasRuntimeUrl;
+    
+    console.log('[DEBUG ResourceForm] isDynamicActivity (technique):', {
+      resourceId: initialData?.id,
+      hasRuntimePath,
+      hasDataJson, 
+      hasRuntimeUrl,
+      runtime_html_path: initialData?.runtime_html_path,
+      isDynamic
+    });
+    
+    return isDynamic;
+  }, [initialData]);
   
   const hasSelectedType = Boolean(selectedType) || Boolean(hideTypeSelection && forcedType && forcedType.typeId);
   const hasSelectedSubType = Boolean(selectedSubType) || Boolean(hideTypeSelection && forcedType && forcedType.subtypeId);
@@ -269,8 +273,8 @@ const ResourceForm = ({
   
   const showAIGenerationForm = !isEdit && sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
   
-  // Show HTML editor when in edit mode, but not for Champlex2 (uses structured editor)
-  const showHtmlEditor = isEdit && subtypeKey !== 'champlex2';
+  // Show HTML editor when in edit mode, but not for Champlex et Champlex2 (both use structured editors)
+  const showHtmlEditor = isEdit && !['champlex', 'champlex2'].includes(subtypeKey);
 
   // Debug logging for showHtmlEditor conditions
   console.log('[DEBUG ResourceForm] showHtmlEditor conditions:', {
@@ -1020,8 +1024,8 @@ const ResourceForm = ({
                 gap: 1,
                 alignItems: 'center'
               }}>
-                {/* Bouton "Lancer l'activité" - style comme "Consulter le contenu" */}
-                {(initialData?.runtime_html_path || subtypeKey === 'champlex2') && (
+                {/* Bouton "Lancer l'activité" - affiché pour toutes les ressources dynamiques */}
+                {isDynamicActivity && (
                   <Button
                     variant="text"
                     size="small"

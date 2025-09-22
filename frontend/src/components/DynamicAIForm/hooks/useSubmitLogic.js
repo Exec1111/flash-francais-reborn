@@ -564,21 +564,21 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         throw new Error("Aucun jeton d'authentification trouvé");
       }
       
-      // Champlex2 utilise JSON-first: pas besoin de merge réel
+      // Champlex et Champlex2 utilisent JSON-first: pas besoin de merge réel
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2') {
+      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex') {
         console.log('[DEBUG][handleMergeAll] Champlex2 JSON-first: contournement du merge');
         
         // Simuler une réponse de merge pour Champlex2
         const jsonData = editedResults.length > 0 ? editedResults[0] : generationResults[0];
         setMergedResults({
-          html_url: '/api/v1/ai/champlex2-json-placeholder',
+          html_url: subtypeKeyNorm === 'champlex2' ? '/api/v1/ai/champlex2-json-placeholder' : '/api/v1/ai/champlex-json-placeholder',
           data_json: jsonData,
           session_ids: formData.session_ids || [],
           objective_ids: formData.objective_ids || []
         });
         
-        updateProgress("Données Champlex2 préparées (JSON-first)", "success");
+        updateProgress(`Données ${subtypeKeyNorm} préparées (JSON-first)`, "success");
         setMergeSuccess(true);
         setIsLoading(false);
         return;
@@ -588,7 +588,11 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       const mergeData = new FormData();
       mergeData.append('type_key', formData.typeKey);
       mergeData.append('subtype_key', formData.subtypeKey);
-      mergeData.append('data_json', JSON.stringify(editedResults.length > 0 ? editedResults : generationResults));
+      // La plupart des schémas attendent un objet (et non un tableau). On envoie le premier résultat.
+      const firstResult = (editedResults && editedResults.length > 0)
+        ? editedResults[0]
+        : (generationResults && generationResults.length > 0 ? generationResults[0] : {});
+      mergeData.append('data_json', JSON.stringify(firstResult));
       
       // Appel à l'API de fusion
       const response = await fetch(`${API_BASE_URL}/api/v1/ai/merge-resource`, {
@@ -712,11 +716,11 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       
       // JSON-first pour Champlex2: envoyer le contenu généré par l'IA directement
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2' && generationResults.length > 0) {
+      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex') && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));
-          console.log('[DEBUG][handleFinish] Champlex2 JSON-first: ai_content_json ajouté');
+          console.log('[DEBUG][handleFinish] JSON-first: ai_content_json ajouté pour', subtypeKeyNorm);
         }
       }
       

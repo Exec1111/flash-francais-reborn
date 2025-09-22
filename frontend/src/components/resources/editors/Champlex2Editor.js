@@ -17,8 +17,12 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   Check as CheckIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Psychology as PsychologyIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
+import JsonChatBot from '../../jsonChat/JsonChatBot';
 
 /**
  * Éditeur structuré pour les exercices Champlex2
@@ -40,6 +44,10 @@ const Champlex2Editor = ({
   const [editingIndex, setEditingIndex] = useState(-1);
   const [newMot, setNewMot] = useState('');
   const [newMotInChamp, setNewMotInChamp] = useState(true);
+
+  // État pour le chat IA
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Initialiser avec les données existantes
   useEffect(() => {
@@ -129,19 +137,58 @@ const Champlex2Editor = ({
     onSave(data);
   };
 
+  // Gestionnaire pour les modifications via IA
+  const handleAiDataChange = (modifiedData) => {
+    if (modifiedData.champ) setChamp(modifiedData.champ);
+    if (Array.isArray(modifiedData.mots) && Array.isArray(modifiedData.solution)) {
+      const motsList = modifiedData.mots.map((mot, i) => ({
+        text: mot,
+        inChamp: modifiedData.solution[i] || false,
+        id: `mot-${i}-${Date.now()}`
+      }));
+      setMots(motsList);
+    }
+  };
+
+  // Données actuelles pour le chat IA
+  const getCurrentData = () => ({
+    champ: champ.trim(),
+    mots: mots.map(m => m.text),
+    solution: mots.map(m => m.inChamp)
+  });
+
   return (
-    <Box sx={{ 
-      p: 3, 
-      maxWidth: 1000, 
-      mx: 'auto', 
-      backgroundColor: '#1e293b', 
-      minHeight: '100vh',
-      overflow: 'auto',
-      height: 'auto'
-    }}>
-      <Typography variant="h4" sx={{ mb: 3, color: '#f8fafc' }}>
-        Configuration de l'activité Champlex2
-      </Typography>
+    <Box sx={{ display: 'flex', height: '100vh', backgroundColor: '#1e293b' }}>
+      {/* Zone principale d'édition */}
+      <Box sx={{ 
+        flex: showAiChat ? 2 : 1,
+        p: 3, 
+        overflow: 'auto',
+        mr: showAiChat ? 1 : 0
+      }}>
+        {/* Header avec bouton IA */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" sx={{ color: '#f8fafc' }}>
+            Configuration de l'activité Champlex2
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<PsychologyIcon />}
+            endIcon={showAiChat ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            onClick={() => setShowAiChat(!showAiChat)}
+            disabled={submitting || aiLoading}
+            sx={{
+              color: '#3b82f6',
+              borderColor: '#3b82f6',
+              '&:hover': {
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderColor: '#2563eb'
+              }
+            }}
+          >
+            {showAiChat ? 'Masquer l\'IA' : 'Assistant IA'}
+          </Button>
+        </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -467,6 +514,27 @@ const Champlex2Editor = ({
           </Button>
         </DialogActions>
       </Dialog>
+      </Box>
+
+      {/* Chat IA */}
+      {showAiChat && (
+        <Box sx={{ 
+          flex: 1, 
+          ml: 1, 
+          borderLeft: '1px solid #475569', 
+          pl: 1,
+          overflow: 'hidden'
+        }}>
+          <JsonChatBot
+            currentData={getCurrentData()}
+            resourceType="exercice"
+            resourceSubtype="champlex2"
+            onDataChange={handleAiDataChange}
+            disabled={submitting}
+            onLoadingChange={setAiLoading}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

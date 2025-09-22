@@ -446,10 +446,10 @@ async def create_resource_route(
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
         if source_type == 'ai' and html_path:
-            # Champlex2 utilise JSON-first: pas de fichier HTML à copier
-            if html_path == '/api/v1/ai/champlex2-json-placeholder':
-                logger.info(f"[AI->Resource] Champlex2 JSON-first détecté: pas de copie de fichier HTML")
-                # Pas de file_path pour Champlex2, on utilise seulement data_json + runtime
+            # Champlex/Champlex2 utilisent JSON-first: pas de fichier HTML à copier
+            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder'):
+                logger.info(f"[AI->Resource] JSON-first détecté pour placeholder {html_path}: pas de copie de fichier HTML")
+                # Pas de file_path pour JSON-first, on utilise seulement data_json + runtime
             else:
                 # Localiser le fichier généré (chemin local, URL absolue ou chemin web relatif '/static/...')
                 # Normaliser les séparateurs (Windows '\\' -> '/')
@@ -493,15 +493,18 @@ async def create_resource_route(
                 if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']:
                     parsed_data_json = None
                     
-                    # Champlex2: JSON-first depuis ai_content_json
-                    if st_key == 'champlex2' and ai_content_json:
+                    # JSON-first
+                    if st_key in ['champlex2', 'champlex'] and ai_content_json:
                         try:
                             parsed_data_json = json.loads(ai_content_json)
-                            logger.info(f"[CREATE/CHAMPLEX2] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('mots', []) or [])})")
+                            if st_key == 'champlex2':
+                                logger.info(f"[CREATE/CHAMPLEX2] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('mots', []) or [])})")
+                            else:
+                                logger.info(f"[CREATE/CHAMPLEX] data_json depuis IA JSON pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
                         except json.JSONDecodeError as je:
-                            logger.error(f"[CREATE/CHAMPLEX2] JSON invalide depuis IA: {je}")
+                            logger.error(f"[CREATE/{st_key.upper()}] JSON invalide depuis IA: {je}")
                     
-                    # QCM et Champlex: parsing HTML traditionnel
+                    # QCM et fallback Champlex: parsing HTML traditionnel
                     elif st_key in ['qcm', 'champlex']:
                         html_content_created = dest.read_text(encoding='utf-8', errors='ignore')
                         if st_key == 'qcm':

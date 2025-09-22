@@ -36,6 +36,10 @@ class AIServiceFactory:
             "provider": "gemini",  # Garder Gemini pour la fusion de ressources
             "model": None
         },
+        "json_editor": {
+            "provider": "openai",  # Utiliser OpenAI pour l'éditeur JSON
+            "model": None
+        },
         "default": {
             "provider": "gemini",  # Par défaut, utiliser Gemini
             "model": None

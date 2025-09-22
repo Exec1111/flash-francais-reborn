@@ -17,7 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SaveAsIcon from '@mui/icons-material/SaveAs';
 import TinyHtmlEditor from '../../editors/TinyHtmlEditor';
 import HtmlChatBot from '../../htmlChat/HtmlChatBot';
-import { Champlex2Editor, hasStructuredEditor } from '../editors';
+import { Champlex2Editor, ChamplexEditor, hasStructuredEditor, getStructuredEditor } from '../editors';
 
 /**
  * Component for full-screen HTML editing mode
@@ -45,13 +45,13 @@ const ResourceHtmlEditingMode = ({
   const editorRef = useRef(null);
 
   // Structured editor state
-  const [isChamplex2, setIsChamplex2] = useState(false);
+  const [structuredEditorName, setStructuredEditorName] = useState(null);
 
   // Detect if this is a structured editor resource
   useEffect(() => {
     const subtypeKey = ((initialData?.sub_type?.key) || '').toLowerCase();
-    const isStructured = hasStructuredEditor(subtypeKey);
-    setIsChamplex2(isStructured);
+    const editorName = getStructuredEditor(subtypeKey);
+    setStructuredEditorName(editorName);
   }, [initialData]);
 
 
@@ -137,7 +137,7 @@ const ResourceHtmlEditingMode = ({
       )}
 
       {/* Header with controls - Only for HTML editor */}
-      {!isChamplex2 && (
+      {!structuredEditorName && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Typography variant="h6">Édition du contenu HTML</Typography>
           {!showAiChat && (
@@ -200,16 +200,26 @@ const ResourceHtmlEditingMode = ({
       )}
 
       {/* Main content area */}
-      <Box sx={{ flex: 1, display: 'flex', overflow: isChamplex2 ? 'auto' : 'hidden' }}>
-        {isChamplex2 ? (
+      <Box sx={{ flex: 1, display: 'flex', overflow: structuredEditorName ? 'auto' : 'hidden' }}>
+        {structuredEditorName ? (
           /* Structured editor for exercises */
           <Box sx={{ width: '100%', overflow: 'auto' }}>
-            <Champlex2Editor
-              initialData={initialData}
-              onSave={handleSaveStructuredData}
-              onCancel={handleCancelEditing}
-              submitting={submitting}
-            />
+            {structuredEditorName === 'Champlex2Editor' && (
+              <Champlex2Editor
+                initialData={initialData}
+                onSave={handleSaveStructuredData}
+                onCancel={handleCancelEditing}
+                submitting={submitting}
+              />
+            )}
+            {structuredEditorName === 'ChamplexEditor' && (
+              <ChamplexEditor
+                initialData={initialData}
+                onSave={handleSaveStructuredData}
+                onCancel={handleCancelEditing}
+                submitting={submitting}
+              />
+            )}
           </Box>
         ) : (
           <>

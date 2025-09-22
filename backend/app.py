@@ -34,6 +34,7 @@ from routers.dashboard import dashboard_router # Importation du routeur Dashboar
 from routers.study_object import router as study_object_router
 from routers.oeuvre import router as oeuvre_router
 from routers.html_chat import router as html_chat_router
+from routers.json_chat import router as json_chat_router
 from routers import admin
 from routers.docling import router as docling_router
 
@@ -337,6 +338,13 @@ app.include_router(
     html_chat_router,
     prefix="/api/v1",
     tags=["HTML Chat"]
+)
+
+# Inclusion des routes de chat JSON
+app.include_router(
+    json_chat_router,
+    prefix="/api/v1",
+    tags=["JSON Chat"]
 )
 
 # Inclusion des routes de configuration
