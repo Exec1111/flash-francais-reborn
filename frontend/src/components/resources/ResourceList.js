@@ -36,7 +36,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api, { API_BASE_URL } from '../../services/api';
 import resourceService from '../../services/resourceService';
 import resourceTypeService from '../../services/resourceTypeService';
-import ResourceDocumentLink from './ResourceDocumentLink';
+import ResourceActionLink from './ResourceActionLink';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 import paginationConfig from '../../config/pagination';
 import PdfExtractionStatusChip from '../pdf/PdfExtractionStatusChip';
@@ -109,7 +109,7 @@ const ResourceList = () => {
       width: 160,
       sortable: false,
       filterable: false,
-      renderCell: (params) => <ResourceDocumentLink resource={params.row} />
+      renderCell: (params) => <ResourceActionLink resource={params.row} />
     },
     {
       field: 'docling',
@@ -528,7 +528,7 @@ const ResourceList = () => {
                           {resource.description || 'Aucune description disponible.'}
                         </Typography>
                         <Box sx={{ mt: 'auto', pt: 2 }}>
-                          <ResourceDocumentLink resource={resource} />
+                          <ResourceActionLink resource={resource} />
                         </Box>
                         <Box sx={{ mt: 1 }}>
                           <PdfExtractionStatusChip

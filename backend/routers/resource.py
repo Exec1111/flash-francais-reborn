@@ -286,7 +286,8 @@ async def create_resource_route(
     study_object_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'objets d'étude
     oeuvre_ids_json: Optional[str] = Form("[]"), # Accepter une string JSON pour la liste d'IDs d'oeuvres
     file: Optional[UploadFile] = File(None), # Le fichier uploadé
-    html_path: Optional[str] = Form(None) # Chemin HTML généré pour IA
+    html_path: Optional[str] = Form(None), # Chemin HTML généré pour IA
+    ai_content_json: Optional[str] = Form(None) # Contenu JSON généré par IA (pour exercices dynamiques)
 ):
     """Crée une nouvelle ressource. 
     Si source_type est 'file', un fichier doit être uploadé. 
@@ -445,79 +446,96 @@ async def create_resource_route(
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
         if source_type == 'ai' and html_path:
-            # Localiser le fichier généré (chemin local, URL absolue ou chemin web relatif '/static/...')
-            # Normaliser les séparateurs (Windows '\\' -> '/')
-            norm_html_path = str(html_path).replace('\\', '/')
-            if norm_html_path.startswith('http'):
-                # extraire le chemin relatif public après '/static/'
-                rel_public = norm_html_path.split('/static/')[-1]
-                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
-            elif norm_html_path.startswith('/static/'):
-                # Supporter l'URL relative renvoyée par /ai/merge-resource (ex: '/static/tmp/...')
-                rel_public = norm_html_path.split('/static/')[-1]
-                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
-            elif norm_html_path.startswith('static/'):
-                # Cas rare: chemin relatif sans slash initial
-                rel_public = norm_html_path.split('static/')[-1]
-                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            # Champlex2 utilise JSON-first: pas de fichier HTML à copier
+            if html_path == '/api/v1/ai/champlex2-json-placeholder':
+                logger.info(f"[AI->Resource] Champlex2 JSON-first détecté: pas de copie de fichier HTML")
+                # Pas de file_path pour Champlex2, on utilise seulement data_json + runtime
             else:
-                # Chemin disque absolu
-                src = Path(html_path)
-            logger.info(f"[AI->Resource] html_path reçu='{html_path}', normalisé='{norm_html_path}', src_resolu='{src}'")
-            # Préparer destination
-            filename = src.name
-            rel_path = get_upload_path(current_user.id, filename)
-            dest = Path(settings.UPLOADS_BASE_DIR) / rel_path
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(src, dest)
-            # Enregistrer le chemin relatif dans la BDD
-            db_resource.file_path = rel_path
-            db.add(db_resource)
-            db.commit()
-            db.refresh(db_resource)
+                # Localiser le fichier généré (chemin local, URL absolue ou chemin web relatif '/static/...')
+                # Normaliser les séparateurs (Windows '\\' -> '/')
+                norm_html_path = str(html_path).replace('\\', '/')
+                if norm_html_path.startswith('http'):
+                    # extraire le chemin relatif public après '/static/'
+                    rel_public = norm_html_path.split('/static/')[-1]
+                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+                elif norm_html_path.startswith('/static/'):
+                    # Supporter l'URL relative renvoyée par /ai/merge-resource (ex: '/static/tmp/...')
+                    rel_public = norm_html_path.split('/static/')[-1]
+                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+                elif norm_html_path.startswith('static/'):
+                    # Cas rare: chemin relatif sans slash initial
+                    rel_public = norm_html_path.split('static/')[-1]
+                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+                else:
+                    # Chemin absolu local
+                    src = Path(html_path)
+                
+                # Copier le fichier HTML généré par l'IA vers le dossier uploads
+                logger.info(f"[AI->Resource] html_path reçu='{html_path}', normalisé='{norm_html_path}', src_resolu='{src}'")
+                filename = src.name
+                rel_path = get_upload_path(current_user.id, filename)
+                dest = Path(settings.UPLOADS_BASE_DIR) / rel_path
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(src, dest)
+                # Enregistrer le chemin relatif dans la BDD
+                db_resource.file_path = rel_path
+                db.add(db_resource)
+                db.commit()
+                db.refresh(db_resource)
 
-            # Générer automatiquement le runtime pour les exercices dynamiques (qcm, champlex)
+            # Générer automatiquement le runtime pour les exercices dynamiques
             try:
                 st = getattr(db_resource, 'sub_type', None)
                 st_key = (getattr(st, 'key', '') or '').strip().lower()
                 t = getattr(db_resource, 'type', None)
                 t_key = (getattr(t, 'key', '') or '').strip().lower()
-                if t_key == 'exercice' and st_key in ['qcm', 'champlex']:
-                    # Lire le HTML que nous venons de copier
-                    html_content_created = dest.read_text(encoding='utf-8', errors='ignore')
+                
+                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']:
                     parsed_data_json = None
-                    if st_key == 'qcm':
-                        parsed_data_json = html_to_qcm_json(html_content_created)
-                        logger.info(f"[CREATE/QCM] data_json parsé depuis HTML pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []))})")
-                    elif st_key == 'champlex':
-                        parsed_data_json = html_to_champlex_json(html_content_created)
-                        logger.info(f"[CREATE/CHAMPLEX] data_json parsé depuis HTML pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
+                    
+                    # Champlex2: JSON-first depuis ai_content_json
+                    if st_key == 'champlex2' and ai_content_json:
+                        try:
+                            parsed_data_json = json.loads(ai_content_json)
+                            logger.info(f"[CREATE/CHAMPLEX2] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('mots', []) or [])})")
+                        except json.JSONDecodeError as je:
+                            logger.error(f"[CREATE/CHAMPLEX2] JSON invalide depuis IA: {je}")
+                    
+                    # QCM et Champlex: parsing HTML traditionnel
+                    elif st_key in ['qcm', 'champlex']:
+                        html_content_created = dest.read_text(encoding='utf-8', errors='ignore')
+                        if st_key == 'qcm':
+                            parsed_data_json = html_to_qcm_json(html_content_created)
+                            logger.info(f"[CREATE/QCM] data_json parsé depuis HTML pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []))})")
+                        elif st_key == 'champlex':
+                            parsed_data_json = html_to_champlex_json(html_content_created)
+                            logger.info(f"[CREATE/CHAMPLEX] data_json parsé depuis HTML pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
 
-                    # Résoudre le template runtime et générer le HTML autonome
-                    _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
-                    if runtime_template_path and runtime_template_path.exists():
-                        raw_template = runtime_template_path.read_text(encoding='utf-8')
-                        injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
-                        runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
-                        runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
-                        runtime_abs.parent.mkdir(parents=True, exist_ok=True)
-                        runtime_abs.write_text(injected, encoding='utf-8')
+                    # Générer le runtime si on a des données
+                    if parsed_data_json:
+                        _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
+                        if runtime_template_path and runtime_template_path.exists():
+                            raw_template = runtime_template_path.read_text(encoding='utf-8')
+                            injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
+                            runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
+                            runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
+                            runtime_abs.parent.mkdir(parents=True, exist_ok=True)
+                            runtime_abs.write_text(injected, encoding='utf-8')
 
-                        # Persister champs liés au runtime
-                        db_resource.runtime_html_path = runtime_rel
-                        db_resource.data_json = parsed_data_json
-                        # Figer template
-                        if not getattr(db_resource, 'template_key', None):
-                            db_resource.template_key = resolved_template_key
-                            db_resource.template_version = 1
-                        db.add(db_resource)
-                        db.commit()
-                        db.refresh(db_resource)
-                        logger.info(f"[CREATE/{st_key.upper()}] Runtime généré: {runtime_abs}")
-                    else:
-                        logger.warning(f"[CREATE/{st_key.upper()}] Template runtime non trouvé: {runtime_template_path}")
-            except Exception as e_create_rt:
-                logger.warning(f"[CREATE/{st_key.upper() if 'st_key' in locals() else '?'}] Échec génération runtime auto pour resource_id={db_resource.id}: {e_create_rt}")
+                            # Persister champs liés au runtime
+                            db_resource.runtime_html_path = runtime_rel
+                            db_resource.data_json = parsed_data_json
+                            # Figer template
+                            if not getattr(db_resource, 'template_key', None):
+                                db_resource.template_key = resolved_template_key
+                            if not getattr(db_resource, 'template_version', None):
+                                db_resource.template_version = 1
+                            db.add(db_resource)
+                            db.commit()
+                            logger.info(f"[CREATE/{st_key.upper()}] Runtime HTML généré et persisté: {runtime_abs}")
+            except Exception as e:
+                logger.error(f"Erreur lors de la génération du runtime pour resource_id={db_resource.id}: {e}")
+                # Ne pas faire échouer la création pour autant
         # Déclencher extraction Docling en tâche de fond si PDF uploadé
         try:
             if db_resource and db_resource.source_type == 'file' and (db_resource.file_type == "application/pdf"):
@@ -683,6 +701,7 @@ async def update_resource_route(
     oeuvre_ids_json: Optional[str] = Form(None), # Ajout pour les oeuvres
     source_type: Optional[str] = Form(None), # Ajouté pour potentiellement changer le type
     html_content: Optional[str] = Form(None),  # Contenu HTML modifié envoyé par le frontend
+    data_json_text: Optional[str] = Form(None),  # JSON-first (string) pour exercices dynamiques
     file: Optional[UploadFile] = File(None)
 ):
     """Met à jour une ressource. Si un fichier est fourni, il remplace l'ancien (si existant).
@@ -777,6 +796,50 @@ async def update_resource_route(
     template_key_to_use: Optional[str] = None
     template_version_to_use: Optional[int] = None
     try:
+        # --- Mode JSON-first pour dynamiques ---
+        if data_json_text is not None:
+            try:
+                provided_json = json.loads(data_json_text)
+            except json.JSONDecodeError as je:
+                raise HTTPException(status_code=400, detail=f"data_json invalid JSON: {je}")
+
+            st = getattr(db_resource_check, 'sub_type', None)
+            st_key = (getattr(st, 'key', '') or '').strip().lower()
+            t = getattr(db_resource_check, 'type', None)
+            t_key = (getattr(t, 'key', '') or '').strip().lower()
+
+            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']):
+                logger.warning(f"[JSON-FIRST] data_json ignoré pour type/subtype non dynamique: {t_key}/{st_key}")
+            else:
+                # Validation légère selon subtype
+                if st_key == 'champlex2':
+                    mots = provided_json.get('mots') or []
+                    sol = provided_json.get('solution') or []
+                    if not isinstance(mots, list) or not isinstance(sol, list) or len(mots) != len(sol):
+                        raise HTTPException(status_code=400, detail="data_json invalide pour champlex2: 'mots' et 'solution' doivent être des listes de même longueur")
+                elif st_key == 'champlex':
+                    champs = provided_json.get('champs') or []
+                    if not isinstance(champs, list):
+                        raise HTTPException(status_code=400, detail="data_json invalide pour champlex: 'champs' doit être une liste")
+                elif st_key == 'qcm':
+                    questions = provided_json.get('questions') or []
+                    if not isinstance(questions, list):
+                        raise HTTPException(status_code=400, detail="data_json invalide pour qcm: 'questions' doit être une liste")
+                # Générer runtime depuis data_json
+                _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
+                if runtime_template_path and runtime_template_path.exists():
+                    raw_template = runtime_template_path.read_text(encoding='utf-8')
+                    injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(provided_json, ensure_ascii=False))
+                    rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
+                    abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
+                    abs_path.parent.mkdir(parents=True, exist_ok=True)
+                    abs_path.write_text(injected, encoding='utf-8')
+                    runtime_rel_path = rel
+                    parsed_data_json = provided_json
+                    template_key_to_use = getattr(db_resource_check, 'template_key', None) or resolved_template_key
+                    template_version_to_use = getattr(db_resource_check, 'template_version', None) or 1
+                    logger.info(f"[JSON-FIRST/{st_key.upper()}] Runtime HTML généré: {abs_path}")
+
         if html_content is not None:
             # Détecter un QCM: baser sur le sous-type lié s'il existe
             st = getattr(db_resource_check, 'sub_type', None)
@@ -785,7 +848,7 @@ async def update_resource_route(
             t_key = (getattr(t, 'key', '') or '').strip().lower()
             # Gestion des exercices interactifs (exclut analysetexte et dictee qui sont statiques)
             if t_key == 'exercice' and st_key in ['qcm', 'champlex']:
-                # Parser selon le type d'exercice
+                # Parser selon le type d'exercice (champlex2 utilise JSON-first uniquement)
                 if st_key == 'qcm':
                     parsed_data_json = html_to_qcm_json(html_content)
                     logger.info(f"[QCM] data_json parsé depuis HTML pour resource_id={resource_id} (questions={len(parsed_data_json.get('questions', []))})")

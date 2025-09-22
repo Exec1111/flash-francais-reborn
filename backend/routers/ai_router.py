@@ -569,6 +569,23 @@ async def merge_resource(
     logger.info(f"[Fusion][DEBUG] Reçu requête pour type={type_key}, subtype={subtype_key}")
     logger.info(f"[Fusion][DEBUG] model_file présent: {model_file is not None}")
     logger.info(f"[Fusion][DEBUG] model_name: {model_name}")
+    
+    # Champlex2 utilise JSON-first: pas besoin de merge, retourner directement le JSON
+    if type_key.lower() == 'exercice' and subtype_key.lower() == 'champlex2':
+        try:
+            json_data = json.loads(data_json)
+            logger.info(f"[Fusion][CHAMPLEX2] Contournement du merge pour JSON-first: {json_data}")
+            
+            # Retourner une réponse simulée pour que le frontend continue
+            return {
+                "html_url": f"/api/v1/ai/champlex2-json-placeholder",
+                "data_json": json_data,
+                "message": "Champlex2 utilise JSON-first, pas de merge nécessaire"
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"[Fusion][CHAMPLEX2] JSON invalide: {e}")
+            raise HTTPException(status_code=422, detail=f"Format JSON invalide: {str(e)}")
+    
     try:
         # Logs du contenu JSON (première partie seulement pour ne pas surcharger les logs)
         json_str = data_json[:200] + "..." if len(data_json) > 200 else data_json

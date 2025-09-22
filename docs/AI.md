@@ -197,9 +197,10 @@ Pour garantir un rendu visuel identique entre la version générée par l’IA e
 
 - Lecture (`GET /api/v1/resources/{id}`) :
   - Expose `runtime_html_url` construit depuis `runtime_html_path` et `MEDIA_URL_PREFIX`.
+  - Si possible, conservez les deux: `runtime_html_url` (URL directement ouvrable) et `runtime_html_path` (chemin relatif persistant dans le stockage).
 
 - Frontend:
-  - Dans `ResourceView`, le bouton "Lancer l'activité" ouvre directement `runtime_html_url` si présent (sinon rafraîchit la ressource, puis fallback vers la page interne `/dashboard/runtime/qcm/:id`).
+  - Dans `ResourceView`, le bouton "Lancer l'activité" ouvre directement `runtime_html_url` si présent (sinon rafraîchit la ressource, puis fallback vers la page interne, cf. logique locale).
 
 ### 11.1. Champs et modèles
 
@@ -239,6 +240,8 @@ backend/ai/
 | `exercice` | `analysetexte` | ✅ `default_exercice_analysetexte.html` | ❌ | **Statique** |
 | `exercice` | `dictee` | ✅ `default_exercice_dictee.html` | ❌ | **Statique** |
 
+> Note: `champlex2` (nouvelle version) suit la même logique que `champlex` côté runtime (Dynamique).
+
 ### 11.4. Migrations Alembic
 
 Exécuter dans l'ordre (si besoin) :
@@ -263,6 +266,73 @@ Pour ajouter un nouveau type d'activité runtime, voir le guide détaillé : `do
 
 - `GET /api/v1/ai/runtime/qcm/{resource_id}`: renvoie `{ id, title, data_json }` pour dépannage et usages internes.
 - Le runtime HTML public se trouve via `runtime_html_url` sur la ressource (`GET /api/v1/resources/{id}`).
+
+---
+
+## 12. Frontend: ouverture des contenus et compatibilité
+
+### 12.1. Ouverture depuis la page d'édition (`ResourceForm`)
+
+Le bouton "Lancer l'activité" suit l'ordre de priorité suivant (cf. `frontend/src/components/resources/ResourceForm.js`, fonction `handleLaunchActivity`) :
+
+1. `runtime_html_url` (prioritaire) → ouvre directement (avec cache-buster).
+2. `runtime_html_path` → reconstruit l'URL publique depuis `API_BASE_URL` + `/media/uploads/`.
+3. `html_url` / `html_content_url` → ouvre l'URL telle quelle (avec `API_BASE_URL` si relative).
+4. `file_path` / `url` se terminant par `.html` → ouvre l'HTML.
+5. Dernier recours → ouvre `/resources/view/{id}` (page de consultation) qui essaie aussi de lancer l'activité.
+
+La détection d'activité dynamique côté édition (`isDynamicActivity`) considère la ressource dynamique si l'un des critères est vrai:
+
+- Présence de `runtime_html_path` ou de `runtime_html_url`.
+- Présence de `data_json`.
+- Sous-type dans `{champlex, champlex2, qcm, pendu}`.
+- Type `exercice` même si le sous-type n'est pas encore chargé.
+
+### 12.2. Ouverture depuis la liste des ressources (`ResourceActionLink`)
+
+Le lien "Document" de la DataGrid bascule automatiquement entre:
+
+- "🚀 Lancer l'activité" pour les ressources dynamiques (même ordre de résolution que ci-dessus, via `runtime_html_url` puis `runtime_html_path`, etc.).
+- "🔗 Ouvrir le document" pour les contenus statiques (`file_path`).
+- "Activité non disponible." si aucun lien valable n'est trouvable (rare; à traiter en migration, voir ci-dessous).
+
+### 12.3. Critères de compatibilité (dynamique/statique)
+
+Une ressource est considérée comme pleinement compatible avec le nouveau système si au moins un de ces champs est renseigné (dans `GET /api/v1/resources/{id}`):
+
+- `runtime_html_url` (recommandé)
+- `runtime_html_path` (et que le fichier existe dans `static/media/uploads/`)
+- `html_url` ou `html_content_url` (ouvre un HTML autonome valide)
+- `file_path` se terminant par `.html`
+
+Sinon, le frontend affichera "Activité non disponible." dans la liste, et le bouton d'édition utilisera le fallback vers la page de consultation.
+
+### 12.4. Check-list de migration (manuel, ressource par ressource)
+
+Pour mettre vos ressources à niveau, suivez cette procédure pour chaque ressource `exercice`:
+
+1. Ouvrir la ressource en édition (`/resources/edit/{id}`).
+2. Cliquer sur "Éditer le contenu" si c'est une activité dynamique (ex: `champlex2`).
+3. Modifier/sauvegarder. À la sauvegarde, le backend doit écrire ou réécrire `runtime_html_path` (et idéalement `runtime_html_url`).
+4. Tester "Lancer l'activité" depuis l'édition.
+5. Vérifier dans la liste que "Lancer l'activité" apparaît.
+
+Si "Activité non disponible." persiste:
+
+- Vérifier la réponse JSON de `GET /api/v1/resources/{id}` et confirmer la présence d'au moins un champ parmi `runtime_html_url`, `runtime_html_path`, `html_url`, `html_content_url`, ou `.html` dans `file_path`/`url`.
+- Si `runtime_html_path` est présent mais que l'URL publique ne fonctionne pas, vérifiez que `API_BASE_URL` et l'exposition de `/media/uploads/` côté serveur sont corrects (Render).
+- Le cas échéant, ajouter la construction de `runtime_html_url` côté backend (cf. §11.1) pour fiabiliser.
+
+### 12.5. Script/API d'audit (suggestion)
+
+Exposez un endpoint d'audit (ou utilisez un script d'admin) qui liste les ressources `exercice` sans aucun des champs attendus ci-dessus. Exemple d'algorithme:
+
+- Filtrer `Resource` où `type.key = 'exercice'`.
+- Garder celles pour lesquelles tous les champs suivants sont vides: `runtime_html_url`, `runtime_html_path`, `html_url`, `html_content_url`, et qui n'ont pas `.html` dans `file_path`/`url`.
+- Retourner `{id, title, type, subtype}` pour traitement.
+
+Ces ressources seront marquées comme "non compatibles" et à migrer en priorité.
+
 
 ### 11.7. Résolution automatique (TemplateResolver)
 

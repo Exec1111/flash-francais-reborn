@@ -550,63 +550,72 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
    * Gère la fusion des résultats en appelant l'API
    */
   const handleMergeAll = async () => {
+    if (!generationResults || generationResults.length === 0) {
+      updateProgress("Aucun résultat à fusionner", "error");
+      return;
+    }
+    
     setIsLoading(true);
-    setMergeSuccess(false);
-    updateProgress("Préparation de la fusion...", "info");
+    updateProgress("Fusion des résultats en cours...", "info");
     
     try {
-      // Vérifier l'authentification
       const token = localStorage.getItem('token');
-      
       if (!token) {
-        throw new Error("Authentification requise. Veuillez vous connecter.");
-      }
-
-      // Vérifier si editedResults est un tableau ou un objet
-      let dataToNormalize = editedResults;
-      if (Array.isArray(editedResults) && editedResults.length > 0) {
-        console.log('[DEBUG][handleMergeAll] editedResults est un tableau, extraction du premier élément');
-        dataToNormalize = editedResults[0];
+        throw new Error("Aucun jeton d'authentification trouvé");
       }
       
-      updateProgress("Envoi des données à l'API...", "info");
+      // Champlex2 utilise JSON-first: pas besoin de merge réel
+      const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
+      if (subtypeKeyNorm === 'champlex2') {
+        console.log('[DEBUG][handleMergeAll] Champlex2 JSON-first: contournement du merge');
+        
+        // Simuler une réponse de merge pour Champlex2
+        const jsonData = editedResults.length > 0 ? editedResults[0] : generationResults[0];
+        setMergedResults({
+          html_url: '/api/v1/ai/champlex2-json-placeholder',
+          data_json: jsonData,
+          session_ids: formData.session_ids || [],
+          objective_ids: formData.objective_ids || []
+        });
+        
+        updateProgress("Données Champlex2 préparées (JSON-first)", "success");
+        setMergeSuccess(true);
+        setIsLoading(false);
+        return;
+      }
       
-      // Préparation du FormData
-      const apiFormData = new FormData();
+      // Préparer les données pour la fusion (autres types)
+      const mergeData = new FormData();
+      mergeData.append('type_key', formData.typeKey);
+      mergeData.append('subtype_key', formData.subtypeKey);
+      mergeData.append('data_json', JSON.stringify(editedResults.length > 0 ? editedResults : generationResults));
       
-      // Ajouter les informations de base de la ressource
-      apiFormData.append('type_key', formData.typeKey);
-      apiFormData.append('subtype_key', formData.subtypeKey);
-      apiFormData.append('data_json', JSON.stringify(dataToNormalize));
-      
-      // Log des paramètres pour vérification
-      console.log('[DEBUG] Validation des paramètres:');
-      console.log(`- type_key: "${formData.typeKey}", vide? ${!formData.typeKey}`);
-      console.log(`- subtype_key: "${formData.subtypeKey}", vide? ${!formData.subtypeKey}`);
-      console.log(`- data_json présent? ${Boolean(JSON.stringify(dataToNormalize))}`);
-      
-      // Utilisation de fetch natif
+      // Appel à l'API de fusion
       const response = await fetch(`${API_BASE_URL}/api/v1/ai/merge-resource`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          // Ne pas définir Content-Type pour laisser le navigateur le faire correctement avec le boundary
+          'Authorization': `Bearer ${token}`
         },
-        body: apiFormData
+        body: mergeData
       });
       
-      // Vérifier la réponse
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('[DEBUG] Erreur fetch:', response.status, errorData);
         throw new Error(errorData.detail || "Erreur lors de la fusion");
       }
       
-      const responseData = await response.json();
-      console.log('[DEBUG] Réponse de l\'API (fetch):', responseData);
+      const data = await response.json();
+      console.log('[DEBUG][handleMergeAll] Fusion réussie:', data);
       
-      // Traiter les résultats de fusion
-      handleSuccessfulMerge(responseData);
+      // Stocker les résultats fusionnés
+      setMergedResults({
+        ...data,
+        session_ids: formData.session_ids || [],
+        objective_ids: formData.objective_ids || []
+      });
+      
+      updateProgress("Fusion terminée avec succès", "success");
+      setMergeSuccess(true);
       
     } catch (error) {
       console.error('[ERROR][handleMergeAll]', error);
@@ -700,6 +709,16 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       // (Retiré) Ne plus envoyer d'association aux objets d'étude
       apiFormData.append('session_ids_json', JSON.stringify(mergedResults.session_ids || []));
       apiFormData.append('objective_ids_json', JSON.stringify(mergedResults.objective_ids || []));
+      
+      // JSON-first pour Champlex2: envoyer le contenu généré par l'IA directement
+      const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
+      if (subtypeKeyNorm === 'champlex2' && generationResults.length > 0) {
+        const aiContent = generationResults[0]; // Premier résultat de génération
+        if (aiContent && typeof aiContent === 'object') {
+          apiFormData.append('ai_content_json', JSON.stringify(aiContent));
+          console.log('[DEBUG][handleFinish] Champlex2 JSON-first: ai_content_json ajouté');
+        }
+      }
       
       // Log des données envoyées
       console.log('[DEBUG][handleFinish] Données envoyées pour création de ressource:');

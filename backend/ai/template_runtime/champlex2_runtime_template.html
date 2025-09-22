@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Champlex2 - Activité</title>
+  <style>
+    :root {
+      --primary:#2a5d8f; --primary-2:#19507f; --bg:#f6f8fa; --card:#ffffff; --muted:#6b7280;
+      --ok:#22c55e; --ok-2:#16a34a; --warn:#ef4444; --warn-2:#dc2626; --chip:#e6eef7;
+      --shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background: var(--bg); color:#111827; }
+    .container { max-width: 900px; margin: 36px auto; padding: 0 16px; }
+    .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 28px; }
+    h1 { margin: 0 0 6px; font-size: 28px; color: var(--primary); text-align: center; }
+    .desc { margin: 0 0 18px; text-align: center; color: var(--muted); }
+
+    /* Zone mots et bacs */
+    .zone { display:grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px){ .zone { grid-template-columns: 1fr 1fr; } }
+
+    .bag {
+      background: #f0f5fb; border: 2px solid #c7d6ea; border-radius: 12px; padding: 16px; min-height: 160px;
+      transition: border-color .2s ease, background-color .2s ease;
+    }
+    .bag.drag-over { background:#e7f0fb; border-color:#8db3de; }
+    .bag-title { font-weight: 700; color: var(--primary-2); margin-bottom: 8px; text-align:center; }
+
+    .chips { display:flex; flex-wrap:wrap; gap: 10px; }
+    .chip { background: var(--chip); color:#0f172a; padding: 8px 12px; border-radius: 999px; cursor: grab; border:1px solid #bad1ea; }
+    .chip:active { cursor: grabbing; transform: scale(1.05); }
+
+    .actions { display:flex; gap: 12px; margin-top: 18px; justify-content:center; }
+    .btn { padding: 10px 16px; font-weight: 700; border-radius: 10px; border: none; cursor:pointer; }
+    .btn-primary { background: var(--primary); color:#fff; }
+    .btn-primary:hover { background: var(--primary-2); }
+    .btn-muted { background:#e5e7eb; color:#111827; }
+
+    .feedback { margin-top: 16px; padding: 12px; border-radius: 10px; text-align:center; display:none; }
+    .ok { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+    .err { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1 id="title">Champlex2</h1>
+      <p class="desc" id="desc">Glissez les mots vers « Dans le champ » ou « Hors du champ », puis validez.</p>
+
+      <div class="zone">
+        <div>
+          <div class="bag-title">Mots</div>
+          <div id="bag-source" class="bag">
+            <div id="chips-source" class="chips"></div>
+          </div>
+        </div>
+        <div>
+          <div class="bag-title">Champ lexical : <span id="champ-name"></span></div>
+          <div class="bag" style="display:grid; grid-template-columns: 1fr; gap:12px;">
+            <div>
+              <div class="bag-title">Dans le champ</div>
+              <div id="bag-in" class="bag">
+                <div id="chips-in" class="chips"></div>
+              </div>
+            </div>
+            <div>
+              <div class="bag-title">Hors du champ</div>
+              <div id="bag-out" class="bag">
+                <div id="chips-out" class="chips"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="validate" class="btn btn-primary">Valider</button>
+        <button id="reset" class="btn btn-muted">Recommencer</button>
+      </div>
+      <div id="feedback" class="feedback"></div>
+    </div>
+  </div>
+
+  <script>
+    // Données injectées
+    window.CHAMPLEX2_DATA = <!--ACTIVITY_DATA_JSON-->;
+
+    function el(id){ return document.getElementById(id); }
+
+    function renderFromData(data){
+      const champ = data.champ || '';
+      const words = Array.isArray(data.mots) ? data.mots : [];
+      const solution = Array.isArray(data.solution) ? data.solution : [];
+
+      // Titre/desc si présents
+      if (data.title) {
+        el('title').textContent = data.title;
+      } else if (champ) {
+        el('title').textContent = `Champ lexical : ${champ}`;
+      }
+      if (data.description) el('desc').textContent = data.description;
+      el('champ-name').textContent = champ;
+
+      // Reset zones
+      el('chips-source').innerHTML = '';
+      el('chips-in').innerHTML = '';
+      el('chips-out').innerHTML = '';
+      el('feedback').style.display = 'none';
+      el('feedback').className = 'feedback';
+
+      // Construire des chips dans la source
+      words.forEach((w, idx) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.draggable = true;
+        chip.id = 'chip-' + idx;
+        chip.textContent = w;
+        chip.dataset.correct = solution[idx] ? 'in' : 'out';
+        el('chips-source').appendChild(chip);
+      });
+
+      initDnD();
+    }
+
+    let dragged = null;
+    function initDnD(){
+      document.addEventListener('dragstart', e => {
+        const t = e.target; if (!t.classList.contains('chip')) return;
+        dragged = t; setTimeout(() => t.style.opacity = '0.6', 0);
+        e.dataTransfer.setData('text/plain', t.id);
+      });
+      document.addEventListener('dragend', e => {
+        if (dragged) { dragged.style.opacity = '1'; dragged = null; }
+      });
+
+      ['bag-source','bag-in','bag-out'].forEach(id => {
+        const bag = el(id);
+        bag.addEventListener('dragover', e => { e.preventDefault(); bag.classList.add('drag-over'); });
+        bag.addEventListener('dragleave', e => { bag.classList.remove('drag-over'); });
+        bag.addEventListener('drop', e => {
+          e.preventDefault(); bag.classList.remove('drag-over');
+          const cid = e.dataTransfer.getData('text/plain');
+          const chip = document.getElementById(cid);
+          if (chip) bag.querySelector('.chips')?.appendChild(chip);
+        });
+      });
+
+      // Actions
+      el('validate').addEventListener('click', () => {
+        const chipsIn = Array.from(el('chips-in').querySelectorAll('.chip'));
+        const chipsOut = Array.from(el('chips-out').querySelectorAll('.chip'));
+        let ok = 0; let total = chipsIn.length + chipsOut.length;
+        const mark = (chip, good) => {
+          chip.style.background = good ? '#dcfce7' : '#fee2e2';
+          chip.style.borderColor = good ? '#86efac' : '#fecaca';
+        };
+        chipsIn.forEach(chip => { const good = (chip.dataset.correct === 'in'); if (good) ok++; mark(chip, good); });
+        chipsOut.forEach(chip => { const good = (chip.dataset.correct === 'out'); if (good) ok++; mark(chip, good); });
+        const fb = el('feedback');
+        fb.style.display = '';
+        if (total === 0){ fb.textContent = 'Aucun mot déplacé.'; fb.classList.add('err'); return; }
+        fb.textContent = `Score: ${ok}/${total}`;
+        fb.classList.add(ok === total ? 'ok' : 'err');
+      });
+
+      el('reset').addEventListener('click', () => {
+        const data = window.CHAMPLEX2_DATA || {};
+        renderFromData(data);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const data = window.CHAMPLEX2_DATA || {};
+      renderFromData(data);
+    });
+  </script>
+</body>
+</html>

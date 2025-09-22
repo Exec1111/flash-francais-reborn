@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -67,6 +68,121 @@ const ResourceForm = ({
     resource_sub_type_id: '',
     session_ids: session ? [session.id] : []
   });
+
+  // --- Handlers ---
+  const handleLaunchActivity = useCallback(async () => {
+    try {
+      console.log('[LAUNCH] start for resource', initialData?.id, {
+        initial_runtime_html_url: initialData?.runtime_html_url,
+        initial_runtime_html_path: initialData?.runtime_html_path,
+        initial_html_url: initialData?.html_url,
+        initial_html_content_url: initialData?.html_content_url,
+        initial_file_path: initialData?.file_path,
+        initial_url: initialData?.url,
+      });
+      // 1) Prefer runtime_html_url (server-computed URL) if already présent
+      let runtimeUrlFromApi = initialData?.runtime_html_url || '';
+      // 1bis) Sinon, runtime_html_path
+      let runtimePath = initialData?.runtime_html_path;
+      let latest = null;
+
+      // 2) If missing, refetch latest resource to get generated runtime
+      if (!runtimePath && initialData?.id) {
+        try {
+          latest = await resourceService.getById(initialData.id);
+          console.log('[LAUNCH] latest fetched', latest?.id, {
+            runtime_html_url: latest?.runtime_html_url,
+            runtime_html_path: latest?.runtime_html_path,
+            html_url: latest?.html_url,
+            html_content_url: latest?.html_content_url,
+            file_path: latest?.file_path,
+            url: latest?.url,
+          });
+          runtimeUrlFromApi = latest?.runtime_html_url || runtimeUrlFromApi;
+          runtimePath = latest?.runtime_html_path || runtimePath;
+        } catch (e) {
+          console.warn('[ResourceForm] Impossible de recharger la ressource pour récupérer runtime_html_path', e);
+        }
+      }
+
+      // 2bis) Si runtime_html_url est disponible, ouvrir directement
+      if (runtimeUrlFromApi) {
+        const cacheBuster = Date.now();
+        const base = (API_BASE_URL || '').replace(/\/api\/?$/, '');
+        const norm = String(runtimeUrlFromApi).replace(/\\/g, '/');
+        const fullUrl = norm.startsWith('http') ? norm : `${base}${norm.startsWith('/') ? norm : `/${norm}`}`;
+        const withBuster = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}_t=${cacheBuster}`;
+        window.open(withBuster, '_blank');
+        return;
+      }
+
+      // 3) Fallbacks: try html_url/html_content_url, then .html file_path/url
+      const tryOpenUrl = (raw) => {
+        if (!raw) return false;
+        const cacheBuster = Date.now();
+        const base = (API_BASE_URL || '').replace(/\/api\/?$/, '');
+        const full = raw.startsWith('http') ? raw : `${base}${raw.startsWith('/') ? raw : `/${raw}`}`;
+        const withBuster = `${full}${full.includes('?') ? '&' : '?'}_t=${cacheBuster}`;
+        window.open(withBuster, '_blank');
+        return true;
+      };
+
+      if (!runtimePath) {
+        // Prefer latest html links if available
+        const htmlFromLatest = latest?.html_url || latest?.html_content_url;
+        const htmlFromInitial = initialData?.html_url || initialData?.html_content_url;
+        console.log('[LAUNCH] trying html links', { htmlFromLatest, htmlFromInitial });
+        if (tryOpenUrl(htmlFromLatest) || tryOpenUrl(htmlFromInitial)) return;
+
+        const fp = latest?.file_path || initialData?.file_path || '';
+        const u = latest?.url || initialData?.url || '';
+        const looksHtml = (s) => typeof s === 'string' && s.toLowerCase().trim().endsWith('.html');
+        console.log('[LAUNCH] trying html-like paths', { fp, u, looksHtml_fp: looksHtml(fp), looksHtml_u: looksHtml(u) });
+        if (looksHtml(fp)) {
+          const rel = fp.replace(/^\//, '');
+          const cacheBuster = Date.now();
+          window.open(`${window.location.origin}/media/uploads/${rel}?_t=${cacheBuster}`, '_blank');
+          return;
+        }
+        if (looksHtml(u)) {
+          tryOpenUrl(u);
+          return;
+        }
+      }
+
+      if (runtimePath) {
+        const cacheBuster = Date.now();
+        const base = (API_BASE_URL || '').replace(/\/api\/?$/, '');
+        const norm = String(runtimePath).replace(/\\/g, '/');
+        let fullUrl;
+        if (norm.startsWith('http')) {
+          fullUrl = norm;
+        } else if (norm.startsWith('/media/uploads/')) {
+          fullUrl = `${base}${norm}`;
+        } else if (norm.startsWith('uploads/')) {
+          fullUrl = `${base}/media/uploads/${norm}`;
+        } else {
+          // generic fallback: treat as relative under /media/uploads
+          const rel = norm.replace(/^\//, '');
+          fullUrl = `${base}/media/uploads/${rel}`;
+        }
+        const runtimeUrl = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}_t=${cacheBuster}`;
+        window.open(runtimeUrl, '_blank');
+      } else {
+        // Dernier recours: ouvrir la page de consultation qui sait lancer l'activité
+        if (initialData?.id) {
+          const viewUrl = `${window.location.origin}/resources/view/${initialData.id}`;
+          console.log('[LAUNCH] final fallback to view page', viewUrl);
+          window.open(viewUrl, '_blank');
+        } else {
+          alert("L'activité n'est pas encore disponible. Veuillez d'abord sauvegarder le contenu.");
+        }
+      }
+    } catch (err) {
+      console.error('[ResourceForm] Erreur lors du lancement de l\'activité:', err);
+      alert("Impossible de lancer l'activité pour le moment.");
+    }
+  }, [initialData]);
   const [sourceType, setSourceType] = useState('ai');
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
@@ -121,6 +237,26 @@ const ResourceForm = ({
 
   const selectedType = resourceTypes.find(t => String(t.id) === String(formData.resource_type_id));
   const selectedSubType = resourceSubTypes.find(st => String(st.id) === String(formData.resource_sub_type_id));
+  const subtypeKey = ((selectedSubType?.key) || (initialData?.sub_type?.key) || '').toLowerCase();
+  const isDynamicActivity = useMemo(() => {
+    // Considérer dynamique si:
+    // - runtime_html_path présent
+    // - données structurées présentes
+    // - sous-type connu d'exercice dynamique (champlex, champlex2, qcm, pendu)
+    // - type est 'exercice' même si le sous-type n'est pas encore chargé
+    const initialSubtypeKey = (initialData?.sub_type?.key || '').toLowerCase();
+    const initialTypeKey = (initialData?.type?.key || '').toLowerCase();
+    const selectedTypeKey = (selectedType?.key || '').toLowerCase();
+    const dynamicSubtypes = new Set(['champlex', 'champlex2', 'qcm', 'pendu']);
+    return Boolean(
+      initialData?.runtime_html_path ||
+      initialData?.data_json ||
+      dynamicSubtypes.has(subtypeKey) ||
+      dynamicSubtypes.has(initialSubtypeKey) ||
+      initialTypeKey === 'exercice' ||
+      selectedTypeKey === 'exercice'
+    );
+  }, [initialData, subtypeKey, selectedType]);
   
   const hasSelectedType = Boolean(selectedType) || Boolean(hideTypeSelection && forcedType && forcedType.typeId);
   const hasSelectedSubType = Boolean(selectedSubType) || Boolean(hideTypeSelection && forcedType && forcedType.subtypeId);
@@ -133,8 +269,8 @@ const ResourceForm = ({
   
   const showAIGenerationForm = !isEdit && sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
   
-  // Always show HTML editor when in edit mode since we're on the resource editing page
-  const showHtmlEditor = isEdit;
+  // Show HTML editor when in edit mode, but not for Champlex2 (uses structured editor)
+  const showHtmlEditor = isEdit && subtypeKey !== 'champlex2';
 
   // Debug logging for showHtmlEditor conditions
   console.log('[DEBUG ResourceForm] showHtmlEditor conditions:', {
@@ -357,6 +493,51 @@ const ResourceForm = ({
       fetchSubTypes(formData.resource_type_id);
     }
   }, [formData.resource_type_id, fetchSubTypes]);
+
+  // ---------------- Champlex2 JSON-first editor state ----------------
+  const [ch2Champ, setCh2Champ] = useState('');
+  const [ch2TextSpec, setCh2TextSpec] = useState('');
+  useEffect(() => {
+    if ((subtypeKey === 'champlex2') && initialData) {
+      // Préremplir depuis data_json si dispo
+      const dj = initialData.data_json || {};
+      const champ = (dj.champ || '').trim();
+      const mots = Array.isArray(dj.mots) ? dj.mots : [];
+      const sol = Array.isArray(dj.solution) ? dj.solution : [];
+      if (champ) setCh2Champ(champ);
+      if (mots.length) {
+        const lines = mots.map((m, i) => `${m}\t${sol[i] ? 1 : 0}`);
+        setCh2TextSpec(lines.join('\n'));
+      } else if (!ch2TextSpec) {
+        // Exemple par défaut
+        setCh2TextSpec('frisson\t1\namour\t0\ntrembler\t1');
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtypeKey, initialData?.id]);
+
+  const buildChamplex2Json = () => {
+    const lines = (ch2TextSpec || '').split(/\r?\n/);
+    const mots = [];
+    const solution = [];
+    for (const raw of lines) {
+      const l = (raw || '').trim();
+      if (!l) continue;
+      const parts = l.split(/[;|,\t]/);
+      const mot = (parts[0] || '').trim();
+      const valRaw = ((parts[1] || '').trim().toLowerCase());
+      if (!mot) continue;
+      const isIn = (valRaw === '1' || valRaw === 'oui' || valRaw === 'true' || valRaw === 'in');
+      mots.push(mot);
+      solution.push(isIn);
+    }
+    if (!mots.length) throw new Error('Aucun mot valide détecté dans la spécification champlex2.');
+    return {
+      champ: (ch2Champ || '').trim(),
+      mots,
+      solution,
+    };
+  };
 
   // Load study objects
   useEffect(() => {
@@ -814,6 +995,81 @@ const ResourceForm = ({
           handleInputChange={handleInputChange}
           submitting={submitting}
         />
+
+
+        {/* Section "Contenu HTML" pour les exercices dynamiques (Champlex2) */}
+        {isDynamicActivity && !isEditingMode && (
+          <Grid item xs={12}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 2,
+              py: 2
+            }}>
+              <Box sx={{ 
+                color: '#e5e7eb', 
+                fontSize: '1.1rem', 
+                fontWeight: 500,
+                minWidth: 'fit-content'
+              }}>
+                Contenu HTML (dynamique)
+              </Box>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1,
+                alignItems: 'center'
+              }}>
+                {/* Bouton "Lancer l'activité" - style comme "Consulter le contenu" */}
+                {(initialData?.runtime_html_path || subtypeKey === 'champlex2') && (
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={handleLaunchActivity}
+                    sx={{
+                      color: '#60a5fa',
+                      textTransform: 'none',
+                      fontSize: '0.875rem',
+                      '&:hover': {
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)'
+                      }
+                    }}
+                    startIcon={
+                      <Box component="span" sx={{ fontSize: '0.875rem' }}>🚀</Box>
+                    }
+                  >
+                    Lancer l'activité
+                  </Button>
+                )}
+                
+                {/* Bouton "Éditer le contenu" */}
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => setIsEditingMode(true)}
+                  disabled={submitting}
+                  sx={{
+                    backgroundColor: '#6366f1',
+                    color: 'white',
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    '&:hover': {
+                      backgroundColor: '#5856eb'
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#9ca3af'
+                    }
+                  }}
+                  startIcon={
+                    <Box component="span" sx={{ fontSize: '0.875rem' }}>✏️</Box>
+                  }
+                >
+                  Éditer le contenu
+                </Button>
+              </Box>
+            </Box>
+          </Grid>
+        )}
 
         <ResourceHtmlEditor
           showHtmlEditor={showHtmlEditor}
