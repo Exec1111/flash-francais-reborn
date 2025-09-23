@@ -12,6 +12,7 @@ from crud.resource import get_upload_path
 from dependencies import get_current_active_user # Import absolu
 from models import User as UserModel # Pour l'info utilisateur
 from ai.services.template_resolver import TemplateResolver
+from ai.utils.html_cleaner import clean_html, remove_empty_blocks_and_breaks
 import logging
 import os
 import shutil
