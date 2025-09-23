@@ -31,6 +31,7 @@ from backend.models import User as UserModel
 from .chat_router import router as chat_router
 from .resource_generation_router import router as resource_generation_router
 from .resource_merging_router import router as resource_merging_router
+from .resource_merging_router import merge_resource as merge_resource_endpoint
 from .session_router import router as session_router
 from .exercise_suggestion_router import router as exercise_suggestion_router
 from .pdf_analysis_router import router as pdf_analysis_router
@@ -45,13 +46,22 @@ router = APIRouter(
 )
 
 # Inclure tous les sous-routers
-router.include_router(qcm_router)
 router.include_router(chat_router)
 router.include_router(resource_generation_router)
 router.include_router(resource_merging_router)
 router.include_router(session_router)
 router.include_router(exercise_suggestion_router)
 router.include_router(pdf_analysis_router)
+
+# Alias rétrocompatible pour l'ancien endpoint /ai/merge-resource
+# afin de ne pas casser le frontend qui l'appelle encore.
+router.add_api_route(
+    "/merge-resource",
+    merge_resource_endpoint,
+    methods=["POST"],
+    tags=["Resource Merging"],
+    summary="Alias rétrocompatible de /ai/resource-merging/merge-resource"
+)
 
 # Endpoints de haut niveau (si nécessaire)
 @router.get("/health")

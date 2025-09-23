@@ -446,31 +446,33 @@ async def create_resource_route(
         # La fonction CRUD retourne maintenant l'objet SQLAlchemy chargé
         # FastAPI s'occupe de la conversion vers ResourceResponse grâce à `response_model`
         if source_type == 'ai' and html_path:
-            # Champlex/Champlex2 utilisent JSON-first: pas de fichier HTML à copier
-            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder'):
-                logger.info(f"[AI->Resource] JSON-first détecté pour placeholder {html_path}: pas de copie de fichier HTML")
-                # Pas de file_path pour JSON-first, on utilise seulement data_json + runtime
+            # Déterminer type/sous-type de la ressource
+            st = getattr(db_resource, 'sub_type', None)
+            st_key = (getattr(st, 'key', '') or '').strip().lower()
+            t = getattr(db_resource, 'type', None)
+            t_key = (getattr(t, 'key', '') or '').strip().lower()
+            
+            # Résoudre le chemin source du HTML généré (quel que soit le type) pour éventuel parsing
+            norm_html_path = str(html_path).replace('\\', '/')
+            if norm_html_path.startswith('http'):
+                rel_public = norm_html_path.split('/static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            elif norm_html_path.startswith('/static/'):
+                rel_public = norm_html_path.split('/static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
+            elif norm_html_path.startswith('static/'):
+                rel_public = norm_html_path.split('static/')[-1]
+                src = Path(__file__).resolve().parent.parent / 'static' / rel_public
             else:
-                # Localiser le fichier généré (chemin local, URL absolue ou chemin web relatif '/static/...')
-                # Normaliser les séparateurs (Windows '\\' -> '/')
-                norm_html_path = str(html_path).replace('\\', '/')
-                if norm_html_path.startswith('http'):
-                    # extraire le chemin relatif public après '/static/'
-                    rel_public = norm_html_path.split('/static/')[-1]
-                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
-                elif norm_html_path.startswith('/static/'):
-                    # Supporter l'URL relative renvoyée par /ai/merge-resource (ex: '/static/tmp/...')
-                    rel_public = norm_html_path.split('/static/')[-1]
-                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
-                elif norm_html_path.startswith('static/'):
-                    # Cas rare: chemin relatif sans slash initial
-                    rel_public = norm_html_path.split('static/')[-1]
-                    src = Path(__file__).resolve().parent.parent / 'static' / rel_public
-                else:
-                    # Chemin absolu local
-                    src = Path(html_path)
-                
-                # Copier le fichier HTML généré par l'IA vers le dossier uploads
+                src = Path(html_path)
+
+            # JSON-first: ne pas copier le fichier de prévisualisation; on utilisera data_json + runtime
+            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder') or \
+               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']):
+                logger.info(f"[AI->Resource] JSON-first détecté pour {t_key}/{st_key}: pas de copie de fichier HTML (html_path={html_path})")
+                dest = None  # Pas de fichier copié
+            else:
+                # Copier le fichier HTML généré par l'IA vers le dossier uploads (ancien système)
                 logger.info(f"[AI->Resource] html_path reçu='{html_path}', normalisé='{norm_html_path}', src_resolu='{src}'")
                 filename = src.name
                 rel_path = get_upload_path(current_user.id, filename)
@@ -494,19 +496,23 @@ async def create_resource_route(
                     parsed_data_json = None
                     
                     # JSON-first
-                    if st_key in ['champlex2', 'champlex'] and ai_content_json:
+                    if st_key in ['champlex2', 'champlex', 'qcm'] and ai_content_json:
                         try:
                             parsed_data_json = json.loads(ai_content_json)
                             if st_key == 'champlex2':
                                 logger.info(f"[CREATE/CHAMPLEX2] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('mots', []) or [])})")
-                            else:
+                            elif st_key == 'champlex':
                                 logger.info(f"[CREATE/CHAMPLEX] data_json depuis IA JSON pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
+                            elif st_key == 'qcm':
+                                logger.info(f"[CREATE/QCM] data_json depuis IA JSON pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []) or [])})")
                         except json.JSONDecodeError as je:
                             logger.error(f"[CREATE/{st_key.upper()}] JSON invalide depuis IA: {je}")
                     
-                    # QCM et fallback Champlex: parsing HTML traditionnel
+                    # QCM et fallback Champlex: parsing HTML traditionnel si aucun JSON fourni
                     elif st_key in ['qcm', 'champlex']:
-                        html_content_created = dest.read_text(encoding='utf-8', errors='ignore')
+                        # Lire depuis le fichier copié si présent, sinon depuis la source de prévisualisation
+                        html_source_path = dest if 'dest' in locals() and dest else src
+                        html_content_created = html_source_path.read_text(encoding='utf-8', errors='ignore')
                         if st_key == 'qcm':
                             parsed_data_json = html_to_qcm_json(html_content_created)
                             logger.info(f"[CREATE/QCM] data_json parsé depuis HTML pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []))})")
@@ -519,7 +525,11 @@ async def create_resource_route(
                         _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
                         if runtime_template_path and runtime_template_path.exists():
                             raw_template = runtime_template_path.read_text(encoding='utf-8')
-                            injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
+                            data_str = jsonlib.dumps(parsed_data_json, ensure_ascii=False)
+                            # Supporter plusieurs placeholders selon les templates
+                            injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', data_str)
+                            injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
+                            injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
                             runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
                             runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
                             runtime_abs.parent.mkdir(parents=True, exist_ok=True)
@@ -535,7 +545,18 @@ async def create_resource_route(
                                 db_resource.template_version = 1
                             db.add(db_resource)
                             db.commit()
+                            db.refresh(db_resource)
                             logger.info(f"[CREATE/{st_key.upper()}] Runtime HTML généré et persisté: {runtime_abs}")
+
+                            # Nettoyage: supprimer le fichier de prévisualisation si présent (static/tmp)
+                            try:
+                                if 'src' in locals() and isinstance(src, Path) and src.exists():
+                                    static_tmp_dir = Path(__file__).resolve().parent.parent / 'static' / 'tmp'
+                                    if static_tmp_dir in src.parents:
+                                        src.unlink(missing_ok=True)
+                                        logger.info(f"[CREATE/{st_key.upper()}] Fichier de prévisualisation supprimé: {src}")
+                            except Exception as e_cleanup:
+                                logger.warning(f"[CREATE/{st_key.upper()}] Impossible de supprimer le fichier de prévisualisation {src}: {e_cleanup}")
             except Exception as e:
                 logger.error(f"Erreur lors de la génération du runtime pour resource_id={db_resource.id}: {e}")
                 # Ne pas faire échouer la création pour autant
@@ -832,7 +853,11 @@ async def update_resource_route(
                 _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
                 if runtime_template_path and runtime_template_path.exists():
                     raw_template = runtime_template_path.read_text(encoding='utf-8')
-                    injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(provided_json, ensure_ascii=False))
+                    data_str = jsonlib.dumps(provided_json, ensure_ascii=False)
+                    # Support de plusieurs placeholders selon le template
+                    injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
                     rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                     abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
                     abs_path.parent.mkdir(parents=True, exist_ok=True)

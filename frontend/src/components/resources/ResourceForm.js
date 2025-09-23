@@ -273,8 +273,9 @@ const ResourceForm = ({
   
   const showAIGenerationForm = !isEdit && sourceType === 'ai' && hasSelectedType && hasSelectedSubType;
   
-  // Show HTML editor when in edit mode, but not for Champlex et Champlex2 (both use structured editors)
-  const showHtmlEditor = isEdit && !['champlex', 'champlex2'].includes(subtypeKey);
+  // Afficher l'éditeur HTML (statique) uniquement pour les ressources NON dynamiques
+  // Ressources dynamiques (qcm, champlex, champlex2, etc.) utilisent le bloc "Contenu HTML (dynamique)"
+  const showHtmlEditor = isEdit && !isDynamicActivity;
 
   // Debug logging for showHtmlEditor conditions
   console.log('[DEBUG ResourceForm] showHtmlEditor conditions:', {

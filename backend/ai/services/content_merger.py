@@ -29,21 +29,117 @@ async def merge_ai_resource_content(
     user_id: int
 ) -> Tuple[str, str]:
     """
-    Fusionne un contenu JSON édité avec un modèle HTML (uploadé ou par défaut),
-    appelle Gemini pour générer le HTML final, sauvegarde le fichier temporaire et retourne son chemin et son URL.
+    Fusionne un contenu JSON avec un modèle HTML.
+    Pour les types JSON-first (qcm, champlex, champlex2), fait un simple remplacement de placeholder.
+    Pour les autres types, utilise l'IA Gemini.
     
     Args:
-        type_key: Clé du type de ressource
-        subtype_key: Clé du sous-type de ressource
-        data_json: JSON contenant les données à fusionner avec le template
+        type_key: Type de ressource (ex: 'exercice')
+        subtype_key: Sous-type de ressource (ex: 'qcm')
+        data_json: Données JSON à fusionner
         model_path: Chemin vers le fichier modèle HTML
         user_id: ID de l'utilisateur qui demande la fusion
         
     Returns:
         Un tuple (chemin_fichier, url) vers le fichier HTML généré
     """
-    logger.info(f"Début de merge_ai_resource_content. model_path reçu : {model_path}")
-    logger.info(f"[Fusion] Lancement fusion pour user {user_id}, modèle {model_path}")
+    
+    # Types qui utilisent le système JSON-first (simple remplacement de placeholder)
+    json_first_types = ['qcm', 'champlex', 'champlex2']
+    
+    logger.info(f"[MERGE] Type: {type_key}, Subtype: {subtype_key}")
+    logger.info(f"[MERGE] Subtype normalisé: {subtype_key.lower()}")
+    logger.info(f"[MERGE] JSON-first types: {json_first_types}")
+    logger.info(f"[MERGE] Est JSON-first: {subtype_key.lower() in json_first_types}")
+    
+    if subtype_key.lower() in json_first_types:
+        logger.info(f"[MERGE] Utilisation de la fusion JSON-first pour {type_key}/{subtype_key}")
+        return await _merge_json_first_template(type_key, subtype_key, data_json, model_path, user_id)
+    else:
+        logger.info(f"[MERGE] Utilisation de la fusion IA pour {type_key}/{subtype_key}")
+        return await _merge_ai_template(type_key, subtype_key, data_json, model_path, user_id)
+
+
+async def _merge_json_first_template(
+    type_key: str,
+    subtype_key: str,
+    data_json: str,
+    model_path: str,
+    user_id: int
+) -> Tuple[str, str]:
+    """
+    Fusion simple pour les templates JSON-first : remplace les placeholders par les données JSON.
+    """
+    logger.info(f"[JSON-FIRST] Fusion simple pour {type_key}/{subtype_key}")
+    logger.info(f"[JSON-FIRST] Model path: {model_path}")
+    logger.info(f"[JSON-FIRST] Data JSON (preview): {data_json[:200]}...")
+    
+    try:
+        # Lire le template
+        with open(model_path, "r", encoding="utf-8") as f:
+            template_content = f.read()
+        
+        logger.info(f"[JSON-FIRST] Template lu, taille: {len(template_content)} caractères")
+        logger.info(f"[JSON-FIRST] Placeholder présent: {'<!--QCM_DATA_JSON-->' in template_content}")
+        
+        # Remplacer les placeholders selon le type
+        if subtype_key.lower() == 'qcm':
+            # Pour QCM : remplacer <!--QCM_DATA_JSON--> par les données
+            html_content = template_content.replace('<!--QCM_DATA_JSON-->', data_json)
+            logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--QCM_DATA_JSON-->' in html_content}")
+        elif subtype_key.lower() in ['champlex', 'champlex2']:
+            # Pour Champlex : remplacer <!--CHAMPLEX_DATA_JSON--> par les données
+            html_content = template_content.replace('<!--CHAMPLEX_DATA_JSON-->', data_json)
+        else:
+            # Fallback générique
+            html_content = template_content.replace('<!--DATA_JSON-->', data_json)
+        
+        # Générer le nom de fichier de sortie
+        timestamp = int(time.time())
+        output_filename = f"runtime_{subtype_key}_{user_id}_{timestamp}.html"
+        
+        # Utiliser le même système que la fusion IA pour la cohérence
+        # Créer le répertoire dans static/tmp comme les autres fichiers générés
+        import os
+        static_gen_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
+                                      "static", "tmp", str(user_id))
+        os.makedirs(static_gen_dir, exist_ok=True)
+        
+        # Chemin complet du fichier de sortie
+        output_path = os.path.join(static_gen_dir, output_filename)
+        
+        # Écrire le fichier HTML final
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        
+        logger.info(f"[JSON-FIRST] Fichier écrit: {output_path}")
+        logger.info(f"[JSON-FIRST] Taille finale: {len(html_content)} caractères")
+        
+        # Construire l'URL relative (même format que la fusion IA)
+        relative_url = f"/static/tmp/{user_id}/{output_filename}"
+        
+        logger.info(f"[JSON-FIRST] Fichier généré: {output_path}")
+        logger.info(f"[JSON-FIRST] URL: {relative_url}")
+        
+        return output_path, relative_url
+        
+    except Exception as e:
+        logger.error(f"[JSON-FIRST] Erreur lors de la fusion: {e}")
+        raise
+
+
+async def _merge_ai_template(
+    type_key: str,
+    subtype_key: str,
+    data_json: str,
+    model_path: str,
+    user_id: int
+) -> Tuple[str, str]:
+    """
+    Fusion via IA pour les templates classiques.
+    """
+    logger.info(f"[AI-FUSION] Début fusion IA. model_path reçu : {model_path}")
+    logger.info(f"[AI-FUSION] Lancement fusion pour user {user_id}, modèle {model_path}")
     try:
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")

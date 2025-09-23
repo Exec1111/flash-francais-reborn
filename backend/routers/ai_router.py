@@ -639,21 +639,38 @@ async def merge_resource(
             normalized_subtype_key = subtype_key.lower()
             template_key = (normalized_type_key, normalized_subtype_key)
 
-            default_model_filename = TEMPLATE_REGISTRY.get(template_key)
-            
-            if not default_model_filename:
-                logger.warning(f"Aucun modèle HTML par défaut trouvé dans TEMPLATE_REGISTRY pour type={type_key}, sous-type={subtype_key}.")
-                raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable dans le registre.")
-            
-            model_path = os.path.join(DEFAULT_TEMPLATE_DIR, default_model_filename)
-            logger.info(f"Utilisation du modèle HTML par défaut: {model_path}")
+            # Vérifier si c'est un type qui utilise le système JSON-first
+            json_first_types = ['qcm', 'champlex', 'champlex2']
+            if normalized_subtype_key in json_first_types:
+                logger.info(f"Type {type_key}/{subtype_key} utilise le système JSON-first, redirection vers le template runtime")
+                # Pour les types JSON-first, on utilise directement le service de template resolver
+                from backend.ai.services.template_resolver import TemplateResolver
+                try:
+                    runtime_template_path = TemplateResolver.get_runtime_template_path(normalized_type_key, normalized_subtype_key)
+                    if runtime_template_path and runtime_template_path.exists():
+                        model_path = str(runtime_template_path)
+                        logger.info(f"Utilisation du template runtime JSON-first: {model_path}")
+                    else:
+                        raise HTTPException(status_code=404, detail=f"Template runtime introuvable pour {type_key}/{subtype_key}")
+                except Exception as e:
+                    logger.error(f"Erreur lors de la résolution du template runtime: {e}")
+                    raise HTTPException(status_code=500, detail=f"Erreur template runtime pour {type_key}/{subtype_key}: {str(e)}")
+            else:
+                # Ancien système pour les autres types
+                default_model_filename = TEMPLATE_REGISTRY.get(template_key)
+                
+                if not default_model_filename:
+                    logger.warning(f"Aucun modèle HTML par défaut trouvé dans TEMPLATE_REGISTRY pour type={type_key}, sous-type={subtype_key}.")
+                    raise HTTPException(status_code=404, detail=f"Modèle par défaut pour {type_key}/{subtype_key} introuvable dans le registre.")
+                
+                model_path = os.path.join(DEFAULT_TEMPLATE_DIR, default_model_filename)
+                logger.info(f"Utilisation du modèle HTML par défaut: {model_path}")
 
-            if not os.path.exists(model_path):
-                logger.error(f"Fichier modèle HTML par défaut configuré mais introuvable sur le disque : {model_path}")
-                # Cette erreur indique un problème de configuration ou de déploiement, car le fichier listé dans le registre n'existe pas.
-                raise HTTPException(status_code=500, detail=f"Erreur interne: Fichier modèle {default_model_filename} introuvable pour {type_key}/{subtype_key}.")
+                if not os.path.exists(model_path):
+                    logger.error(f"Fichier modèle HTML par défaut configuré mais introuvable sur le disque : {model_path}")
+                    raise HTTPException(status_code=500, detail=f"Erreur interne: Fichier modèle {default_model_filename} introuvable pour {type_key}/{subtype_key}.")
 
-        # Appel service de fusion (à implémenter)
+        # Appel service de fusion
         html_path, html_url = await ai_resource_service.merge_ai_resource_content(
             type_key=type_key,
             subtype_key=subtype_key,

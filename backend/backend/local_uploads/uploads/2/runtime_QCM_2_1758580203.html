@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ titre }}</title>
+    <title>QCM - Activité</title>
     <style>
+        /* Style aligné sur backend/ai/template/default_exercice_qcm.html */
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
@@ -125,33 +126,72 @@
 </head>
 <body>
     <div class="container">
-        <h1>{{ titre }}</h1>
-        <div class="description">{{ description }}</div>
-        {% for question in questions %}
-        <div class="question" data-id="{{ question.id }}" data-correct="{{ question.reponse_correcte }}">
-            <div class="question-title">{{ question.texte }}</div>
-            <ul class="options">
-                {% for option in question.options %}
-                <li data-option-id="{{ option.id }}">
-                    <label>
-                        <input type="radio" name="q{{ question.id }}" value="{{ option.id }}"> {{ option.texte }}
-                    </label>
-                </li>
-                {% endfor %}
-            </ul>
-            <div class="explication">{{ question.explication }}</div>
-        </div>
-        {% endfor %}
-        <div class="results"></div>
+        <h1 id="title">QCM</h1>
+        <div id="desc" class="description"></div>
+        <div id="questions"></div>
+        <div class="results" id="results"></div>
         <button class="submit-btn" id="validateBtn">Valider</button>
         <button class="reset-btn" id="resetBtn">Recommencer</button>
     </div>
-    <script>
+  <script>
+    // Données injectées
+    window.QCM_DATA = {"titre":"Le Héros : Figures et Parcours","description":"Un QCM pour explorer la notion de héros, ses caractéristiques et ses représentations.","niveau":"4ème faible","theme":"Le héros","questions":[{"id":1,"texte":"Quelle caractéristique est souvent associée au héros dans les récits ?","reponse_correcte":"A","explication":"Le courage est une qualité fondamentale du héros qui lui permet d'affronter les dangers.","options":[{"id":"A","texte":"Le courage"},{"id":"B","texte":"La lâcheté"},{"id":"C","texte":"L'égoïsme"},{"id":"D","texte":"La paresse"}]},{"id":2,"texte":"Qu'est-ce qui distingue souvent un héros d'un personnage ordinaire ?","reponse_correcte":"C","explication":"Le héros est souvent confronté à une épreuve ou un défi qu'il doit surmonter.","options":[{"id":"A","texte":"Sa richesse"},{"id":"B","texte":"Sa timidité"},{"id":"C","texte":"Une épreuve à surmonter"},{"id":"D","texte":"Son absence de défauts"}]},{"id":3,"texte":"Dans quel type de récit trouve-t-on fréquemment des héros ?","reponse_correcte":"B","explication":"Les mythes et les légendes racontent souvent les exploits de héros exceptionnels.","options":[{"id":"A","texte":"Dans les notices de montage de meubles"},{"id":"B","texte":"Dans les mythes et légendes"},{"id":"C","texte":"Dans les manuels de cuisine"},{"id":"D","texte":"Dans les annuaires téléphoniques"}]},{"id":4,"texte":"Un héros doit-il toujours être physiquement fort ?","reponse_correcte":"D","explication":"La force du héros peut être morale, intellectuelle ou symbolique, pas seulement physique.","options":[{"id":"A","texte":"Oui, absolument"},{"id":"B","texte":"Oui, sauf s'il est un héros tragique"},{"id":"C","texte":"Non, il doit toujours être faible"},{"id":"D","texte":"Non, sa force peut être d'un autre ordre"}]},{"id":5,"texte":"Quel mot décrit le mieux le voyage ou la quête que le héros entreprend souvent ?","reponse_correcte":"A","explication":"Une quête est un long voyage entrepris par le héros pour accomplir une mission.","options":[{"id":"A","texte":"Une quête"},{"id":"B","texte":"Une sieste"},{"id":"C","texte":"Une promenade"},{"id":"D","texte":"Une réunion"}]}]};
+
         document.addEventListener('DOMContentLoaded', function() {
+            const data = window.QCM_DATA || {};
+            const questions = Array.isArray(data.questions) ? data.questions : [];
+            
             const validateBtn = document.getElementById('validateBtn');
             const resetBtn = document.getElementById('resetBtn');
-            const resultsDiv = document.querySelector('.results');
-            const questions = document.querySelectorAll('.question');
+            const resultsDiv = document.getElementById('results');
+            const titleEl = document.getElementById('title');
+            const descEl = document.getElementById('desc');
+            const questionsContainer = document.getElementById('questions');
+            
+            // Initialiser le titre et la description
+            titleEl.textContent = data.titre || 'QCM';
+            descEl.textContent = data.description || '';
+            
+            // Générer les questions dynamiquement
+            questions.forEach((question, idx) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question';
+                questionDiv.dataset.id = question.id;
+                questionDiv.dataset.correct = question.reponse_correcte;
+                
+                const questionTitle = document.createElement('div');
+                questionTitle.className = 'question-title';
+                questionTitle.textContent = `${idx + 1}. ${question.texte}`;
+                questionDiv.appendChild(questionTitle);
+                
+                const optionsList = document.createElement('ul');
+                optionsList.className = 'options';
+                
+                question.options.forEach(option => {
+                    const optionLi = document.createElement('li');
+                    optionLi.dataset.optionId = option.id;
+                    
+                    const label = document.createElement('label');
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `q${question.id}`;
+                    radio.value = option.id;
+                    
+                    label.appendChild(radio);
+                    label.appendChild(document.createTextNode(` ${option.texte}`));
+                    optionLi.appendChild(label);
+                    optionsList.appendChild(optionLi);
+                });
+                
+                questionDiv.appendChild(optionsList);
+                
+                const explication = document.createElement('div');
+                explication.className = 'explication';
+                explication.textContent = question.explication;
+                questionDiv.appendChild(explication);
+                
+                questionsContainer.appendChild(questionDiv);
+            });
             
             // Masquer les explications au chargement
             document.querySelectorAll('.explication').forEach(exp => {
@@ -162,13 +202,12 @@
                 let score = 0;
                 let totalQuestions = questions.length;
                 
-                questions.forEach(question => {
+                document.querySelectorAll('.question').forEach(question => {
                     const questionId = question.dataset.id;
                     const correctAnswer = question.dataset.correct;
                     const selectedOption = document.querySelector(`input[name="q${questionId}"]:checked`);
                     
                     if (selectedOption) {
-                        const selectedLi = selectedOption.closest('li');
                         const optionId = selectedOption.value;
                         const isCorrect = optionId === correctAnswer;
                         
@@ -208,7 +247,7 @@
             
             resetBtn.addEventListener('click', function() {
                 // Réinitialiser les styles et les sélections
-                questions.forEach(question => {
+                document.querySelectorAll('.question').forEach(question => {
                     question.classList.remove('correct', 'incorrect');
                     question.querySelectorAll('li').forEach(li => {
                         li.classList.remove('option-correct', 'option-incorrect');
@@ -228,6 +267,6 @@
                 resetBtn.style.display = 'none';
             });
         });
-    </script>
+  </script>
 </body>
 </html>

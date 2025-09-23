@@ -716,7 +716,7 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       
       // JSON-first pour Champlex2: envoyer le contenu généré par l'IA directement
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex') && generationResults.length > 0) {
+      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm') && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));

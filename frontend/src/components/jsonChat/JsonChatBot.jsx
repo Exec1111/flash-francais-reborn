@@ -211,9 +211,11 @@ const JsonChatBot = ({
         "Inverse la solution du mot 'passion'"
       ],
       qcm: [
-        "Ajoute une nouvelle question sur la grammaire",
-        "Corrige la réponse de la question 2",
-        "Mélange l'ordre des options de la première question"
+        "Ajoute une nouvelle question sur les accords du participe passé",
+        "Modifie la question 2 pour la rendre plus difficile",
+        "Ajoute une explication à la première question",
+        "Change le thème pour 'La poésie romantique'",
+        "Crée 2 nouvelles questions sur les figures de style"
       ]
     };
     return examples[resourceSubtype] || [

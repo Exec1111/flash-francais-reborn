@@ -55,7 +55,7 @@ DEFAULT_TEMPLATE_DIR = os.path.join(BASE_PROJECT_DIR, "backend", "ai", "template
 # Les valeurs sont les noms de fichiers des templates
 TEMPLATE_REGISTRY = {
     ("oeuvre", "extrait"): "default_oeuvre_extrait.html",
-    ("exercice", "qcm"): "default_exercice_qcm.html",
+    # ("exercice", "qcm"): "default_exercice_qcm.html", # Supprimé - utilise le système JSON-first
     ("exercice", "dictee"): "default_exercice_dictee.html",
     ("oeuvre", "oeuvrecomp"): "default_oeuvre_oeuvrecomp.html",
     ("exercice", "vocabulaire"): "default_exercice_vocabulaire.html",

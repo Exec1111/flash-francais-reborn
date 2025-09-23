@@ -14,7 +14,7 @@ system_prompt: |
   TYPES DE RESSOURCES SUPPORTÉS:
   - champlex: {champs: [{name: string, words: string[]}]}
   - champlex2: {champ: string, mots: string[], solution: boolean[]}
-  - qcm: {questions: [{question: string, options: string[], correct: number}]}
+  - qcm: {titre: string, niveau: string, theme: string, questions: [{id: string, texte: string, reponse_correcte: string, options: [{id: string, texte: string}]}]}
   - vocabulaire: {mots: [{mot: string, definition: string}]}
   
   FORMAT DE RÉPONSE OBLIGATOIRE:
