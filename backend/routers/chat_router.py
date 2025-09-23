@@ -2,22 +2,21 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 import logging
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.ai.schemas import ChatInput, ChatOutput
-from backend.ai import generation_service
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from ai.schemas import ChatInput, ChatOutput
+from ai import generation_service
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/chat",
     tags=["Chat"],
 )
 
 @router.post(
-    "",
+    "/chat",
     response_model=ChatOutput,
     summary="Send a message to the AI chat assistant",
     description="Receives a user message and chat history, interacts with the configured LLM, and returns the AI's response."

@@ -6,9 +6,21 @@ from .session import session_router
 from .resource import resource_router
 from .objective import objective_router
 from .user import user_router
-from .ai_router import router as ai_router # Importe le routeur depuis le fichier ai_router.py
+
+# Import des routeurs AI modulaires
+from .chat_router import router as chat_router
+from .resource_generation_router import router as resource_generation_router
+from .resource_merging_router import router as resource_merging_router
+from .session_router import router as ai_session_router
+from .exercise_suggestion_router import router as exercise_suggestion_router
+from .pdf_analysis_router import router as pdf_analysis_router
 
 # Importez d'autres routeurs ici si nécessaire
 # from routers.autre import router as autre_router
 
-__all__ = ["auth_router", "progression_router", "sequence_router", "session_router", "resource_router", "objective_router", "user_router", "ai_router"]
+__all__ = [
+    "auth_router", "progression_router", "sequence_router", "session_router",
+    "resource_router", "objective_router", "user_router",
+    "chat_router", "resource_generation_router", "resource_merging_router",
+    "ai_session_router", "exercise_suggestion_router", "pdf_analysis_router"
+]

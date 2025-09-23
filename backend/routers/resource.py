@@ -20,11 +20,9 @@ import json # Pour parser session_ids
 from fastapi import status
 from werkzeug.utils import secure_filename # Sécurité: importer depuis werkzeug.utils
 from config import get_settings
-from backend.ai.services.qcm_parser import html_to_qcm_json
-from backend.ai.services.champlex_parser import html_to_champlex_json
-from backend.ai.services.ai_service_factory import AIServiceFactory
-from backend.ai.utils.html_cleaner import preserve_content_spaces, clean_html, remove_empty_blocks_and_breaks
-from backend.ai.services.docling_background import run_docling_extraction
+# Removed unused import
+# Removed unused import
+# Removed unused imports
 import re
 import hashlib
 from PIL import Image

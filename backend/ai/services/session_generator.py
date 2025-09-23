@@ -9,15 +9,15 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.ai.services.registry import ResourceGenerationError
-from backend.ai.services.schema_utils import get_session_json_schema, clean_schema, flatten_schema, remove_defaults_from_schema
+from ai.prompts.prompt_generator import PromptGenerator
+from ai.services.registry import ResourceGenerationError
+from ai.services.schema_utils import get_session_json_schema, clean_schema, flatten_schema, remove_defaults_from_schema
 
 logger = logging.getLogger(__name__)
 
 import time
-from backend.models.llm_interaction_log import LLMInteractionLog
-from backend.database import SessionLocal
+from models.llm_interaction_log import LLMInteractionLog
+from database import SessionLocal
 
 async def generate_ai_sessions(
     sequence_id: int,

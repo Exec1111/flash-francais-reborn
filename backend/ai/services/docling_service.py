@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF (nouvelle syntaxe)
 from markdownify import markdownify as mdify
 
 logger = logging.getLogger(__name__)

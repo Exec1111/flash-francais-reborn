@@ -7,18 +7,17 @@ import json
 import jsonschema
 from urllib.parse import urlparse
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.ai import ai_resource_service
-from backend.ai.prompts.prompt_generator import PromptGenerator
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from ai import ai_resource_service
+from ai.prompts.prompt_generator import PromptGenerator
 from config import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/resource-merging",
     tags=["Resource Merging"],
 )
 
@@ -121,7 +120,7 @@ async def merge_resource(
             if normalized_subtype_key in json_first_types:
                 logger.info(f"Type {type_key}/{subtype_key} utilise le système JSON-first, redirection vers le template runtime")
                 try:
-                    from backend.ai.services.template_resolver import TemplateResolver
+                    from ai.services.template_resolver import TemplateResolver
                     runtime_template_path = TemplateResolver.get_runtime_template_path(normalized_type_key, normalized_subtype_key)
                     if runtime_template_path and runtime_template_path.exists():
                         model_path = str(runtime_template_path)
@@ -135,7 +134,7 @@ async def merge_resource(
                     raise HTTPException(status_code=500, detail=f"Erreur template runtime pour {type_key}/{subtype_key}: {str(e)}")
             else:
                 # Sélection du modèle HTML par défaut via TEMPLATE_REGISTRY
-                from backend.ai.services.registry import TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_DIR
+                from ai.services.registry import TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_DIR
                 template_key = (normalized_type_key, normalized_subtype_key)
 
                 default_model_filename = TEMPLATE_REGISTRY.get(template_key)

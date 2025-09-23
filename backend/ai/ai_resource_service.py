@@ -5,17 +5,17 @@ Il réexporte les fonctions des sous-modules spécialisés dans le package backe
 """
 
 # Imports depuis les services restructurés
-from backend.ai.services.registry import (
+from ai.services.registry import (
     PROMPT_REGISTRY,
     ResourceGenerationError,
     get_available_ai_resource_types
 )
 
-from backend.ai.services.resource_generator import generate_ai_resource_content
-from backend.ai.services.content_merger import merge_ai_resource_content
-from backend.ai.services.session_generator import generate_ai_sessions
-from backend.ai.services.exercise_suggester import suggest_exercise_types_for_session
-from backend.ai.services.schema_utils import (
+from ai.services.resource_generator import generate_ai_resource_content
+from ai.services.content_merger import merge_ai_resource_content
+from ai.services.session_generator import generate_ai_sessions
+from ai.services.exercise_suggester import suggest_exercise_types_for_session
+from ai.services.schema_utils import (
     get_session_json_schema,
     remove_defaults_from_schema,
     clean_schema,

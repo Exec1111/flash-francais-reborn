@@ -12,12 +12,12 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
 
-from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.ai.services.registry import ResourceGenerationError
-from backend.ai.utils.html_cleaner import preserve_content_spaces
+from ai.prompts.prompt_generator import PromptGenerator
+from ai.services.registry import ResourceGenerationError
+from ai.utils.html_cleaner import preserve_content_spaces
 from config import get_settings
-from backend.database import SessionLocal
-from backend.models.llm_interaction_log import LLMInteractionLog
+from database import SessionLocal
+from models.llm_interaction_log import LLMInteractionLog
 
 logger = logging.getLogger(__name__)
 

@@ -5,16 +5,16 @@ from typing import Dict, Any, List
 import logging
 import json
 
-from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.ai.services.registry import PROMPT_REGISTRY, ResourceGenerationError
-from backend.ai.services.resource_generator import generate_ai_resource_content
+from ai.prompts.prompt_generator import PromptGenerator
+from ai.services.registry import PROMPT_REGISTRY, ResourceGenerationError
+from ai.services.resource_generator import generate_ai_resource_content
 
 logger = logging.getLogger(__name__)
 
 import time
 import json
-from backend.models.llm_interaction_log import LLMInteractionLog
-from backend.database import SessionLocal
+from models.llm_interaction_log import LLMInteractionLog
+from database import SessionLocal
 
 # Normalisation légère des clés pour comparer type/subtype de manière robuste
 def _norm_key(value: str) -> str:

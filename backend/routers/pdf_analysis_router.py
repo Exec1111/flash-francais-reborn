@@ -9,20 +9,19 @@ import time
 import re
 from pathlib import Path
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.crud.resource import get_resource
-from backend.ai.services.docling_service import extract_from_pdf_bytes, extract_from_pdf_path
-from backend.ai import ai_resource_service
-from backend.schemas.docling import DoclingExtractResponse
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from crud.resource import get_resource
+from ai.services.docling_service import extract_from_pdf_bytes, extract_from_pdf_path
+from ai import ai_resource_service
+from schemas.docling import DoclingExtractResponse
 from config import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/pdf-analysis",
     tags=["PDF Analysis"],
 )
 

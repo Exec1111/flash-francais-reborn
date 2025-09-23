@@ -1,5 +1,5 @@
 import logging
-from backend.ai.schemas import ChatInput, ChatOutput, ChatMessage
+from ai.schemas import ChatInput, ChatOutput, ChatMessage
 from typing import List
 import os
 import logging

@@ -28,7 +28,12 @@ from routers.resource import resource_router
 from routers.resource_type import resource_type_router
 from routers.objective import objective_router
 from routers.user import user_router
-from routers.ai_router import router as ai_api_router  # Importation explicite du routeur AI
+from routers.chat_router import router as chat_router
+from routers.resource_generation_router import router as resource_generation_router
+from routers.resource_merging_router import router as resource_merging_router
+from routers.session_router import router as ai_session_router
+from routers.exercise_suggestion_router import router as exercise_suggestion_router
+from routers.pdf_analysis_router import router as pdf_analysis_router
 from routers.config import router as config_router
 from routers.dashboard import dashboard_router # Importation du routeur Dashboard
 from routers.study_object import router as study_object_router
@@ -297,12 +302,13 @@ app.include_router(
     tags=["docling"]
 )
 
-# Inclusion des routes AI
-app.include_router(
-    ai_api_router,
-    prefix="/api/v1/ai",
-    tags=["AI"]
-)
+# Inclusion des routes AI modulaires
+app.include_router(chat_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(resource_generation_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(resource_merging_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(ai_session_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(exercise_suggestion_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(pdf_analysis_router, prefix="/api/v1/ai", tags=["AI"])
 
 # Inclusion des routes d'utilisateur
 app.include_router(

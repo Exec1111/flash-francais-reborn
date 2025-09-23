@@ -5,21 +5,20 @@ from typing import Dict, Any, List, Optional
 import logging
 import os
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.ai import ai_resource_service
-from backend.crud.session import get_session_by_id
-from backend.crud.sequence import get_sequence
-from backend.crud.resource import get_resource, get_resources_by_session_and_type, get_available_supports_for_session
-from backend.schemas.ai_suggestion import AISuggestionResponse
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from ai import ai_resource_service
+from crud.session import get_session_by_id
+from crud.sequence import get_sequence
+from crud.resource import get_resource, get_resources_by_session_and_type, get_available_supports_for_session
+from schemas.ai_suggestion import AISuggestionResponse
 from config import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/exercise-suggestions",
     tags=["Exercise Suggestions"],
 )
 

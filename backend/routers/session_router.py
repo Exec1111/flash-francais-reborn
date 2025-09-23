@@ -4,22 +4,21 @@ import logging
 from typing import List
 from pydantic import BaseModel
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.ai import ai_resource_service
-from backend.crud.sequence import get_sequence
-from backend.crud.session import create_session_with_user, get_session_by_id
-from backend.schemas.session import SessionCreate
-from backend.schemas.resource import ResourceResponse
-from backend.crud.resource import get_resources_by_session_and_type, get_resource, get_available_supports_for_session
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from ai import ai_resource_service
+from crud.sequence import get_sequence
+from crud.session import create_session_with_user, get_session_by_id
+from schemas.session import SessionCreate
+from schemas.resource import ResourceResponse
+from crud.resource import get_resources_by_session_and_type, get_resource, get_available_supports_for_session
 from config import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/sessions",
     tags=["Sessions"],
 )
 
@@ -184,7 +183,7 @@ async def generate_sessions(
         )
 
 @router.get(
-    "/{session_id}/available-supports",
+    "/sessions/{session_id}/available-supports",
     response_model=List[ResourceResponse],
     summary="Récupère les œuvres disponibles dans une session comme supports potentiels",
     description="Retourne la liste des ressources de type 'oeuvre' associées à la session spécifiée."

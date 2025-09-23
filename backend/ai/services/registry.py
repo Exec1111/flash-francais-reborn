@@ -79,8 +79,8 @@ class ResourceGenerationError(Exception):
     pass
 
 from sqlalchemy.orm import Session
-from backend.models import ResourceType, ResourceSubType # Assurez-vous que le chemin d'import est correct
-from backend.ai.schemas import AITypeSchema, AISubTypeSchema
+from models import ResourceType, ResourceSubType # Assurez-vous que le chemin d'import est correct
+from ai.schemas import AITypeSchema, AISubTypeSchema
 
 def get_available_ai_resource_types(db: Session) -> List[AITypeSchema]:
     """

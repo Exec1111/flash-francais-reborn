@@ -10,15 +10,15 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.ai.services.registry import PROMPT_REGISTRY, ResourceGenerationError
-from backend.ai.services.schema_utils import clean_schema, flatten_schema
-from backend.ai.services.numeric_converter import convert_numeric_string_values
+from ai.prompts.prompt_generator import PromptGenerator
+from ai.services.registry import PROMPT_REGISTRY, ResourceGenerationError
+from ai.services.schema_utils import clean_schema, flatten_schema
+from ai.services.numeric_converter import convert_numeric_string_values
 
 logger = logging.getLogger(__name__)
 
-from backend.models.llm_interaction_log import LLMInteractionLog
-from backend.database import SessionLocal
+from models.llm_interaction_log import LLMInteractionLog
+from database import SessionLocal
 
 import time
 
@@ -272,7 +272,7 @@ async def generate_ai_resource_content(
         # LOGGING EN BASE du prompt AVANT l'appel à l'API (pour capturer même les échecs)
         log_id = None
         try:
-            from backend.database import SessionLocal
+            from database import SessionLocal
             db = SessionLocal()
             log_entry = LLMInteractionLog(
                 api_provider="google_genai",
@@ -349,7 +349,7 @@ async def generate_ai_resource_content(
             duration_to_log = duration_ms if duration_ms is not None else elapsed_ms
 
             try:
-                from backend.database import SessionLocal
+                from database import SessionLocal
                 db = SessionLocal()
                 if log_id:
                     # Récupérer et mettre à jour le log existant

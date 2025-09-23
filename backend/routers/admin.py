@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from backend.models.llm_interaction_log import LLMInteractionLog
-from backend.models import User
-from backend.schemas import llm_interaction_log as llm_log_schema
-from backend.security import get_current_user
-from backend.database import get_db
+from models.llm_interaction_log import LLMInteractionLog
+from models import User
+from schemas import llm_interaction_log as llm_log_schema
+from security import get_current_user
+from database import get_db
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 

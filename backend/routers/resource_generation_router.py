@@ -4,14 +4,14 @@ import logging
 import os
 import time
 
-from backend.database import get_db
-from backend.dependencies import get_current_active_user
-from backend.models import User as UserModel
-from backend.ai.schemas import AIResourceTypesListResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
-from backend.ai import ai_resource_service
-from backend.ai.prompts.prompt_generator import PromptGenerator
-from backend.crud.resource import get_resource, get_resources_by_session_and_type, get_available_supports_for_session
-from backend.crud.sequence import get_sequence
+from database import get_db
+from dependencies import get_current_active_user
+from models import User as UserModel
+from ai.schemas import AIResourceTypesListResponse, AIResourceGenerationRequest, AIResourceGenerationResponse
+from ai import ai_resource_service
+from ai.prompts.prompt_generator import PromptGenerator
+from crud.resource import get_resource, get_resources_by_session_and_type, get_available_supports_for_session
+from crud.sequence import get_sequence
 from crud.oeuvre import get_oeuvre
 from config import get_settings
 
@@ -19,7 +19,6 @@ from config import get_settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/resource-generation",
     tags=["Resource Generation"],
 )
 
