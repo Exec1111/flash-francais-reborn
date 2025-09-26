@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Routeur principal refactorisé v1 pour les ressources (mis à jour)
+# Routeur principal refactorisé v2 pour les ressources
 resource_router = APIRouter()
 
 # Inclure tous les sous-routeurs spécialisés
@@ -70,4 +70,4 @@ resource_router.include_router(
     tags=["resource-utils"]
 )
 
-logger.info(">>> Resource router refactorisé v1 mis à jour avec les nouveaux routeurs spécialisés <<<")
+logger.info(">>> Resource router refactorisé v2 avec tous les sous-routeurs spécialisés inclus <<<")
