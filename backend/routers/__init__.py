@@ -3,8 +3,10 @@ from .auth import auth_router
 from .progression import progression_router
 from .sequence import sequence_router
 from .session import session_router
-from .resource import resource_router  # Routeur principal original (maintenu pour compatibilité)
 from .resource_router_refactored import resource_router as resource_router_refactored  # Nouveau routeur refactorisé
+# L'ancien fichier resource.py a été supprimé lors du refactoring.
+# Fournir un alias pour compatibilité avec l'ancien import
+resource_router = resource_router_refactored
 from .resource_types_router import resource_types_router
 from .resource_media_router import resource_media_router
 from .resource_crud_router import resource_crud_router

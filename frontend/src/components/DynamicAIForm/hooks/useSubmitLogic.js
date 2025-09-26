@@ -564,15 +564,33 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         throw new Error("Aucun jeton d'authentification trouvé");
       }
       
-      // Champlex et Champlex2 utilisent JSON-first: pas besoin de merge réel
+      // Champlex, Champlex2, QCM et Pendu utilisent JSON-first: pas besoin de merge réel
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex') {
-        console.log('[DEBUG][handleMergeAll] Champlex2 JSON-first: contournement du merge');
+      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu') {
+        console.log(`[DEBUG][handleMergeAll] ${subtypeKeyNorm} JSON-first: contournement du merge`);
         
-        // Simuler une réponse de merge pour Champlex2
+        // Simuler une réponse de merge pour les types JSON-first
         const jsonData = editedResults.length > 0 ? editedResults[0] : generationResults[0];
+        let placeholderUrl;
+        switch(subtypeKeyNorm) {
+          case 'champlex2':
+            placeholderUrl = '/api/v1/ai/champlex2-json-placeholder';
+            break;
+          case 'champlex':
+            placeholderUrl = '/api/v1/ai/champlex-json-placeholder';
+            break;
+          case 'qcm':
+            placeholderUrl = '/api/v1/ai/qcm-json-placeholder';
+            break;
+          case 'pendu':
+            placeholderUrl = '/api/v1/ai/pendu-json-placeholder';
+            break;
+          default:
+            placeholderUrl = '/api/v1/ai/json-placeholder';
+        }
+        
         setMergedResults({
-          html_url: subtypeKeyNorm === 'champlex2' ? '/api/v1/ai/champlex2-json-placeholder' : '/api/v1/ai/champlex-json-placeholder',
+          html_url: placeholderUrl,
           data_json: jsonData,
           session_ids: formData.session_ids || [],
           objective_ids: formData.objective_ids || []
@@ -714,9 +732,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       apiFormData.append('session_ids_json', JSON.stringify(mergedResults.session_ids || []));
       apiFormData.append('objective_ids_json', JSON.stringify(mergedResults.objective_ids || []));
       
-      // JSON-first pour Champlex2: envoyer le contenu généré par l'IA directement
+      // JSON-first pour Champlex2, Champlex, QCM et Pendu: envoyer le contenu généré par l'IA directement
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm') && generationResults.length > 0) {
+      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu') && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));

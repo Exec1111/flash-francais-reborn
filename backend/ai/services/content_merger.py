@@ -44,8 +44,8 @@ async def merge_ai_resource_content(
         Un tuple (chemin_fichier, url) vers le fichier HTML généré
     """
     
-    # Types qui utilisent le système JSON-first (simple remplacement de placeholder)
-    json_first_types = ['qcm', 'champlex', 'champlex2']
+    # Types qui utilisent le système JSON-first (simple remplacement de placeholder) avec templates runtime existants
+    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu']
     
     logger.info(f"[MERGE] Type: {type_key}, Subtype: {subtype_key}")
     logger.info(f"[MERGE] Subtype normalisé: {subtype_key.lower()}")
@@ -80,16 +80,32 @@ async def _merge_json_first_template(
             template_content = f.read()
         
         logger.info(f"[JSON-FIRST] Template lu, taille: {len(template_content)} caractères")
-        logger.info(f"[JSON-FIRST] Placeholder présent: {'<!--QCM_DATA_JSON-->' in template_content}")
+        # Vérifier le placeholder selon le type
+        if subtype_key.lower() == 'qcm':
+            placeholder_present = '<!--QCM_DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder QCM présent: {placeholder_present}")
+        elif subtype_key.lower() == 'pendu':
+            placeholder_present = '<!--PENDU_DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder PENDU présent: {placeholder_present}")
+        elif subtype_key.lower() in ['champlex', 'champlex2']:
+            placeholder_present = '<!--CHAMPLEX_DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder CHAMPLEX présent: {placeholder_present}")
+        else:
+            placeholder_present = '<!--DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder générique présent: {placeholder_present}")
         
         # Remplacer les placeholders selon le type
         if subtype_key.lower() == 'qcm':
-            # Pour QCM : remplacer <!--QCM_DATA_JSON--> par les données
             html_content = template_content.replace('<!--QCM_DATA_JSON-->', data_json)
             logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--QCM_DATA_JSON-->' in html_content}")
+        elif subtype_key.lower() == 'pendu':
+            # Pour Pendu : injection directe comme les autres exercices (pas de JSON.parse)
+            html_content = template_content.replace('<!--PENDU_DATA_JSON-->', data_json)
+            logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--PENDU_DATA_JSON-->' in html_content}")
         elif subtype_key.lower() in ['champlex', 'champlex2']:
             # Pour Champlex : remplacer <!--CHAMPLEX_DATA_JSON--> par les données
             html_content = template_content.replace('<!--CHAMPLEX_DATA_JSON-->', data_json)
+            logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--CHAMPLEX_DATA_JSON-->' in html_content}")
         else:
             # Fallback générique
             html_content = template_content.replace('<!--DATA_JSON-->', data_json)

@@ -2,9 +2,18 @@
 
 Ce document décrit le système d'unification des templates pour les activités interactives et fournit un patron pour créer de nouveaux templates runtime.
 
-## 1. Architecture du système
+## 1. Architecture du système JSON-first
 
-### 1.1. Principe d'unification
+### 1.1. Types d'exercices JSON-first supportés
+
+Flash Français Reborn utilise un système "JSON-first" pour les exercices interactifs qui génèrent des données structurées via l'IA :
+
+- `qcm` : Questions à choix multiples
+- `champlex` : Champ lexical simple  
+- `champlex2` : Champ lexical avancé
+- `pendu` : Jeu du pendu
+
+### 1.2. Principe d'unification
 
 Pour garantir un rendu visuel identique entre la version générée par l'IA et la version post-édition, chaque type d'activité utilise :
 
@@ -207,11 +216,49 @@ alembic upgrade head
 
 **Solution** : Créer `backend/ai/template_runtime/qcm_runtime_template.html`
 
-### 7.2. Données JSON non injectées
+### 7.2. Données JSON non injectées dans les exercices JSON-first
 
-**Symptôme** : `window.ACTIVITY_DATA` est `undefined`
+**Symptôme** : Les colonnes `data_json` et `runtime_html_path` sont vides en base de données
 
-**Solution** : Vérifier que le placeholder `<!--ACTIVITY_DATA_JSON-->` est présent dans le template
+**Causes possibles** :
+1. **Frontend** : `ai_content_json` non envoyé dans `useSubmitLogic.js`
+2. **Backend** : Type non inclus dans les listes JSON-first de `resource_crud_router.py`
+3. **Template** : Placeholder incorrect ou manquant
+4. **Content Merger** : Type non géré dans `content_merger.py`
+
+**Solutions** :
+- Vérifier que le type est inclus dans TOUS les endroits critiques :
+  - `useSubmitLogic.js` lignes 569 et 719
+  - `resource_crud_router.py` lignes 253 et 561
+  - `content_merger.py` ligne 48
+  - Template avec placeholder spécifique (ex: `<!--PENDU_DATA_JSON-->`)
+
+## 8. Procédure pour ajouter un nouvel exercice JSON-first
+
+### 8.1. Checklist complète
+
+**⚠️ CRITIQUE : Tous les points doivent être appliqués simultanément**
+
+1. **Créer le template runtime** : `{type}_runtime_template.html` avec placeholder `<!--{TYPE}_DATA_JSON-->`
+2. **Ajouter dans `content_merger.py`** :
+   - Ligne 48 : Ajouter à `json_first_types`
+   - Lignes 84-95 : Ajouter la vérification du placeholder
+   - Logique de remplacement appropriée
+3. **Ajouter dans `resource_crud_router.py`** :
+   - Ligne 253 : Ajouter à la liste de création
+   - Ligne 561 : Ajouter à la liste de mise à jour
+   - **Lignes 224-225** : Ajouter à la détection JSON-first (pas de copie de fichier)
+   - Ajouter la validation des données si nécessaire
+4. **Ajouter dans `useSubmitLogic.js`** :
+   - Ligne 569 : Ajouter au contournement de merge
+   - Ligne 719 : Ajouter à l'envoi de `ai_content_json`
+
+### 8.2. Points critiques
+
+- ⚠️ **Le frontend DOIT envoyer `ai_content_json`** sinon les colonnes BDD restent vides
+- ⚠️ **Chaque type a son propre placeholder spécifique** dans le template
+- ⚠️ **La vérification des placeholders doit être conditionnelle** selon le type
+- ⚠️ **Toujours tester la création complète** : génération IA → fusion → création → BDD
 
 ### 7.3. Style différent entre base et runtime
 

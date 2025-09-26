@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu du Pendu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 24px 12px;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 660px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            padding: 32px;
+        }
+        h1 {
+            margin: 0 0 6px;
+            font-size: 2.1rem;
+            color: #1a5276;
+        }
+        .meta {
+            color: #7f8c8d;
+            margin-bottom: 18px;
+            font-size: 0.95rem;
+        }
+        .hangman-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+        .svg-stage {
+            width: 200px;
+            height: 230px;
+        }
+        .part {
+            stroke: #2c3e50;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            display: none;
+        }
+        #wordDisplay {
+            font-weight: 600;
+            font-size: 1.9rem;
+            letter-spacing: 0.45em;
+            color: #2874a6;
+            margin: 14px 0 2px;
+            text-align: center;
+            min-height: 2.4rem;
+        }
+        #wordCounter {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+        #hintBox {
+            display: none;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #d6eaf8;
+            background-color: #eef6fb;
+            font-style: italic;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 18px 0 10px;
+        }
+        button {
+            border: none;
+            border-radius: 6px;
+            padding: 11px 16px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background-color 0.25s ease;
+        }
+        .primary {
+            background-color: #1abc9c;
+            color: #fff;
+        }
+        .primary:hover { background-color: #17a589; }
+        .secondary {
+            background-color: #e67e22;
+            color: #fff;
+        }
+        .secondary:hover { background-color: #d35400; }
+        .keyboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        .keyboard button {
+            min-width: 38px;
+            padding: 8px 0;
+            background-color: #3498db;
+            color: #fff;
+        }
+        .keyboard button:hover { background-color: #2e86c1; }
+        .keyboard button.correct { background-color: #2ecc71; }
+        .keyboard button.incorrect { background-color: #e74c3c; }
+        .keyboard button:disabled { cursor: not-allowed; opacity: 0.75; }
+        #status {
+            margin-top: 16px;
+            min-height: 24px;
+            font-weight: 600;
+        }
+        #status.success { color: #2ecc71; }
+        #status.fail { color: #e74c3c; }
+        #errorsLeft {
+            margin-top: 4px;
+            font-size: 0.95rem;
+            color: #7f8c8d;
+        }
+        @media (max-width: 540px) {
+            .container { padding: 24px 18px; }
+            #wordDisplay { letter-spacing: 0.3em; font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="exerciseTitle">Jeu du Pendu</h1>
+        <div class="meta" id="exerciseMeta"></div>
+        <div class="hangman-wrapper">
+            <svg class="svg-stage" viewBox="0 0 220 250">
+                <line class="part" id="base" x1="20" y1="230" x2="200" y2="230"></line>
+                <line class="part" id="pole" x1="70" y1="230" x2="70" y2="20"></line>
+                <line class="part" id="arm" x1="70" y1="20" x2="160" y2="20"></line>
+                <line class="part" id="rope" x1="160" y1="20" x2="160" y2="54"></line>
+                <circle class="part" id="head" cx="160" cy="76" r="20"></circle>
+                <line class="part" id="body" x1="160" y1="96" x2="160" y2="154"></line>
+                <line class="part" id="leftArm" x1="160" y1="116" x2="130" y2="138"></line>
+                <line class="part" id="rightArm" x1="160" y1="116" x2="188" y2="138"></line>
+                <line class="part" id="leftLeg" x1="160" y1="154" x2="138" y2="198"></line>
+                <line class="part" id="rightLeg" x1="160" y1="154" x2="182" y2="198"></line>
+            </svg>
+            <div id="wordDisplay"></div>
+            <div id="wordCounter"></div>
+            <div id="hintBox"></div>
+            <div class="controls">
+                <button class="primary" id="toggleHint">Afficher l'indice</button>
+                <button class="primary" id="nextWord" style="display:none;">Mot suivant</button>
+            </div>
+            <div id="errorsLeft"></div>
+            <div id="status"></div>
+            <div class="keyboard" id="keyboard"></div>
+            <button class="secondary" id="restart" style="display:none;">Rejouer la série</button>
+        </div>
+    </div>
+
+    <script>
+        window.PENDU_DATA = <!--PENDU_DATA_JSON-->;
+        console.log('[DEBUG] PENDU_DATA loaded:', window.PENDU_DATA);
+
+        function initializeHangmanGame(data) {
+            const payload = data && typeof data === 'object' ? data : {};
+            const words = Array.isArray(payload.liste_mots) ? payload.liste_mots : [];
+
+            const titleEl = document.getElementById('exerciseTitle');
+            const metaEl = document.getElementById('exerciseMeta');
+            const wordDisplay = document.getElementById('wordDisplay');
+            const wordCounter = document.getElementById('wordCounter');
+            const hintBox = document.getElementById('hintBox');
+            const toggleHintBtn = document.getElementById('toggleHint');
+            const nextWordBtn = document.getElementById('nextWord');
+            const restartBtn = document.getElementById('restart');
+            const keyboardEl = document.getElementById('keyboard');
+            const statusEl = document.getElementById('status');
+            const errorsLeftEl = document.getElementById('errorsLeft');
+            const hangmanParts = Array.from(document.querySelectorAll('.part'));
+
+            titleEl.textContent = payload.titre || 'Jeu du Pendu';
+            const metaBits = [];
+            if (payload.theme) metaBits.push(`Thème : ${payload.theme}`);
+            if (payload.niveau) metaBits.push(`Niveau : ${payload.niveau}`);
+            if (metaBits.length) metaEl.textContent = metaBits.join(' • ');
+            else metaEl.textContent = '';
+
+            const maxErrors = hangmanParts.length;
+            let currentIndex = 0;
+            let currentWord = '';
+            let maskedWord = [];
+            let guessedLetters = new Set();
+            let errors = 0;
+            let hintVisible = false;
+            let finishedCurrentWord = false;
+
+            if (!words.length) {
+                statusEl.textContent = "Aucune donnée disponible pour ce jeu.";
+                statusEl.className = 'fail';
+                toggleHintBtn.style.display = 'none';
+                return;
+            }
+
+            function resetHangmanParts() {
+                hangmanParts.forEach(part => part.style.display = 'none');
+            }
+
+            function showHangmanParts(upTo) {
+                for (let i = 0; i < hangmanParts.length; i++) {
+                    hangmanParts[i].style.display = i < upTo ? 'block' : 'none';
+                }
+            }
+
+            function updateErrorsLeft() {
+                errorsLeftEl.textContent = `Erreurs restantes : ${Math.max(0, maxErrors - errors)}`;
+            }
+
+            function updateMaskedWord() {
+                wordDisplay.textContent = maskedWord.join('');
+            }
+
+            function setStatus(message, status) {
+                statusEl.textContent = message;
+                statusEl.className = status ? status : '';
+            }
+
+            function configureKeyboard() {
+                keyboardEl.innerHTML = '';
+                const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                letters.split('').forEach(letter => {
+                    const btn = document.createElement('button');
+                    btn.textContent = letter;
+                    btn.addEventListener('click', () => handleGuess(letter, btn));
+                    keyboardEl.appendChild(btn);
+                });
+            }
+
+            function lockKeyboard(disabled) {
+                Array.from(keyboardEl.children).forEach(btn => btn.disabled = disabled);
+            }
+
+            function handleGuess(letter, button) {
+                if (finishedCurrentWord || guessedLetters.has(letter)) return;
+
+                guessedLetters.add(letter);
+                button.disabled = true;
+
+                if (currentWord.includes(letter)) {
+                    button.classList.add('correct');
+                    for (let i = 0; i < currentWord.length; i++) {
+                        if (currentWord[i] === letter) maskedWord[i] = letter;
+                    }
+                    updateMaskedWord();
+                    if (!maskedWord.includes('_')) {
+                        setStatus('Bravo ! Mot trouvé.', 'success');
+                        finishWord();
+                    }
+                } else {
+                    button.classList.add('incorrect');
+                    errors += 1;
+                    showHangmanParts(errors);
+                    updateErrorsLeft();
+                    if (errors >= maxErrors) {
+                        setStatus(`Dommage ! Le mot était : ${currentWord}`, 'fail');
+                        wordDisplay.textContent = currentWord;
+                        finishWord();
+                    }
+                }
+            }
+
+            function finishWord() {
+                finishedCurrentWord = true;
+                lockKeyboard(true);
+                toggleHintBtn.disabled = true;
+                nextWordBtn.style.display = currentIndex < words.length - 1 ? 'inline-block' : 'none';
+                restartBtn.style.display = currentIndex >= words.length - 1 ? 'inline-block' : 'none';
+                if (!hintVisible) {
+                    hintVisible = true;
+                    hintBox.style.display = 'block';
+                    toggleHintBtn.textContent = "Masquer l'indice";
+                }
+            }
+
+            function loadWord(index) {
+                const entry = words[index];
+                currentWord = (entry?.mot_a_deviner || '').toUpperCase();
+                if (!currentWord) {
+                    setStatus("Mot invalide dans les données.", 'fail');
+                    return;
+                }
+
+                maskedWord = Array(currentWord.length).fill('_');
+                guessedLetters = new Set();
+                errors = 0;
+                hintVisible = false;
+                finishedCurrentWord = false;
+
+                updateMaskedWord();
+                updateErrorsLeft();
+                setStatus('', '');
+                resetHangmanParts();
+                lockKeyboard(false);
+                configureKeyboard();
+
+                hintBox.textContent = entry?.indice || '';
+                hintBox.style.display = 'none';
+                toggleHintBtn.textContent = "Afficher l'indice";
+                toggleHintBtn.disabled = false;
+                nextWordBtn.style.display = 'none';
+                restartBtn.style.display = 'none';
+                wordCounter.textContent = `Mot ${index + 1} sur ${words.length}`;
+            }
+
+            toggleHintBtn.addEventListener('click', () => {
+                if (finishedCurrentWord && !hintVisible) return;
+                hintVisible = !hintVisible;
+                hintBox.style.display = hintVisible ? 'block' : 'none';
+                toggleHintBtn.textContent = hintVisible ? "Masquer l'indice" : "Afficher l'indice";
+            });
+
+            nextWordBtn.addEventListener('click', () => {
+                currentIndex += 1;
+                if (currentIndex < words.length) loadWord(currentIndex);
+            });
+
+            restartBtn.addEventListener('click', () => {
+                currentIndex = 0;
+                loadWord(currentIndex);
+            });
+
+            loadWord(currentIndex);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                initializeHangmanGame(window.PENDU_DATA);
+            } catch (error) {
+                console.error('Erreur lors de l\'initialisation du Pendu', error);
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = "Une erreur est survenue lors du chargement du jeu.";
+                statusEl.className = 'fail';
+            }
+        });
+    </script>
+</body>
+</html>

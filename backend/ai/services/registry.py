@@ -25,7 +25,7 @@ PROMPT_REGISTRY = {
     ("exercice", "champlex"): "champlex",
     ("exercice", "champlex2"): "champlex2",
     ("exercice", "mots-croises"): "mots_croises",
-    ("exercice", "pendu"): "pendu",
+    ("exercice", "pendu"): {"config": "pendu"},
     ("exercice", "quisuisje"): "quisuisje",
     ("exercice", "analyse_texte"): "analyse_texte",
     ("exercice", "textereconstitue"): "textereconstitue",
@@ -60,7 +60,6 @@ TEMPLATE_REGISTRY = {
     ("oeuvre", "oeuvrecomp"): "default_oeuvre_oeuvrecomp.html",
     ("exercice", "vocabulaire"): "default_exercice_vocabulaire.html",
     ("exercice", "quisuisje"): "default_exercice_quisuisje.html",
-    ("exercice", "pendu"): "default_exercice_pendu.html",
     # ("exercice", "champlex2"): "default_exercice_champlex2.html",  # JSON-first: plus de template base
     ("exercice", "mots-croises"): "default_exercice_motscroises.html", 
     ("exercice", "analyse_texte"): "default_exercice_analysetexte.html",

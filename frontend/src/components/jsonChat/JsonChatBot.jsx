@@ -216,6 +216,13 @@ const JsonChatBot = ({
         "Ajoute une explication à la première question",
         "Change le thème pour 'La poésie romantique'",
         "Crée 2 nouvelles questions sur les figures de style"
+      ],
+      pendu: [
+        "Ajoute 2 nouveaux mots sur le thème des animaux",
+        "Change le thème pour 'les métiers'",
+        "Améliore l'indice du mot 'courage'",
+        "Supprime le mot le plus facile",
+        "Ajoute un mot plus difficile pour les 4ème"
       ]
     };
     return examples[resourceSubtype] || [
@@ -417,11 +424,16 @@ const JsonChatBot = ({
                     p: 1.5, 
                     backgroundColor: 'grey.50', 
                     cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'grey.100' }
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    '&:hover': { 
+                      backgroundColor: 'grey.100',
+                      borderColor: 'primary.main'
+                    }
                   }}
                   onClick={() => setInputMessage(example)}
                 >
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'grey.700', fontWeight: 500 }}>
                     "{example}"
                   </Typography>
                 </Paper>

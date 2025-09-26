@@ -116,7 +116,7 @@ async def merge_resource(
             normalized_subtype_key = subtype_key.lower()
 
             # Types JSON-first: utiliser le template runtime
-            json_first_types = ['qcm', 'champlex', 'champlex2']
+            json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu']
             if normalized_subtype_key in json_first_types:
                 logger.info(f"Type {type_key}/{subtype_key} utilise le système JSON-first, redirection vers le template runtime")
                 try:

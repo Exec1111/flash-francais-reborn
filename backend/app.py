@@ -24,7 +24,7 @@ from routers.auth import auth_router
 from routers.progression import progression_router
 from routers.sequence import sequence_router
 from routers.session import session_router
-from routers.resource import resource_router
+from routers import resource_router
 from routers.resource_type import resource_type_router
 from routers.objective import objective_router
 from routers.user import user_router
@@ -274,10 +274,10 @@ app.include_router(
     tags=["sessions"]
 )
 
-# Inclusion des routes de ressource
+# Inclusion des routes de ressource (le routeur compose déjà /resources)
 app.include_router(
     resource_router,
-    prefix="/api/v1/resources",
+    prefix="/api/v1",
     tags=["resources"]
 )
 

@@ -178,7 +178,7 @@ class ResourceRead(ResourceBase):
         from_attributes = True
 
 class ResourceListResponse(BaseModel):
-    items: List[ResourceRead]
+    items: List[ResourceResponse]
     total: int
 
 # Appeler model_rebuild pour résoudre les références en avant (forward references)

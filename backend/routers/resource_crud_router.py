@@ -221,8 +221,8 @@ async def create_resource_route(
                 src = Path(html_path)
 
             # JSON-first: ne pas copier le fichier de prévisualisation; on utilisera data_json + runtime
-            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder') or \
-               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']):
+            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder', '/api/v1/ai/qcm-json-placeholder', '/api/v1/ai/pendu-json-placeholder') or \
+               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']):
                 logger.info(f"[AI->Resource] JSON-first détecté pour {t_key}/{st_key}: pas de copie de fichier HTML (html_path={html_path})")
                 dest = None  # Pas de fichier copié
             else:
@@ -246,11 +246,13 @@ async def create_resource_route(
                 t = getattr(db_resource, 'type', None)
                 t_key = (getattr(t, 'key', '') or '').strip().lower()
 
-                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']:
+                logger.info(f"[DEBUG_CREATE] ai_content_json reçu: {ai_content_json is not None}")
+                logger.info(f"[DEBUG_CREATE] ai_content_json contenu (100 premiers chars): {str(ai_content_json)[:100] if ai_content_json else 'None'}")
+                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']:
                     parsed_data_json = None
 
                     # JSON-first
-                    if st_key in ['champlex2', 'champlex', 'qcm'] and ai_content_json:
+                    if st_key in ['champlex2', 'champlex', 'qcm', 'pendu'] and ai_content_json:
                         try:
                             parsed_data_json = jsonlib.loads(ai_content_json)
                             if st_key == 'champlex2':
@@ -259,6 +261,8 @@ async def create_resource_route(
                                 logger.info(f"[CREATE/CHAMPLEX] data_json depuis IA JSON pour resource_id={db_resource.id} (champs={len(parsed_data_json.get('champs', []) or [])})")
                             elif st_key == 'qcm':
                                 logger.info(f"[CREATE/QCM] data_json depuis IA JSON pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []) or [])})")
+                            elif st_key == 'pendu':
+                                logger.info(f"[CREATE/PENDU] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('liste_mots', []) or [])})")
                         except jsonlib.JSONDecodeError as je:
                             logger.error(f"[CREATE/{st_key.upper()}] JSON invalide depuis IA: {je}")
 
@@ -284,6 +288,7 @@ async def create_resource_route(
                             injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', data_str)
                             injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
                             injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
+                            injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
                             runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
                             runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
                             runtime_abs.parent.mkdir(parents=True, exist_ok=True)
@@ -555,7 +560,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
 
-            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2']):
+            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']):
                 logger.warning(f"[JSON-FIRST] data_json ignoré pour type/subtype non dynamique: {t_key}/{st_key}")
             else:
                 # Validation légère selon subtype
@@ -572,15 +577,21 @@ async def update_resource_route(
                     questions = provided_json.get('questions') or []
                     if not isinstance(questions, list):
                         raise HTTPException(status_code=400, detail="data_json invalide pour qcm: 'questions' doit être une liste")
+                elif st_key == 'pendu':
+                    liste_mots = provided_json.get('liste_mots') or []
+                    if not isinstance(liste_mots, list):
+                        raise HTTPException(status_code=400, detail="data_json invalide pour pendu: 'liste_mots' doit être une liste")
                 # Générer runtime depuis data_json
                 _, runtime_template_path, resolved_template_key = TemplateResolver.resolve_templates(t_key, st_key)
                 if runtime_template_path and runtime_template_path.exists():
                     raw_template = runtime_template_path.read_text(encoding='utf-8')
                     data_str = jsonlib.dumps(provided_json, ensure_ascii=False)
                     # Support de plusieurs placeholders selon le template
+                    # Support de plusieurs placeholders selon le template
                     injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
                     rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                     abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
                     abs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -590,6 +601,8 @@ async def update_resource_route(
                     template_key_to_use = getattr(db_resource_check, 'template_key', None) or resolved_template_key
                     template_version_to_use = getattr(db_resource_check, 'template_version', None) or 1
                     logger.info(f"[JSON-FIRST/{st_key.upper()}] Runtime HTML généré: {abs_path}")
+                    logger.info(f"[DEBUG] parsed_data_json défini: {parsed_data_json is not None}")
+                    logger.info(f"[DEBUG] runtime_rel_path défini: {runtime_rel_path}")
 
         if html_content is not None:
             # Détecter un QCM: baser sur le sous-type lié s'il existe
@@ -598,7 +611,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
             # Gestion des exercices interactifs (exclut analysetexte et dictee qui sont statiques)
-            if t_key == 'exercice' and st_key in ['qcm', 'champlex']:
+            if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'pendu']:
                 # Parser selon le type d'exercice (champlex2 utilise JSON-first uniquement)
                 if st_key == 'qcm':
                     parsed_data_json = html_to_qcm_json(html_content)
@@ -636,7 +649,19 @@ async def update_resource_route(
                             template_version_to_use = 1
 
                         raw_template = runtime_template_path.read_text(encoding='utf-8')
-                        injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', jsonlib.dumps(parsed_data_json, ensure_ascii=False))
+                        # Échapper les données JSON pour éviter les problèmes de syntaxe JavaScript
+                        import json
+                        parsed_data = json.loads(parsed_data_json)
+                        escaped_data_json = json.dumps(parsed_data, ensure_ascii=False)
+                        escaped_data_json = (escaped_data_json.replace('\\', '\\\\')
+                                           .replace('</script>', '<\\/script>')
+                                           .replace('</style>', '<\\/style>')
+                                           .replace('"', '\\"')
+                                           .replace('\n', '\\n')
+                                           .replace('\r', '\\r')
+                                           .replace('\t', '\\t'))
+                        injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', escaped_data_json)
+                        injected = injected.replace('<!--PENDU_DATA_JSON-->', escaped_data_json)
                         # Écrire dans uploads/<user_id>/runtime_{subtype}_{resource_id}.html
                         rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                         abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
@@ -747,7 +772,10 @@ async def update_resource_route(
 
     # Injecter data_json si on a pu parser
     if parsed_data_json is not None:
+        logger.info(f"[DEBUG] Sauvegarde data_json: {type(parsed_data_json)} - {len(str(parsed_data_json))} chars")
         update_data_dict["data_json"] = parsed_data_json
+    else:
+        logger.warning("[DEBUG] parsed_data_json est None - pas de sauvegarde data_json")
     if runtime_rel_path is not None:
         update_data_dict["runtime_html_path"] = runtime_rel_path
     if template_key_to_use is not None:
