@@ -564,9 +564,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         throw new Error("Aucun jeton d'authentification trouvé");
       }
       
-      // Champlex, Champlex2, QCM et Pendu utilisent JSON-first: pas besoin de merge réel
+      // Champlex, Champlex2, QCM, Pendu et Quisuisje utilisent JSON-first: pas besoin de merge réel
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu') {
+      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje') {
         console.log(`[DEBUG][handleMergeAll] ${subtypeKeyNorm} JSON-first: contournement du merge`);
         
         // Simuler une réponse de merge pour les types JSON-first
@@ -584,6 +584,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
             break;
           case 'pendu':
             placeholderUrl = '/api/v1/ai/pendu-json-placeholder';
+            break;
+          case 'quisuisje':
+            placeholderUrl = '/api/v1/ai/quisuisje-json-placeholder';
             break;
           default:
             placeholderUrl = '/api/v1/ai/json-placeholder';
@@ -732,9 +735,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       apiFormData.append('session_ids_json', JSON.stringify(mergedResults.session_ids || []));
       apiFormData.append('objective_ids_json', JSON.stringify(mergedResults.objective_ids || []));
       
-      // JSON-first pour Champlex2, Champlex, QCM et Pendu: envoyer le contenu généré par l'IA directement
+      // JSON-first pour Champlex2, Champlex, QCM, Pendu et Quisuisje: envoyer le contenu généré par l'IA directement
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu') && generationResults.length > 0) {
+      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje') && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));

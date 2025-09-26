@@ -116,7 +116,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
 
-            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']):
+            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje']):
                 logger.warning(f"[JSON-FIRST] data_json ignoré pour type/subtype non dynamique: {t_key}/{st_key}")
             else:
                 # Validation légère selon subtype
@@ -148,6 +148,7 @@ async def update_resource_route(
                     injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', data_str)
                     rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                     abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
                     abs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -167,7 +168,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
             # Gestion des exercices interactifs (exclut analysetexte et dictee qui sont statiques)
-            if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'pendu']:
+            if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'pendu', 'quisuisje']:
                 # Parser selon le type d'exercice (champlex2 utilise JSON-first uniquement)
                 if st_key == 'qcm':
                     parsed_data_json = html_to_qcm_json(html_content)
@@ -218,6 +219,7 @@ async def update_resource_route(
                                            .replace('\t', '\\t'))
                         injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', escaped_data_json)
                         injected = injected.replace('<!--PENDU_DATA_JSON-->', escaped_data_json)
+                        injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', escaped_data_json)
                         # Écrire dans uploads/<user_id>/runtime_{subtype}_{resource_id}.html
                         rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                         abs_path = Path(settings.UPLOADS_BASE_DIR) / rel

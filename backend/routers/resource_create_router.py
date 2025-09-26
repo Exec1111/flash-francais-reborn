@@ -224,8 +224,8 @@ async def create_resource_route(
                 src = Path(html_path)
 
             # JSON-first: ne pas copier le fichier de prévisualisation; on utilisera data_json + runtime
-            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder', '/api/v1/ai/qcm-json-placeholder', '/api/v1/ai/pendu-json-placeholder') or \
-               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']):
+            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder', '/api/v1/ai/qcm-json-placeholder', '/api/v1/ai/pendu-json-placeholder', '/api/v1/ai/quisuisje-json-placeholder') or \
+               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje']):
                 logger.info(f"[AI->Resource] JSON-first détecté pour {t_key}/{st_key}: pas de copie de fichier HTML (html_path={html_path})")
                 dest = None  # Pas de fichier copié
             else:
@@ -251,11 +251,11 @@ async def create_resource_route(
 
                 logger.info(f"[DEBUG_CREATE] ai_content_json reçu: {ai_content_json is not None}")
                 logger.info(f"[DEBUG_CREATE] ai_content_json contenu (100 premiers chars): {str(ai_content_json)[:100] if ai_content_json else 'None'}")
-                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu']:
+                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje']:
                     parsed_data_json = None
 
                     # JSON-first
-                    if st_key in ['champlex2', 'champlex', 'qcm', 'pendu'] and ai_content_json:
+                    if st_key in ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje'] and ai_content_json:
                         try:
                             parsed_data_json = jsonlib.loads(ai_content_json)
                             if st_key == 'champlex2':
@@ -266,6 +266,8 @@ async def create_resource_route(
                                 logger.info(f"[CREATE/QCM] data_json depuis IA JSON pour resource_id={db_resource.id} (questions={len(parsed_data_json.get('questions', []) or [])})")
                             elif st_key == 'pendu':
                                 logger.info(f"[CREATE/PENDU] data_json depuis IA JSON pour resource_id={db_resource.id} (mots={len(parsed_data_json.get('liste_mots', []) or [])})")
+                            elif st_key == 'quisuisje':
+                                logger.info(f"[CREATE/QUISUISJE] data_json depuis IA JSON pour resource_id={db_resource.id} (vocabulaire={len(parsed_data_json.get('vocabulaire', []) or [])})")
                         except jsonlib.JSONDecodeError as je:
                             logger.error(f"[CREATE/{st_key.upper()}] JSON invalide depuis IA: {je}")
 
@@ -292,6 +294,7 @@ async def create_resource_route(
                             injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
                             injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
                             injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
+                            injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', data_str)
                             runtime_rel = get_upload_path(current_user.id, f"runtime_{st_key}_{db_resource.id}.html")
                             runtime_abs = Path(settings.UPLOADS_BASE_DIR) / runtime_rel
                             runtime_abs.parent.mkdir(parents=True, exist_ok=True)

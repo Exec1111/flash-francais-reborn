@@ -45,7 +45,7 @@ async def merge_ai_resource_content(
     """
     
     # Types qui utilisent le système JSON-first (simple remplacement de placeholder) avec templates runtime existants
-    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu']
+    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje']
     
     logger.info(f"[MERGE] Type: {type_key}, Subtype: {subtype_key}")
     logger.info(f"[MERGE] Subtype normalisé: {subtype_key.lower()}")
@@ -90,6 +90,9 @@ async def _merge_json_first_template(
         elif subtype_key.lower() in ['champlex', 'champlex2']:
             placeholder_present = '<!--CHAMPLEX_DATA_JSON-->' in template_content
             logger.info(f"[JSON-FIRST] Placeholder CHAMPLEX présent: {placeholder_present}")
+        elif subtype_key.lower() == 'quisuisje':
+            placeholder_present = '<!--QUISUISJE_DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder QUISUISJE présent: {placeholder_present}")
         else:
             placeholder_present = '<!--DATA_JSON-->' in template_content
             logger.info(f"[JSON-FIRST] Placeholder générique présent: {placeholder_present}")
@@ -106,6 +109,10 @@ async def _merge_json_first_template(
             # Pour Champlex : remplacer <!--CHAMPLEX_DATA_JSON--> par les données
             html_content = template_content.replace('<!--CHAMPLEX_DATA_JSON-->', data_json)
             logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--CHAMPLEX_DATA_JSON-->' in html_content}")
+        elif subtype_key.lower() == 'quisuisje':
+            # Pour Quisuisje : remplacer <!--QUISUISJE_DATA_JSON--> par les données
+            html_content = template_content.replace('<!--QUISUISJE_DATA_JSON-->', data_json)
+            logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--QUISUISJE_DATA_JSON-->' in html_content}")
         else:
             # Fallback générique
             html_content = template_content.replace('<!--DATA_JSON-->', data_json)

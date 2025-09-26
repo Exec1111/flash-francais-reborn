@@ -3,6 +3,7 @@ export { default as Champlex2Editor } from './Champlex2Editor';
 export { default as ChamplexEditor } from './ChamplexEditor';
 export { default as QcmEditor } from './QcmEditor';
 export { default as PenduEditor } from './PenduEditor';
+export { default as QuisuisjeEditor } from './QuisuisjeEditor';
 
 // Fonction pour obtenir l'éditeur approprié selon le type d'exercice
 export const getStructuredEditor = (subtypeKey) => {
@@ -11,8 +12,9 @@ export const getStructuredEditor = (subtypeKey) => {
     'champlex2': 'Champlex2Editor',
     'qcm': 'QcmEditor',
     'pendu': 'PenduEditor',
+    'quisuisje': 'QuisuisjeEditor',
   };
-  
+
   return editors[subtypeKey?.toLowerCase()] || null;
 };
 

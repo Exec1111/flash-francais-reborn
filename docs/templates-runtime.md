@@ -9,9 +9,10 @@ Ce document décrit le système d'unification des templates pour les activités 
 Flash Français Reborn utilise un système "JSON-first" pour les exercices interactifs qui génèrent des données structurées via l'IA :
 
 - `qcm` : Questions à choix multiples
-- `champlex` : Champ lexical simple  
+- `champlex` : Champ lexical simple
 - `champlex2` : Champ lexical avancé
 - `pendu` : Jeu du pendu
+- `quisuisje` : Jeu "Qui suis-je" avec indices progressifs
 
 ### 1.2. Principe d'unification
 
@@ -35,7 +36,35 @@ base_path, runtime_path, template_key = TemplateResolver.resolve_templates('exer
 # template_key: exercice_qcm_v1
 ```
 
-## 2. Structure d'un template runtime
+## 2. Édition spécialisée des activités JSON-first
+
+### 2.1. Exigence d'éditeurs spécialisés
+
+**Tous les types d'activités JSON-first DOIVENT avoir un éditeur spécialisé** dans `frontend/src/components/resources/editors/` :
+
+- **QCM** : `QcmEditor.js` - Interface pour créer/modifier questions à choix multiples
+- **Champ lexical** : `ChamplexEditor.js` et `Champlex2Editor.js` - Gestion des champs lexicaux
+- **Pendu** : `PenduEditor.js` - Éditeur pour mots à deviner
+- **Qui suis-je** : `QuisuisjeEditor.js` - Éditeur pour mots avec indices progressifs
+
+### 2.2. Structure des éditeurs
+
+Les éditeurs spécialisés doivent :
+
+1. **Être exportés** dans `frontend/src/components/resources/editors/index.js`
+2. **Être référencés** dans la fonction `getStructuredEditor()`
+3. **Fournir une interface graphique** adaptée au format JSON du type d'activité
+4. **Intégrer le chat IA** pour assistance à la création
+5. **Valider les données** avant sauvegarde
+
+### 2.3. Avantages des éditeurs spécialisés
+
+- **Interface intuitive** : Adaptation parfaite au format de données
+- **Validation en temps réel** : Contrôle des contraintes métier
+- **Assistance IA** : Chat intégré pour génération/amélioration du contenu
+- **Cohérence** : Respect du format JSON canonique
+
+## 3. Structure d'un template runtime
 
 ### 2.1. Ossature HTML type
 
@@ -157,6 +186,13 @@ if t_key == 'exercice' and st_key == 'nouveau_type':
 - **Interactions** : Sélection radio, validation avec score, affichage des explications
 - **Style** : Aligné sur `default_exercice_qcm.html`
 
+### 4.2. Qui suis-je (`quisuisje_runtime_template.html`)
+
+- **Données** : `{ titre, description, vocabulaire: [{ word, indices: [string] }] }`
+- **Interactions** : Indices progressifs, système de points dégressif, feedback intelligent
+- **Style** : Interface moderne avec animations, gestion des indices par étapes
+- **Éditeur** : `QuisuisjeEditor.js` - Interface graphique pour gérer mots et indices
+
 ### 4.2. Templates statiques (exemples)
 
 #### Analyse de Texte (`default_exercice_analysetexte.html`)
@@ -239,19 +275,27 @@ alembic upgrade head
 
 **⚠️ CRITIQUE : Tous les points doivent être appliqués simultanément**
 
-1. **Créer le template runtime** : `{type}_runtime_template.html` avec placeholder `<!--{TYPE}_DATA_JSON-->`
-2. **Ajouter dans `content_merger.py`** :
-   - Ligne 48 : Ajouter à `json_first_types`
-   - Lignes 84-95 : Ajouter la vérification du placeholder
-   - Logique de remplacement appropriée
-3. **Ajouter dans `resource_crud_router.py`** :
-   - Ligne 253 : Ajouter à la liste de création
-   - Ligne 561 : Ajouter à la liste de mise à jour
-   - **Lignes 224-225** : Ajouter à la détection JSON-first (pas de copie de fichier)
-   - Ajouter la validation des données si nécessaire
-4. **Ajouter dans `useSubmitLogic.js`** :
-   - Ligne 569 : Ajouter au contournement de merge
-   - Ligne 719 : Ajouter à l'envoi de `ai_content_json`
+1. **Créer l'éditeur spécialisé** : `{Type}Editor.js` dans `frontend/src/components/resources/editors/`
+    - Interface graphique adaptée au format JSON
+    - Validation des données et chat IA intégré
+    - Export dans `index.js` et fonction `getStructuredEditor()`
+
+2. **Créer le template runtime** : `{type}_runtime_template.html` avec placeholder `<!--{TYPE}_DATA_JSON-->`
+
+3. **Ajouter dans `content_merger.py`** :
+    - Ligne 48 : Ajouter à `json_first_types`
+    - Lignes 84-95 : Ajouter la vérification du placeholder
+    - Logique de remplacement appropriée
+
+4. **Ajouter dans `resource_crud_router.py`** :
+    - Ligne 253 : Ajouter à la liste de création
+    - Ligne 561 : Ajouter à la liste de mise à jour
+    - **Lignes 224-225** : Ajouter à la détection JSON-first (pas de copie de fichier)
+    - Ajouter la validation des données si nécessaire
+
+5. **Ajouter dans `useSubmitLogic.js`** :
+    - Ligne 569 : Ajouter au contournement de merge
+    - Ligne 719 : Ajouter à l'envoi de `ai_content_json`
 
 ### 8.2. Points critiques
 
