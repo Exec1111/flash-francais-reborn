@@ -1,7 +1,7 @@
 /**
  * Service de sauvegarde des ressources pédagogiques
  */
-import api from '../../../services/api';
+import resourceService from '../../../services/resourceService';
 import { formatErrorMessage } from '../utils/formatters';
 import { resourceTypeService } from '../../../services/resourceTypeService';
 
@@ -14,20 +14,18 @@ import { resourceTypeService } from '../../../services/resourceTypeService';
  * @returns {Promise<Object>} - Résultat de la sauvegarde
  */
 export const saveResource = async (resource, htmlContent, sessionId, supportId) => {
-  const token = localStorage.getItem('token');
-  if (!token) throw new Error("Token d'authentification manquant");
 
   console.log(`[saveResource] Sauvegarde de la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`);
-  
+
   // Récupérer l'URL HTML générée lors de la fusion
   // const htmlContent = resource.mergedHtml || resource.html_url;
-  
+
   if (!htmlContent) {
-    throw new Error(`Aucun contenu HTML disponible pour la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`); 
+    throw new Error(`Aucun contenu HTML disponible pour la ressource ${resource.suggestion.type_key}/${resource.suggestion.subtype_key}`);
   }
-  
+
   console.log(`[saveResource] URL HTML à enregistrer: ${htmlContent}`);
-  
+
   // Charger les mappings de types et sous-types
   // TODO: Optimisation - Appeler loadAndCacheResourceTypeMappings une seule fois lors de l'initialisation du Wizard ou de l'application.
   await resourceTypeService.loadAndCacheResourceTypeMappings();
@@ -42,21 +40,29 @@ export const saveResource = async (resource, htmlContent, sessionId, supportId) 
   }
 
   console.log(`[saveResource] Mapping dynamique des IDs: Type '${type_key}' -> ID ${typeId}, Sous-type '${subtype_key || "N/A"}' -> ID ${subTypeId || 'N/A'}`);
-  
-  // Le problème est que nous utilisons FormData mais l'endpoint attend du JSON
-  // Essayons d'envoyer les données directement comme des champs dans l'URL en utilisant URLSearchParams
-  const params = new URLSearchParams();
-  params.append('title', resource.suggestion.title || `${resource.suggestion.type_key} - ${resource.suggestion.subtype_key}`);
-  params.append('description', resource.data ? JSON.stringify(resource.data) : '');
-  params.append('type_id', typeId);
+
+  // Vérifier si c'est un type de ressource JSON-first
+  const subtypeKeyNorm = (subtype_key || '').toLowerCase();
+  const isJsonFirstResource = ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue'].includes(subtypeKeyNorm);
+
+  console.log(`[saveResource] Type de ressource: ${subtypeKeyNorm}, JSON-first: ${isJsonFirstResource}`);
+
+  // Préparation du FormData pour l'API
+  const formData = new FormData();
+
+  // Ajouter les informations de base de la ressource
+  formData.append('title', resource.suggestion.title || `${resource.suggestion.type_key} - ${resource.suggestion.subtype_key}`);
+  formData.append('description', resource.data ? JSON.stringify(resource.data) : '');
+  formData.append('type_id', typeId);
   if (subTypeId !== null && subTypeId !== undefined) {
-    params.append('sub_type_id', subTypeId);
+    formData.append('sub_type_id', subTypeId);
   }
-  params.append('html_path', htmlContent);
-  params.append('source_type', 'ai');
-  params.append('session_id', sessionId);
-  params.append('session_ids_json', `[${sessionId}]`);
-  params.append('objective_ids_json', '[]');
+  formData.append('html_path', htmlContent);
+  formData.append('source_type', 'ai');
+  formData.append('session_id', sessionId);
+  formData.append('session_ids_json', `[${sessionId}]`);
+  formData.append('objective_ids_json', '[]');
+
   // Lier la ressource à l'œuvre sélectionnée si présente
   if (supportId) {
     try {
@@ -65,44 +71,63 @@ export const saveResource = async (resource, htmlContent, sessionId, supportId) 
         .map((id) => Number(id))
         .filter((id) => !Number.isNaN(id));
       if (ids.length > 0) {
-        params.append('oeuvre_ids_json', JSON.stringify(ids));
+        formData.append('oeuvre_ids_json', JSON.stringify(ids));
       }
     } catch (_) {
       // En cas d'erreur de normalisation, ne rien envoyer
     }
   }
+
+  // Pour les ressources JSON-first, ajouter le contenu AI généré
+  if (isJsonFirstResource && resource.data) {
+    try {
+      formData.append('ai_content_json', JSON.stringify(resource.data));
+      console.log(`[saveResource] Contenu JSON-first ajouté pour ${subtypeKeyNorm}:`, resource.data);
+    } catch (error) {
+      console.error(`[saveResource] Erreur lors de la sérialisation du contenu JSON-first:`, error);
+    }
+  }
+
   // NOTE: Ne plus envoyer "study_object_ids_json" depuis le frontend.
-  
+
   console.log(`[saveResource] Données préparées pour l'envoi:`, {
-    title: params.get('title'),
-    description: params.get('description') ? params.get('description').substring(0, 50) + '...' : '',
-    type_id: params.get('type_id'),
-    sub_type_id: params.get('sub_type_id'),
-    html_path: params.get('html_path'),
-    source_type: params.get('source_type'),
-    session_ids_json: params.get('session_ids_json'),
-    objective_ids_json: params.get('objective_ids_json'),
-    oeuvre_ids_json: params.get('oeuvre_ids_json'),
+    title: resource.suggestion.title,
+    description: resource.data ? 'Données présentes' : 'Aucune donnée',
+    type_id: typeId,
+    sub_type_id: subTypeId,
+    html_path: htmlContent,
+    source_type: 'ai',
+    session_ids_json: `[${sessionId}]`,
+    objective_ids_json: '[]',
+    oeuvre_ids_json: supportId ? `[${supportId}]` : '[]',
+    isJsonFirst: isJsonFirstResource,
+    hasAiContent: isJsonFirstResource && resource.data ? 'Oui' : 'Non'
   });
 
-  console.log(`[saveResource] Envoi des données en x-www-form-urlencoded`);
+  console.log(`[saveResource] Envoi des données via resourceService.create`);
 
-  // Envoi des données avec content-type application/x-www-form-urlencoded
-  const response = await api.post(
-    `/resources/`, // Ajout du slash final
-    params, 
-    { 
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      // Timeout de sécurité pour éviter un blocage indéfini côté UI
-      timeout: 60000
-    }
-  );
+  // Utiliser resourceService.create qui gère automatiquement les headers pour FormData
+  const response = await resourceService.create(formData);
 
-  console.log(`[saveResource] Réponse:`, response.data);
-  
+  console.log(`[saveResource] Réponse complète:`, response);
+  console.log(`[saveResource] Status:`, response.status);
+  console.log(`[saveResource] Data:`, response.data);
+
+  // Vérification supplémentaire de la réponse
+  if (!response || !response.data) {
+    console.error(`[saveResource] Réponse vide reçue du serveur:`, response);
+    throw new Error('Réponse vide du serveur');
+  }
+
+  if (!response.data.id) {
+    console.error(`[saveResource] ID manquant dans la réponse:`, response.data);
+    console.error(`[saveResource] Clés disponibles dans response.data:`, Object.keys(response.data || {}));
+    throw new Error(`ID de ressource manquant dans la réponse. Réponse reçue: ${JSON.stringify(response.data)}`);
+  }
+
+  console.log(`[saveResource] Ressource sauvegardée avec ID:`, response.data.id);
+  console.log(`[saveResource] Ressource complète:`, response.data);
+
   return response.data;
 };
 

@@ -36,20 +36,38 @@ export const useSaving = (sessionId, onResourcesGenerated, onClose, supportId) =
     setSaveError(null);
     
     try {
-      const createdResources = await saveAllResources(
-        resources,
-        sessionId,
-        null,
-        null,
-        supportId
-      );
-      
-      const validResources = Array.isArray(createdResources) ? createdResources.filter(Boolean) : [];
-      console.log('[useSaving] Ressources créées', {
-        created_count: validResources.length,
-      });
-      // Afficher un message de succès
-      alert(`${validResources.length} ressource(s) ont été enregistrées avec succès.`);
+       console.log('[useSaving] Appel de saveAllResources avec', {
+         resources_count: resources.length,
+         sessionId,
+         supportId
+       });
+
+       const createdResources = await saveAllResources(
+         resources,
+         sessionId,
+         null,
+         null,
+         supportId
+       );
+
+       console.log('[useSaving] saveAllResources a retourné:', createdResources);
+       console.log('[useSaving] Type de createdResources:', typeof createdResources);
+       console.log('[useSaving] createdResources est Array:', Array.isArray(createdResources));
+
+       const validResources = Array.isArray(createdResources) ? createdResources.filter(Boolean) : [];
+       console.log('[useSaving] Ressources filtrées valides:', validResources);
+       console.log('[useSaving] Ressources créées', {
+         created_count: validResources.length,
+         resources_details: validResources.map(r => ({ id: r?.id, title: r?.title }))
+       });
+
+       if (validResources.length === 0) {
+         console.error('[useSaving] Aucune ressource valide créée malgré le succès apparent');
+         throw new Error('Aucune ressource n\'a été correctement sauvegardée');
+       }
+
+       // Afficher un message de succès
+       alert(`${validResources.length} ressource(s) ont été enregistrées avec succès.`);
       
       // Fermer immédiatement le wizard pour éviter tout blocage UI
       if (onClose) {

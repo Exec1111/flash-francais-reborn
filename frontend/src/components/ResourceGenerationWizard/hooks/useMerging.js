@@ -5,6 +5,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { mergeAllResources } from '../services/mergeService';
 
 /**
+ * Vérifie si un type de ressource est JSON-first (pas besoin de fusion HTML réelle)
+ * @param {string} subtypeKey - Clé du sous-type de ressource
+ * @returns {boolean} Vrai si c'est un type JSON-first
+ */
+const isJsonFirstResource = (subtypeKey) => {
+  const subtypeKeyNorm = (subtypeKey || '').toLowerCase();
+  return ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue'].includes(subtypeKeyNorm);
+};
+
+/**
  * Hook pour gérer la fusion des ressources
  * @param {number} activeStep - Étape active du wizard
  * @returns {Object} État et fonctions pour gérer la fusion
@@ -61,17 +71,75 @@ export const useMerging = (activeStep) => {
       console.log("[useMerging] Fusion déjà en cours, ignorer l'appel");
       return;
     }
-    
+
     if (finalMergedResources.length === 0 || !finalMergedResources.some(r => r.mergeStatus === 'pending')) {
       console.log("[useMerging] Aucune fusion à effectuer");
       return;
     }
-    
+
     console.log("[useMerging] Déclenchement de la fusion");
     setIsMerging(true);
     setHtmlMergeError(null);
     mergingInProgressRef.current = true;
-    
+
+    // Vérifier si toutes les ressources sont JSON-first
+    const hasNonJsonFirstResources = finalMergedResources.some(r =>
+      r.mergeStatus === 'pending' && !isJsonFirstResource(r.suggestion?.subtype_key)
+    );
+
+    if (!hasNonJsonFirstResources) {
+      console.log("[useMerging] Toutes les ressources sont JSON-first, contournement de la fusion");
+
+      // Simuler une réponse de merge pour les types JSON-first
+      const updatedResources = finalMergedResources.map(resource => {
+        if (resource.mergeStatus === 'pending') {
+          const subtypeKeyNorm = (resource.suggestion?.subtype_key || '').toLowerCase();
+          let placeholderUrl;
+
+          switch(subtypeKeyNorm) {
+            case 'champlex2':
+              placeholderUrl = '/api/v1/ai/champlex2-json-placeholder';
+              break;
+            case 'champlex':
+              placeholderUrl = '/api/v1/ai/champlex-json-placeholder';
+              break;
+            case 'qcm':
+              placeholderUrl = '/api/v1/ai/qcm-json-placeholder';
+              break;
+            case 'pendu':
+              placeholderUrl = '/api/v1/ai/pendu-json-placeholder';
+              break;
+            case 'quisuisje':
+              placeholderUrl = '/api/v1/ai/quisuisje-json-placeholder';
+              break;
+            case 'textereconstitue':
+              placeholderUrl = '/api/v1/ai/textereconstitue-json-placeholder';
+              break;
+            default:
+              placeholderUrl = '/api/v1/ai/json-placeholder';
+          }
+
+          return {
+            ...resource,
+            mergeStatus: 'success',
+            mergedHtml: placeholderUrl,
+            html_url: placeholderUrl,
+            html_path: placeholderUrl,
+            data_json: resource.data
+          };
+        }
+        return resource;
+      });
+
+      setFinalMergedResources(updatedResources);
+      setIsMerging(false);
+      setHtmlMergeError(null);
+      mergingInProgressRef.current = false;
+      console.log('[useMerging] Fusion JSON-first terminée');
+      return;
+    }
+
+    // Fusion normale pour les ressources non-JSON-first
     mergeAllResources(
       finalMergedResources,
       (updatedResources) => {
