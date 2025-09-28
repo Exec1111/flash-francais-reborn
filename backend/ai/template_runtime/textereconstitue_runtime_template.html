@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconstitution de Texte - Activité</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .exercise-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .exercise-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+        }
+        .exercise-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .exercise-type {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+        }
+        .exercise-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .info-badge {
+            background-color: #f8f9fa;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            font-size: 0.9em;
+            color: #495057;
+        }
+        .info-badge.theme { border-color: #007bff; color: #007bff; }
+        .info-badge.type { border-color: #28a745; color: #28a745; }
+        .info-badge.difficulty { border-color: #ffc107; color: #e68900; }
+        .consigne {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #2196f3;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .exercise-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .main-exercise {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+            min-height: 400px;
+        }
+        .elements-container {
+            margin-bottom: 20px;
+        }
+        .element-item {
+            background-color: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: move;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .element-item:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+        }
+        .element-item.selected {
+            border-color: #28a745;
+            background-color: #f8fff9;
+        }
+        .element-number {
+            position: absolute;
+            top: -8px;
+            left: 15px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .element-content {
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .help-section {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .help-section h3 {
+            color: #856404;
+            margin-top: 0;
+            font-size: 1.1em;
+        }
+        .indice-item {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            border-left: 3px solid #ffc107;
+        }
+        .indice-type {
+            font-weight: bold;
+            color: #e68900;
+            text-transform: uppercase;
+            font-size: 0.8em;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .solution-section {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            display: none;
+        }
+        .solution-section.show {
+            display: block;
+            animation: slideDown 0.5s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .solution-text {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.8;
+            font-size: 1.1em;
+        }
+        .explanation {
+            background-color: rgba(255,255,255,0.7);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .connecteurs-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .connecteur-item {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #dee2e6;
+            font-size: 0.9em;
+        }
+        .connecteur-word {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .evaluation-section {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .evaluation-section h3 {
+            color: #004085;
+            margin-top: 0;
+        }
+        .criteria-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .criteria-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .criteria-name {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        .criteria-points {
+            background-color: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: bold;
+            float: right;
+        }
+        @media (max-width: 768px) {
+            .exercise-content {
+                grid-template-columns: 1fr;
+            }
+            .exercise-info {
+                flex-direction: column;
+                align-items: center;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .btn {
+                display: block;
+                margin: 5px 0;
+            }
+        }
+        .drag-over {
+            border-color: #28a745 !important;
+            background-color: #f8fff9 !important;
+        }
+        .placeholder {
+            border: 2px dashed #6c757d;
+            background-color: #f8f9fa;
+            height: 60px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="exercise-container">
+        <div class="exercise-header">
+            <div class="exercise-type">🔄 Reconstitution de Texte</div>
+            <h1 id="title">Reconstitution de Texte</h1>
+            <div class="exercise-info">
+                <div class="info-badge theme" id="themeBadge">📖 Thème</div>
+                <div class="info-badge type" id="typeBadge">📝 Type</div>
+                <div class="info-badge difficulty" id="difficultyBadge">⚡ Difficulté</div>
+            </div>
+        </div>
+
+        <div class="consigne" id="consigneSection">
+            <strong>📋 Consigne :</strong> <span id="consigneText"></span>
+        </div>
+
+        <div class="exercise-content">
+            <div class="main-exercise">
+                <h3>🧩 Éléments à remettre en ordre :</h3>
+                <div class="elements-container" id="elementsContainer">
+                    <!-- Les éléments seront ajoutés dynamiquement -->
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="resetOrder()">🔄 Remettre à zéro</button>
+                    <button class="btn btn-primary" onclick="checkOrder()">✅ Vérifier</button>
+                    <button class="btn btn-success" onclick="showSolution()">💡 Voir la solution</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="help-section">
+                    <h3>💡 Indices pour vous aider</h3>
+                    <div id="indicesContainer">
+                        <!-- Les indices seront ajoutés dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="solution-section" id="solutionSection">
+            <h3>✅ Solution et explication</h3>
+
+            <div class="solution-text" id="solutionText">
+                <strong>Texte reconstitué :</strong><br>
+                <span id="originalText"></span>
+            </div>
+
+            <div class="explanation" id="explanationSection">
+                <h4>📚 Explication pédagogique</h4>
+                <p><strong>Logique de construction :</strong> <span id="logiqueConstruction"></span></p>
+
+                <p><strong>Structure textuelle :</strong> <span id="structureTextuelle"></span></p>
+
+                <h5>🔗 Connecteurs logiques importants :</h5>
+                <div class="connecteurs-list" id="connecteursList">
+                    <!-- Les connecteurs seront ajoutés dynamiquement -->
+                </div>
+            </div>
+        </div>
+
+        <div class="evaluation-section" id="evaluationSection" style="display: none;">
+            <h3>📊 Critères d'évaluation</h3>
+            <div class="criteria-list" id="criteriaList">
+                <!-- Les critères seront ajoutés dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Données injectées par le backend
+        window.TEXTERECONSTITUE_DATA = <!--TEXTERECONSTITUE_DATA_JSON-->;
+
+        // Parser les données JSON si elles existent
+        if (typeof window.TEXTERECONSTITUE_DATA === 'string') {
+            try {
+                window.TEXTERECONSTITUE_DATA = JSON.parse(window.TEXTERECONSTITUE_DATA);
+            } catch (e) {
+                console.error('Erreur lors du parsing des données JSON:', e);
+                window.TEXTERECONSTITUE_DATA = null;
+            }
+        }
+        // Support des deux formes: { ... } ou { exercice: { ... } }
+        console.log('[TEXTERECONSTITUE][DEBUG] Données brutes reçues:', window.TEXTERECONSTITUE_DATA);
+
+        let correctOrder = [];
+        let draggedElement = null;
+
+        // Initialisation du jeu
+        function initializeGame() {
+            if (!window.TEXTERECONSTITUE_DATA) {
+                console.error('Aucune donnée d\'activité trouvée');
+                return;
+            }
+
+            const raw = window.TEXTERECONSTITUE_DATA;
+            const data = raw && typeof raw === 'object' && raw.exercice ? raw.exercice : raw;
+            console.log('[TEXTERECONSTITUE][DEBUG] Données normalisées (data):', data);
+
+            // Mettre à jour le titre et les métadonnées
+            document.getElementById('title').textContent = data.titre || 'Reconstitution de Texte';
+            document.getElementById('consigneText').textContent = data.consigne || '';
+
+            // Mettre à jour les badges d'info
+            document.getElementById('themeBadge').innerHTML = `📖 ${data.theme || 'Thème'}`;
+            document.getElementById('typeBadge').innerHTML = `📝 ${data.type_texte ? data.type_texte.charAt(0).toUpperCase() + data.type_texte.slice(1) : 'Type'}`;
+            document.getElementById('difficultyBadge').innerHTML = `⚡ ${data.difficulte ? data.difficulte.charAt(0).toUpperCase() + data.difficulte.slice(1) : 'Difficulté'}`;
+
+            // Stocker l'ordre correct
+            correctOrder = data.ordre_correct || [];
+
+            // Générer les éléments mélangés
+            generateElements(data.elements_melanges || []);
+
+            // Générer les indices
+            generateIndices(data.indices || []);
+
+            // Générer les connecteurs
+            generateConnecteurs(data.explication ? data.explication.connecteurs_cles || [] : []);
+
+            // Générer les critères d'évaluation
+            if (data.criteres_evaluation) {
+                generateCriteria(data.criteres_evaluation);
+                document.getElementById('evaluationSection').style.display = 'block';
+            }
+
+            // Configurer les événements
+            setupDragAndDrop();
+        }
+
+        function generateElements(elements) {
+            const container = document.getElementById('elementsContainer');
+            container.innerHTML = '';
+
+            elements.forEach((element, index) => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'element-item';
+                elementDiv.draggable = true;
+                elementDiv.setAttribute('data-id', element.id);
+                elementDiv.setAttribute('data-order', '0');
+
+                elementDiv.innerHTML = `
+                    <div class="element-number">${index + 1}</div>
+                    <div class="element-content">${element.contenu}</div>
+                `;
+
+                container.appendChild(elementDiv);
+            });
+        }
+
+        function generateIndices(indices) {
+            const container = document.getElementById('indicesContainer');
+            container.innerHTML = '';
+
+            indices.forEach(indice => {
+                const indiceDiv = document.createElement('div');
+                indiceDiv.className = 'indice-item';
+
+                indiceDiv.innerHTML = `
+                    <div class="indice-type">${indice.type}</div>
+                    <div>${indice.description}</div>
+                    ${indice.exemple ? `<div style="font-style: italic; margin-top: 5px; color: #6c757d;">Exemple : ${indice.exemple}</div>` : ''}
+                `;
+
+                container.appendChild(indiceDiv);
+            });
+        }
+
+        function generateConnecteurs(connecteurs) {
+            const container = document.getElementById('connecteursList');
+            container.innerHTML = '';
+
+            connecteurs.forEach(conn => {
+                const connDiv = document.createElement('div');
+                connDiv.className = 'connecteur-item';
+                connDiv.innerHTML = `<span class="connecteur-word">${conn.connecteur}</span> : ${conn.fonction}`;
+                container.appendChild(connDiv);
+            });
+        }
+
+        function generateCriteria(criteria) {
+            const container = document.getElementById('criteriaList');
+            container.innerHTML = '';
+
+            criteria.forEach(critere => {
+                const criteriaDiv = document.createElement('div');
+                criteriaDiv.className = 'criteria-item';
+                criteriaDiv.innerHTML = `
+                    <span class="criteria-points">${critere.points} pts</span>
+                    <div class="criteria-name">${critere.critere}</div>
+                    <div>${critere.description}</div>
+                `;
+                container.appendChild(criteriaDiv);
+            });
+        }
+
+        function setupDragAndDrop() {
+            const container = document.getElementById('elementsContainer');
+            const elements = container.querySelectorAll('.element-item');
+
+            elements.forEach(element => {
+                element.addEventListener('dragstart', handleDragStart);
+                element.addEventListener('dragover', handleDragOver);
+                element.addEventListener('drop', handleDrop);
+                element.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.style.opacity = '0.5';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (draggedElement !== this) {
+                const container = document.getElementById('elementsContainer');
+                const elements = Array.from(container.children);
+                const draggedIndex = elements.indexOf(draggedElement);
+                const targetIndex = elements.indexOf(this);
+
+                if (draggedIndex < targetIndex) {
+                    container.insertBefore(draggedElement, this.nextSibling);
+                } else {
+                    container.insertBefore(draggedElement, this);
+                }
+                updateElementNumbers();
+            }
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+            this.classList.remove('drag-over');
+        }
+
+        function updateElementNumbers() {
+            const elements = document.querySelectorAll('.element-item');
+            elements.forEach((element, index) => {
+                const numberDiv = element.querySelector('.element-number');
+                numberDiv.textContent = index + 1;
+            });
+        }
+
+        function getCurrentOrder() {
+            const elements = document.querySelectorAll('.element-item');
+            return Array.from(elements).map(el => parseInt(el.getAttribute('data-id')));
+        }
+
+        function checkOrder() {
+            const currentOrder = getCurrentOrder();
+            const isCorrect = JSON.stringify(currentOrder) === JSON.stringify(correctOrder);
+
+            if (isCorrect) {
+                alert('🎉 Félicitations ! Vous avez reconstitué le texte correctement !');
+                showSolution();
+            } else {
+                alert('❌ L\'ordre n\'est pas encore correct. Consultez les indices et réessayez !');
+            }
+        }
+
+        function resetOrder() {
+            const container = document.getElementById('elementsContainer');
+            const elements = Array.from(container.children);
+
+            // Shuffle elements randomly
+            for (let i = elements.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                container.appendChild(elements[j]);
+            }
+            updateElementNumbers();
+
+            // Hide solution if shown
+            document.getElementById('solutionSection').classList.remove('show');
+        }
+
+        function showSolution() {
+            const data = window.TEXTERECONSTITUE_DATA;
+
+            // Arrange elements in correct order
+            const container = document.getElementById('elementsContainer');
+            const elements = Array.from(container.children);
+
+            correctOrder.forEach(id => {
+                const element = elements.find(el => parseInt(el.getAttribute('data-id')) === id);
+                if (element) {
+                    container.appendChild(element);
+                }
+            });
+
+            updateElementNumbers();
+            document.getElementById('solutionSection').classList.add('show');
+
+            // Afficher le texte original
+            document.getElementById('originalText').textContent = data.texte_original || '';
+
+            // Afficher l'explication
+            if (data.explication) {
+                document.getElementById('logiqueConstruction').textContent = data.explication.logique_construction || '';
+                document.getElementById('structureTextuelle').textContent = data.explication.structure_textuelle || '';
+            }
+
+            // Highlight correct elements
+            elements.forEach(el => el.classList.add('selected'));
+            setTimeout(() => {
+                elements.forEach(el => el.classList.remove('selected'));
+            }, 2000);
+        }
+
+        // Lancer le jeu quand la page est chargée
+        document.addEventListener('DOMContentLoaded', initializeGame);
+    </script>
+</body>
+</html>

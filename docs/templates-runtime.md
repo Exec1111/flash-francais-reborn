@@ -1,3 +1,52 @@
+
+### 8.3. Spécifique « Texte reconstitué » (textereconstitue)
+
+- **Template runtime**: `backend/ai/template_runtime/textereconstitue_runtime_template.html`
+  - Placeholder: `<!--TEXTERECONSTITUE_DATA_JSON-->`
+  - Variable: `window.TEXTERECONSTITUE_DATA` (le runtime accepte `{ exercice: {...} }` ou `{ ... }`)
+- **ContentMerger**: ajouter `textereconstitue` aux `json_first_types` et au remplacement du placeholder.
+- **Création & Mise à jour (backend)**:
+  - `resource_create_router.py`: inclure `textereconstitue` dans les listes JSON-first et injecter `<!--TEXTERECONSTITUE_DATA_JSON-->`.
+  - `resource_update_router.py`:
+    - Inclure `textereconstitue` dans la condition JSON-first lors de la réception de `data_json_text`.
+    - Lors de la régénération du runtime, ajouter `injected = injected.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_str)`.
+    - Ne pas tenter de parser HTML→JSON pour `textereconstitue` (il reste JSON-first), garder HTML→JSON pour `qcm` et `champlex` seulement.
+    - Éviter les import locaux `import json` qui masquent le module global; préférer `import json as _json` si nécessaire.
+- **Frontend**:
+  - `useSubmitLogic.js`: inclure `textereconstitue` aux listes JSON-first (contournement de merge + envoi `ai_content_json`).
+  - `editors/index.js`: exporter `TextereconstitueEditor` et ajouter le mapping dans `getStructuredEditor()`.
+  - `ResourceHtmlEditingMode.js`: rendre `TextereconstitueEditor` lorsque `subtypeKey === 'textereconstitue'`.
+
+### 8.4. Compléments Backend (update_resource_route) — éviter les régressions
+
+- **Import requis** dans `backend/routers/resource_update_router.py`:
+  ```python
+  from crud.resource import get_upload_path
+  ```
+- **Liste JSON-first (mise à jour)** dans la branche `data_json_text`:
+  ```python
+  if not (t_key == 'exercice' and st_key in ['qcm','champlex','champlex2','pendu','quisuisje','textereconstitue']):
+      logger.warning("[JSON-FIRST] data_json ignoré …")
+  else:
+      # génération runtime + sauvegarde
+  ```
+- **Injection du placeholder spécifique** lors de la génération du runtime:
+  ```python
+  injected = injected.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_str)
+  ```
+- **Garde-fou HTML→JSON** (ne pas réécraser le JSON-first):
+  ```python
+  # n'entrer dans le parsing HTML→JSON que si aucune donnée JSON-first n'a été fournie
+  if html_content is not None and parsed_data_json is None:
+      ...
+  ```
+- **Éviter l’import local `json`** qui masque le module global:
+  ```python
+  import json as _json
+  parsed_data = parsed_data_json if isinstance(parsed_data_json, (dict, list)) else _json.loads(parsed_data_json)
+  escaped_data_json = _json.dumps(parsed_data, ensure_ascii=False)
+  ```
+
 # Guide des Templates Runtime
 
 Ce document décrit le système d'unification des templates pour les activités interactives et fournit un patron pour créer de nouveaux templates runtime.
@@ -13,6 +62,7 @@ Flash Français Reborn utilise un système "JSON-first" pour les exercices inter
 - `champlex2` : Champ lexical avancé
 - `pendu` : Jeu du pendu
 - `quisuisje` : Jeu "Qui suis-je" avec indices progressifs
+- `textereconstitue` : Reconstitution de texte (ordre d’éléments)
 
 ### 1.2. Principe d'unification
 
@@ -46,6 +96,7 @@ base_path, runtime_path, template_key = TemplateResolver.resolve_templates('exer
 - **Champ lexical** : `ChamplexEditor.js` et `Champlex2Editor.js` - Gestion des champs lexicaux
 - **Pendu** : `PenduEditor.js` - Éditeur pour mots à deviner
 - **Qui suis-je** : `QuisuisjeEditor.js` - Éditeur pour mots avec indices progressifs
+- **Texte reconstitué** : `TextereconstitueEditor.js` - Éditeur pour titres/consigne/éléments, indices, connecteurs, critères
 
 ### 2.2. Structure des éditeurs
 
@@ -193,7 +244,21 @@ if t_key == 'exercice' and st_key == 'nouveau_type':
 - **Style** : Interface moderne avec animations, gestion des indices par étapes
 - **Éditeur** : `QuisuisjeEditor.js` - Interface graphique pour gérer mots et indices
 
-### 4.2. Templates statiques (exemples)
+### 4.3. Texte reconstitué (`textereconstitue_runtime_template.html`)
+
+- **Données** (normalisées côté runtime): soit `{ ... }` soit `{ exercice: { ... } }` avec:
+  - `titre`, `theme`, `type_texte`, `difficulte`, `consigne`
+  - `elements_melanges: [{ id:number, contenu:string, marqueurs_logiques:string[] }]`
+  - `ordre_correct: number[]`
+  - `texte_original`
+  - `explication: { logique_construction, structure_textuelle, connecteurs_cles: [{connecteur, fonction}] }`
+  - `criteres_evaluation: [{ critere, description, points }]`
+- **Placeholder**: `<!--TEXTERECONSTITUE_DATA_JSON-->`
+- **Variable JavaScript**: `window.TEXTERECONSTITUE_DATA`
+- **Interactions**: Drag & drop des éléments, vérification d’ordre, affichage de la solution et des explications
+- **Éditeur**: `TextereconstitueEditor.js` (UI + validation + intégration IA)
+
+### 4.4. Templates statiques (exemples)
 
 #### Analyse de Texte (`default_exercice_analysetexte.html`)
 - **Statut** : **Statique** (pas de template runtime)

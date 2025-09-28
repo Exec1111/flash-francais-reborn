@@ -16,6 +16,7 @@ from ai.utils.html_cleaner import clean_html, remove_empty_blocks_and_breaks
 from .resource_utils import html_to_qcm_json, html_to_champlex_json
 from config import get_settings
 from werkzeug.utils import secure_filename
+from crud.resource import get_upload_path
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -116,7 +117,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
 
-            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje']):
+            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue']):
                 logger.warning(f"[JSON-FIRST] data_json ignoré pour type/subtype non dynamique: {t_key}/{st_key}")
             else:
                 # Validation légère selon subtype
@@ -149,6 +150,7 @@ async def update_resource_route(
                     injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_str)
                     rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                     abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
                     abs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,7 +163,8 @@ async def update_resource_route(
                     logger.info(f"[DEBUG] parsed_data_json défini: {parsed_data_json is not None}")
                     logger.info(f"[DEBUG] runtime_rel_path défini: {runtime_rel_path}")
 
-        if html_content is not None:
+        # N’entrer ici que si on n’a PAS déjà des données JSON-first
+        if html_content is not None and parsed_data_json is None:
             # Détecter un QCM: baser sur le sous-type lié s'il existe
             st = getattr(db_resource_check, 'sub_type', None)
             st_key = (getattr(st, 'key', '') or '').strip().lower()
@@ -207,9 +210,10 @@ async def update_resource_route(
 
                         raw_template = runtime_template_path.read_text(encoding='utf-8')
                         # Échapper les données JSON pour éviter les problèmes de syntaxe JavaScript
-                        import json
-                        parsed_data = json.loads(parsed_data_json)
-                        escaped_data_json = json.dumps(parsed_data, ensure_ascii=False)
+                        import json as _json
+                        # parsed_data_json peut déjà être un dict (selon la branche précédente)
+                        parsed_data = parsed_data_json if isinstance(parsed_data_json, (dict, list)) else _json.loads(parsed_data_json)
+                        escaped_data_json = _json.dumps(parsed_data, ensure_ascii=False)
                         escaped_data_json = (escaped_data_json.replace('\\', '\\\\')
                                            .replace('</script>', '<\\/script>')
                                            .replace('</style>', '<\\/style>')

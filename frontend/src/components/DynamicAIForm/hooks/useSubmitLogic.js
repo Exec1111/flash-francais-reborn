@@ -566,7 +566,7 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       
       // Champlex, Champlex2, QCM, Pendu et Quisuisje utilisent JSON-first: pas besoin de merge réel
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje') {
+      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje' || subtypeKeyNorm === 'textereconstitue') {
         console.log(`[DEBUG][handleMergeAll] ${subtypeKeyNorm} JSON-first: contournement du merge`);
         
         // Simuler une réponse de merge pour les types JSON-first
@@ -587,6 +587,9 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
             break;
           case 'quisuisje':
             placeholderUrl = '/api/v1/ai/quisuisje-json-placeholder';
+            break;
+          case 'textereconstitue':
+            placeholderUrl = '/api/v1/ai/textereconstitue-json-placeholder';
             break;
           default:
             placeholderUrl = '/api/v1/ai/json-placeholder';
@@ -737,7 +740,7 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       
       // JSON-first pour Champlex2, Champlex, QCM, Pendu et Quisuisje: envoyer le contenu généré par l'IA directement
       const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje') && generationResults.length > 0) {
+      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje' || subtypeKeyNorm === 'textereconstitue') && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));

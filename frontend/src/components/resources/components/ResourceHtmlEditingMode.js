@@ -17,7 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SaveAsIcon from '@mui/icons-material/SaveAs';
 import TinyHtmlEditor from '../../editors/TinyHtmlEditor';
 import HtmlChatBot from '../../htmlChat/HtmlChatBot';
-import { Champlex2Editor, ChamplexEditor, QcmEditor, PenduEditor, QuisuisjeEditor, hasStructuredEditor, getStructuredEditor } from '../editors';
+import { Champlex2Editor, ChamplexEditor, QcmEditor, PenduEditor, QuisuisjeEditor, TextereconstitueEditor, hasStructuredEditor, getStructuredEditor } from '../editors';
 
 /**
  * Component for full-screen HTML editing mode
@@ -238,6 +238,14 @@ const ResourceHtmlEditingMode = ({
             )}
             {structuredEditorName === 'QuisuisjeEditor' && (
               <QuisuisjeEditor
+                initialData={initialData}
+                onSave={handleSaveStructuredData}
+                onCancel={handleCancelEditing}
+                submitting={submitting}
+              />
+            )}
+            {structuredEditorName === 'TextereconstitueEditor' && (
+              <TextereconstitueEditor
                 initialData={initialData}
                 onSave={handleSaveStructuredData}
                 onCancel={handleCancelEditing}
