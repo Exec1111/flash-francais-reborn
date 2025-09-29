@@ -174,7 +174,10 @@ const ResourceHtmlEditingMode = ({
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            onClick={handleSaveHtmlContent}
+            onClick={async () => {
+              const resourceService = await import('../../../services/resourceService');
+              await handleSaveHtmlContent(resourceService.default);
+            }}
             disabled={submitting}
             color="success"
           >
