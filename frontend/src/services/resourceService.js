@@ -49,7 +49,11 @@ const resourceService = {
     try {
       const config = resourceData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
       const response = await api.post(RESOURCE_ENDPOINT, resourceData, config);
-      return response.data;
+      // Retourner l'objet response complet pour compatibilité avec saveService.js
+      return {
+        status: response.status,
+        data: response.data
+      };
     } catch (error) {
       throw error;
     }

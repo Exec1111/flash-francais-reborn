@@ -6,11 +6,13 @@ from pathlib import Path
 import shutil
 import json as jsonlib
 import logging
+import os
 from schemas.resource import ResourceCreate, ResourceResponse, ResourceFileUpload
 from database import get_db
 import crud.resource
 from crud.resource import get_upload_path
 from dependencies import get_current_active_user
+from fastapi.responses import FileResponse
 from models import User as UserModel
 from ai.services.template_resolver import TemplateResolver
 from .resource_utils import html_to_qcm_json, html_to_champlex_json
@@ -51,7 +53,11 @@ async def create_resource_route(
     Sinon (si 'ai'), le fichier est ignoré.
     session_ids doit être une string JSON valide (ex: "[1, 2, 3]")
     """
-    logger.info(f"Tentative de création de ressource par l'utilisateur {current_user.id}")
+    logger.info(f"[CREATE_RESOURCE] === DÉBUT === Utilisateur {current_user.id}")
+    logger.info(f"[CREATE_RESOURCE] Paramètres reçus: title='{title}', type_id={type_id}, sub_type_id={sub_type_id}, source_type='{source_type}', html_path='{html_path}'")
+    logger.info(f"[CREATE_RESOURCE] ai_content_json présent: {ai_content_json is not None}")
+    logger.info(f"[CREATE_RESOURCE] session_ids_json: {session_ids_json}")
+    logger.info(f"[CREATE_RESOURCE] objective_ids_json: {objective_ids_json}")
 
     # Si non précisé et pas de fichier, on considère IA
     if not source_type:
@@ -185,7 +191,9 @@ async def create_resource_route(
             file_upload=file_upload_data # Utiliser 'file_upload' et passer les données du fichier (peut être None)
             # Ne pas passer 'file_path_url' car absent de la signature actuelle
         )
-        logger.info(f"Ressource créée avec ID: {db_resource.id}")
+        logger.info(f"[CREATE_RESOURCE] Ressource créée avec succès, ID: {db_resource.id}")
+        logger.info(f"[CREATE_RESOURCE] Type de db_resource: {type(db_resource)}")
+        logger.info(f"[CREATE_RESOURCE] Attributs de db_resource: {[attr for attr in dir(db_resource) if not attr.startswith('_')]}")
         # Calculer et stocker le SHA-256 du fichier uploadé si applicable
         try:
             if source_type == 'file' and final_file_path_on_disk and final_file_path_on_disk.exists():
@@ -339,7 +347,43 @@ async def create_resource_route(
                 logger.info(f"Extraction Docling planifiée en arrière-plan pour resource_id={db_resource.id}")
         except Exception as e_bg:
             logger.error(f"Impossible de planifier l'extraction Docling pour resource_id={getattr(db_resource, 'id', None)}: {e_bg}")
-        return db_resource
+        # Recharger l'objet avec toutes les relations via une nouvelle requête
+        from sqlalchemy.orm import joinedload
+        from models.resource import Resource
+        
+        db_resource_with_relations = db.query(Resource).options(
+            joinedload(Resource.type),
+            joinedload(Resource.sub_type),
+            joinedload(Resource.user),
+            joinedload(Resource.sessions),
+            joinedload(Resource.objectives),
+            joinedload(Resource.study_objects),
+            joinedload(Resource.oeuvres)
+        ).filter(Resource.id == db_resource.id).first()
+        
+        if not db_resource_with_relations:
+            logger.error(f"[CREATE_RESOURCE] Impossible de recharger la ressource {db_resource.id}")
+            return db_resource
+        
+        logger.info(f"[CREATE_RESOURCE] === RETOUR === db_resource: {db_resource_with_relations}")
+        logger.info(f"[CREATE_RESOURCE] db_resource.id: {getattr(db_resource_with_relations, 'id', 'NONE')}")
+        logger.info(f"[CREATE_RESOURCE] Type: {type(db_resource_with_relations)}")
+        logger.info(f"[CREATE_RESOURCE] Relations chargées - type: {getattr(db_resource_with_relations.type, 'value', 'None') if db_resource_with_relations.type else 'None'}, sub_type: {getattr(db_resource_with_relations.sub_type, 'value', 'None') if db_resource_with_relations.sub_type else 'None'}")
+        
+        # Test de sérialisation manuelle pour diagnostiquer
+        try:
+            from schemas.resource import ResourceResponse
+            logger.info(f"[CREATE_RESOURCE] Test de sérialisation Pydantic...")
+            serialized = ResourceResponse.model_validate(db_resource_with_relations)
+            logger.info(f"[CREATE_RESOURCE] Sérialisation réussie ! ID: {serialized.id}")
+            logger.info(f"[CREATE_RESOURCE] Sérialisation - type: {serialized.type}, sub_type: {serialized.sub_type}")
+        except Exception as e:
+            logger.error(f"[CREATE_RESOURCE] ERREUR de sérialisation Pydantic: {e}")
+            logger.error(f"[CREATE_RESOURCE] Type de l'erreur: {type(e)}")
+            import traceback
+            logger.error(f"[CREATE_RESOURCE] Traceback: {traceback.format_exc()}")
+        
+        return db_resource_with_relations
     except ValueError as e:
         # Si le CRUD lève une ValueError (ex: user/session non trouvé, fichier manquant)
         # Supprimer le fichier physique si on l'avait sauvegardé
