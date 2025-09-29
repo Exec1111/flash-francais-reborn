@@ -78,7 +78,7 @@ def get_token_time_remaining(token: str) -> Optional[int]:
     if expiration:
         remaining = expiration - datetime.utcnow()
         remaining_minutes = max(0, round(remaining.total_seconds() / 60))
-        logger.info(f"[SESSION DEBUG] Expiration: {expiration}, Now: {datetime.utcnow()}, Remaining: {remaining_minutes} minutes (exact: {remaining.total_seconds()/60:.2f})")
+        #logger.info(f"[SESSION DEBUG] Expiration: {expiration}, Now: {datetime.utcnow()}, Remaining: {remaining_minutes} minutes (exact: {remaining.total_seconds()/60:.2f})")
         return remaining_minutes
     return None
 

@@ -117,7 +117,7 @@ async def update_resource_route(
             t = getattr(db_resource_check, 'type', None)
             t_key = (getattr(t, 'key', '') or '').strip().lower()
 
-            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue']):
+            if not (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']):
                 logger.warning(f"[JSON-FIRST] data_json ignoré pour type/subtype non dynamique: {t_key}/{st_key}")
             else:
                 # Validation légère selon subtype
@@ -151,6 +151,7 @@ async def update_resource_route(
                     injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', data_str)
                     injected = injected.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_str)
+                    injected = injected.replace('<!--VOCABULAIRE_DATA_JSON-->', data_str)
                     rel = get_upload_path(current_user.id, f"runtime_{st_key}_{resource_id}.html")
                     abs_path = Path(settings.UPLOADS_BASE_DIR) / rel
                     abs_path.parent.mkdir(parents=True, exist_ok=True)

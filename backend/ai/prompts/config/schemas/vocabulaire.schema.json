@@ -16,6 +16,10 @@
                     "definition": {
                         "type": "string",
                         "description": "La définition ou le synonyme du mot."
+                    },
+                    "exemple": {
+                        "type": "string",
+                        "description": "Un exemple d'utilisation du mot dans une phrase."
                     }
                 },
                 "required": [

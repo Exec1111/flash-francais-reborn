@@ -17,7 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import SaveAsIcon from '@mui/icons-material/SaveAs';
 import TinyHtmlEditor from '../../editors/TinyHtmlEditor';
 import HtmlChatBot from '../../htmlChat/HtmlChatBot';
-import { Champlex2Editor, ChamplexEditor, QcmEditor, PenduEditor, QuisuisjeEditor, TextereconstitueEditor, hasStructuredEditor, getStructuredEditor } from '../editors';
+import { Champlex2Editor, ChamplexEditor, QcmEditor, PenduEditor, QuisuisjeEditor, TextereconstitueEditor, VocabulaireEditor, hasStructuredEditor, getStructuredEditor } from '../editors';
 
 /**
  * Component for full-screen HTML editing mode
@@ -51,6 +51,9 @@ const ResourceHtmlEditingMode = ({
   useEffect(() => {
     const subtypeKey = ((initialData?.sub_type?.key) || '').toLowerCase();
     const editorName = getStructuredEditor(subtypeKey);
+    console.log('[DEBUG] ResourceHtmlEditingMode - subtypeKey:', subtypeKey);
+    console.log('[DEBUG] ResourceHtmlEditingMode - editorName:', editorName);
+    console.log('[DEBUG] ResourceHtmlEditingMode - initialData:', initialData);
     setStructuredEditorName(editorName);
   }, [initialData]);
 
@@ -246,6 +249,14 @@ const ResourceHtmlEditingMode = ({
             )}
             {structuredEditorName === 'TextereconstitueEditor' && (
               <TextereconstitueEditor
+                initialData={initialData}
+                onSave={handleSaveStructuredData}
+                onCancel={handleCancelEditing}
+                submitting={submitting}
+              />
+            )}
+            {structuredEditorName === 'VocabulaireEditor' && (
+              <VocabulaireEditor
                 initialData={initialData}
                 onSave={handleSaveStructuredData}
                 onCancel={handleCancelEditing}

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabulaire - Activité</title>
+    <style>
+        /* Style amélioré pour une meilleure lisibilité */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px 40px;
+            position: relative;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .word-definition-container {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+            height: 500px;
+            overflow: hidden;
+        }
+        .words-column, .definitions-column {
+            flex: 1;
+            max-width: 48%;
+            overflow-y: auto;
+            padding-right: 15px;
+        }
+        .words-column::-webkit-scrollbar, .definitions-column::-webkit-scrollbar {
+            width: 8px;
+        }
+        .words-column::-webkit-scrollbar-track, .definitions-column::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .words-column::-webkit-scrollbar-thumb, .definitions-column::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .words-column::-webkit-scrollbar-thumb:hover, .definitions-column::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .words-column h3, .definitions-column h3 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 12px;
+            font-weight: 600;
+        }
+        .word-zone {
+            border: 2px solid #bdc3c7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 120px;
+        }
+        .word-zone:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #3498db;
+        }
+        .word-zone.matched {
+            background: linear-gradient(145deg, #d4edda, #c3e6cb);
+            border-color: #28a745;
+            animation: pulse 0.6s ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .word-label {
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .definition-display {
+            min-height: 60px;
+            padding: 12px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            margin-top: 10px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: #2c3e50;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .draggable-item {
+            padding: 15px;
+            margin-bottom: 12px;
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            position: relative;
+            overflow: hidden;
+            min-height: 50px;
+        }
+        .draggable-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .draggable-item:hover::before {
+            left: 100%;
+        }
+        .draggable-item:hover {
+            background: linear-gradient(145deg, #2980b9, #21618c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        .draggable-item.dragging {
+            opacity: 0.8;
+            transform: rotate(2deg) scale(1.05);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.5);
+            z-index: 1000;
+        }
+        .example-btn {
+            background: linear-gradient(145deg, #f39c12, #e67e22);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+        .example-btn:hover {
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+        }
+        .example-text {
+            margin-top: 12px;
+            padding: 15px;
+            background: linear-gradient(145deg, #e8f5e8, #d4edda);
+            border-radius: 8px;
+            font-style: italic;
+            color: #155724;
+            display: none;
+            border-left: 5px solid #28a745;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            line-height: 1.5;
+        }
+        .results {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #d4edda, #c3e6cb);
+            color: #155724;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.3rem;
+            box-shadow: 0 6px 20px rgba(212, 237, 218, 0.4);
+            border: 2px solid #28a745;
+        }
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(145deg, #27ae60, #229954);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 25px;
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
+        }
+        .submit-btn:hover {
+            background: linear-gradient(145deg, #229954, #1e8449);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+        }
+        .reset-btn {
+            display: none;
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+        }
+        .reset-btn:hover {
+            background: linear-gradient(145deg, #c0392b, #a93226);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4);
+        }
+        .drop-zone.drag-over {
+            border-color: #f39c12;
+            background-color: #fef9e7;
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.3);
+        }
+        /* Amélioration du scroll pendant le drag */
+        .words-column, .definitions-column {
+            scroll-behavior: smooth;
+        }
+        /* Empêcher le scroll horizontal pendant le drag */
+        .word-definition-container {
+            overflow-x: hidden;
+        }
+        /* Améliorer la visibilité des zones de drop */
+        .definition-display {
+            transition: all 0.3s ease;
+        }
+        .definition-display:empty::after {
+            content: "📥 Déposez la définition ici";
+            color: #999;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">Vocabulaire</h1>
+        <div id="vocab-game"></div>
+        <div class="results" id="results"></div>
+        <button class="submit-btn" id="validateBtn">Valider</button>
+        <button class="reset-btn" id="resetBtn">Recommencer</button>
+    </div>
+  <script>
+    // Données injectées
+    window.VOCABULAIRE_DATA = <!--VOCABULAIRE_DATA_JSON-->;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const data = window.VOCABULAIRE_DATA || {};
+        const vocabulaire = Array.isArray(data.vocabulaire) ? data.vocabulaire : [];
+
+        const validateBtn = document.getElementById('validateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultsDiv = document.getElementById('results');
+        const gameContainer = document.getElementById('vocab-game');
+
+        // Debug : afficher les données reçues
+        console.log('[DEBUG] Données VOCABULAIRE_DATA reçues :', data);
+        console.log('[DEBUG] Nombre de mots :', vocabulaire.length);
+
+        // Variables pour le système de drag and drop
+        let draggedElement = null;
+        let dropZones = [];
+        let scrollInterval = null;
+
+        // Mélanger les définitions pour plus de challenge
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Fonction pour le scroll automatique pendant le drag
+        function startAutoScroll(e) {
+            // Trouver la colonne survolée
+            const wordsColumn = document.querySelector('.words-column');
+            const definitionsColumn = document.querySelector('.definitions-column');
+
+            // Déterminer quelle colonne est survolée
+            const wordsRect = wordsColumn.getBoundingClientRect();
+            const definitionsRect = definitionsColumn.getBoundingClientRect();
+            const y = e.clientY;
+            const scrollSpeed = 8;
+
+            clearInterval(scrollInterval);
+
+            // Vérifier la colonne des mots (gauche)
+            if (y >= wordsRect.top && y <= wordsRect.bottom && e.clientX >= wordsRect.left && e.clientX <= wordsRect.right) {
+                if (y - wordsRect.top < 60 && wordsColumn.scrollTop > 0) {
+                    scrollInterval = setInterval(() => {
+                        wordsColumn.scrollTop -= scrollSpeed;
+                    }, 16);
+                } else if (wordsRect.bottom - y < 60 && wordsColumn.scrollTop < wordsColumn.scrollHeight - wordsColumn.clientHeight) {
+                    scrollInterval = setInterval(() => {
+                        wordsColumn.scrollTop += scrollSpeed;
+                    }, 16);
+                }
+            }
+            // Vérifier la colonne des définitions (droite)
+            else if (y >= definitionsRect.top && y <= definitionsRect.bottom && e.clientX >= definitionsRect.left && e.clientX <= definitionsRect.right) {
+                if (y - definitionsRect.top < 60 && definitionsColumn.scrollTop > 0) {
+                    scrollInterval = setInterval(() => {
+                        definitionsColumn.scrollTop -= scrollSpeed;
+                    }, 16);
+                } else if (definitionsRect.bottom - y < 60 && definitionsColumn.scrollTop < definitionsColumn.scrollHeight - definitionsColumn.clientHeight) {
+                    scrollInterval = setInterval(() => {
+                        definitionsColumn.scrollTop += scrollSpeed;
+                    }, 16);
+                }
+            }
+        }
+
+        function stopAutoScroll() {
+            clearInterval(scrollInterval);
+        }
+
+        // Créer le layout du jeu avec drag and drop
+        function createGameLayout() {
+            gameContainer.innerHTML = '';
+
+            const container = document.createElement('div');
+            container.className = 'word-definition-container';
+
+            // Colonne des mots (zones de drop)
+            const wordsColumn = document.createElement('div');
+            wordsColumn.className = 'words-column';
+
+            const wordsTitle = document.createElement('h3');
+            wordsTitle.textContent = 'Mots à définir';
+            wordsColumn.appendChild(wordsTitle);
+
+            // Colonne des définitions (éléments draggable)
+            const definitionsColumn = document.createElement('div');
+            definitionsColumn.className = 'definitions-column';
+
+            const definitionsTitle = document.createElement('h3');
+            definitionsTitle.textContent = 'Définitions disponibles';
+            definitionsColumn.appendChild(definitionsTitle);
+
+            // Mélanger les définitions
+            const shuffledVocab = shuffleArray(vocabulaire);
+
+            // Créer les zones de drop (mots)
+            shuffledVocab.forEach((item, index) => {
+                const wordZone = document.createElement('div');
+                wordZone.className = 'word-zone drop-zone';
+                wordZone.dataset.wordIndex = index;
+                wordZone.dataset.correctWord = item.word;
+
+                const wordLabel = document.createElement('div');
+                wordLabel.className = 'word-label';
+                wordLabel.textContent = `${index + 1}. ${item.word}`;
+                wordZone.appendChild(wordLabel);
+
+                const definitionDisplay = document.createElement('div');
+                definitionDisplay.className = 'definition-display';
+                definitionDisplay.dataset.wordIndex = index;
+                wordZone.appendChild(definitionDisplay);
+
+                // Ajouter les événements de drag and drop
+                wordZone.addEventListener('dragover', handleDragOver);
+                wordZone.addEventListener('dragleave', handleDragLeave);
+                wordZone.addEventListener('drop', handleDrop);
+                wordZone.addEventListener('dragenter', startAutoScroll);
+
+                wordsColumn.appendChild(wordZone);
+                dropZones.push(wordZone);
+
+                // Bouton exemple
+                const exampleBtn = document.createElement('button');
+                exampleBtn.className = 'example-btn';
+                exampleBtn.textContent = '💡 Exemple';
+                exampleBtn.dataset.word = item.word;
+                exampleBtn.addEventListener('click', () => toggleExample(item.word));
+
+                const exampleText = document.createElement('div');
+                exampleText.className = 'example-text';
+                exampleText.dataset.word = item.word;
+                exampleText.textContent = item.exemple || 'Exemple non disponible';
+
+                wordZone.appendChild(exampleBtn);
+                wordZone.appendChild(exampleText);
+            });
+
+            // Créer les éléments draggable (définitions)
+            shuffledVocab.forEach((item, index) => {
+                const definitionItem = document.createElement('div');
+                definitionItem.className = 'draggable-item';
+                definitionItem.dataset.definition = item.definition;
+                definitionItem.dataset.word = item.word;
+                definitionItem.textContent = item.definition;
+                definitionItem.draggable = true;
+
+                // Événements de drag
+                definitionItem.addEventListener('dragstart', handleDragStart);
+                definitionItem.addEventListener('dragend', handleDragEnd);
+
+                definitionsColumn.appendChild(definitionItem);
+            });
+
+            container.appendChild(wordsColumn);
+            container.appendChild(definitionsColumn);
+            gameContainer.appendChild(container);
+
+            // Ajouter les événements de scroll automatique sur les colonnes
+            wordsColumn.addEventListener('dragover', startAutoScroll);
+            wordsColumn.addEventListener('dragleave', stopAutoScroll);
+            definitionsColumn.addEventListener('dragover', startAutoScroll);
+            definitionsColumn.addEventListener('dragleave', stopAutoScroll);
+        }
+
+        // Gestionnaires d'événements pour le drag and drop
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+
+            // Nécessaire pour Firefox
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.outerHTML);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+            stopAutoScroll();
+
+            // Retirer la classe drag-over de toutes les zones
+            dropZones.forEach(zone => {
+                zone.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            // Ajouter la classe visuelle
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+            stopAutoScroll();
+
+            if (draggedElement) {
+                // Trouver la zone de définition la plus proche
+                const definitionDisplay = e.target.classList.contains('definition-display') ? e.target : e.target.querySelector('.definition-display');
+                if (definitionDisplay && !definitionDisplay.textContent.trim()) {
+                    definitionDisplay.textContent = draggedElement.dataset.definition;
+                    definitionDisplay.dataset.linkedWord = draggedElement.dataset.word;
+
+                    // Masquer l'élément déplacé
+                    draggedElement.style.display = 'none';
+                }
+            }
+        }
+
+        // Basculer l'affichage de l'exemple
+        function toggleExample(word) {
+            const exampleText = document.querySelector(`.example-text[data-word="${word}"]`);
+            if (exampleText) {
+                exampleText.style.display = exampleText.style.display === 'block' ? 'none' : 'block';
+            }
+        }
+
+        // Validation des réponses
+        function validateAnswers() {
+            let score = 0;
+            let totalQuestions = vocabulaire.length;
+
+            document.querySelectorAll('.definition-display').forEach(display => {
+                const linkedDefinition = display.textContent.trim();
+                const correctWord = display.parentElement.dataset.correctWord;
+
+                // Trouver le mot correct pour cette définition
+                const correctItem = vocabulaire.find(item => item.word === correctWord);
+                if (correctItem && linkedDefinition === correctItem.definition) {
+                    display.parentElement.classList.add('matched');
+                    score++;
+                } else {
+                    display.parentElement.style.borderColor = '#e74c3c';
+                    display.parentElement.style.backgroundColor = '#fdf2f2';
+                }
+            });
+
+            // Afficher le score
+            resultsDiv.style.display = 'block';
+            resultsDiv.textContent = `Votre score : ${score}/${totalQuestions}`;
+
+            // Désactiver la validation et afficher le reset
+            validateBtn.style.display = 'none';
+            resetBtn.style.display = 'block';
+        }
+
+        // Réinitialiser le jeu
+        function resetGame() {
+            // Remettre tous les éléments draggable à la vue
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.style.display = 'block';
+            });
+
+            // Vider toutes les zones de définition
+            document.querySelectorAll('.definition-display').forEach(display => {
+                display.textContent = '';
+                display.parentElement.classList.remove('matched');
+                display.parentElement.style.borderColor = '';
+                display.parentElement.style.backgroundColor = '';
+                delete display.parentElement.dataset.linkedWord;
+            });
+
+            // Masquer tous les exemples
+            document.querySelectorAll('.example-text').forEach(el => {
+                el.style.display = 'none';
+            });
+
+            resultsDiv.style.display = 'none';
+            validateBtn.style.display = 'block';
+            resetBtn.style.display = 'none';
+        }
+
+        // Initialiser le jeu
+        createGameLayout();
+
+        // Gestionnaire de validation
+        validateBtn.addEventListener('click', validateAnswers);
+
+        // Gestionnaire de reset
+        resetBtn.addEventListener('click', resetGame);
+    });
+  </script>
+</body>
+</html>

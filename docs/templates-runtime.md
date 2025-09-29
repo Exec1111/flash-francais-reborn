@@ -56,18 +56,16 @@ Ce document décrit le système d'unification des templates pour les activités 
 ### 1.1. Types d'exercices JSON-first supportés
 
 Flash Français Reborn utilise un système "JSON-first" pour les exercices interactifs qui génèrent des données structurées via l'IA :
-
 - `qcm` : Questions à choix multiples
 - `champlex` : Champ lexical simple
 - `champlex2` : Champ lexical avancé
 - `pendu` : Jeu du pendu
 - `quisuisje` : Jeu "Qui suis-je" avec indices progressifs
-- `textereconstitue` : Reconstitution de texte (ordre d’éléments)
+- `vocabulaire` : Exercice de vocabulaire avec paires mot-définition
 
 ### 1.2. Principe d'unification
 
 Pour garantir un rendu visuel identique entre la version générée par l'IA et la version post-édition, chaque type d'activité utilise :
-
 - **Template de base** : `backend/ai/template/default_{type}_{subtype}.html` (utilisé pour la génération IA et l'édition)
 - **Template runtime** : `backend/ai/template_runtime/{subtype}_runtime_template.html` (utilisé pour l'activité autonome)
 - **Données canoniques** : `data_json` (format JSON standardisé par type d'activité)
@@ -97,6 +95,7 @@ base_path, runtime_path, template_key = TemplateResolver.resolve_templates('exer
 - **Pendu** : `PenduEditor.js` - Éditeur pour mots à deviner
 - **Qui suis-je** : `QuisuisjeEditor.js` - Éditeur pour mots avec indices progressifs
 - **Texte reconstitué** : `TextereconstitueEditor.js` - Éditeur pour titres/consigne/éléments, indices, connecteurs, critères
+- **Vocabulaire** : `VocabulaireEditor.js` - Éditeur pour paires mot-définition
 
 ### 2.2. Structure des éditeurs
 
@@ -258,7 +257,14 @@ if t_key == 'exercice' and st_key == 'nouveau_type':
 - **Interactions**: Drag & drop des éléments, vérification d’ordre, affichage de la solution et des explications
 - **Éditeur**: `TextereconstitueEditor.js` (UI + validation + intégration IA)
 
-### 4.4. Templates statiques (exemples)
+### 4.4. Vocabulaire (`vocabulaire_runtime_template.html`)
+
+- **Données** : `{ titre, description, niveau, theme, vocabulaire: [{ word, definition }] }`
+- **Interactions** : Saisie de définitions, validation avec feedback, score basé sur la similarité
+- **Style** : Interface moderne avec zones de saisie, couleurs pour les réponses correctes/incorrectes
+- **Éditeur** : `VocabulaireEditor.js` - Interface graphique pour gérer les paires mot-définition
+- **Placeholder** : `<!--VOCABULAIRE_DATA_JSON-->`
+- **Variable JavaScript** : `window.VOCABULAIRE_DATA`
 
 #### Analyse de Texte (`default_exercice_analysetexte.html`)
 - **Statut** : **Statique** (pas de template runtime)
@@ -332,13 +338,11 @@ alembic upgrade head
   - `useSubmitLogic.js` lignes 569 et 719
   - `resource_crud_router.py` lignes 253 et 561
   - `content_merger.py` ligne 48
-  - Template avec placeholder spécifique (ex: `<!--PENDU_DATA_JSON-->`)
+  - Template avec placeholder spécifique (ex: `<!--VOCABULAIRE_DATA_JSON-->`, `<!--PENDU_DATA_JSON-->`, etc.)
 
 ## 8. Procédure pour ajouter un nouvel exercice JSON-first
 
 ### 8.1. Checklist complète
-
-**⚠️ CRITIQUE : Tous les points doivent être appliqués simultanément**
 
 1. **Créer l'éditeur spécialisé** : `{Type}Editor.js` dans `frontend/src/components/resources/editors/`
     - Interface graphique adaptée au format JSON
@@ -353,26 +357,39 @@ alembic upgrade head
     - Logique de remplacement appropriée
 
 4. **Ajouter dans `resource_crud_router.py`** :
-    - Ligne 253 : Ajouter à la liste de création
-    - Ligne 561 : Ajouter à la liste de mise à jour
-    - **Lignes 224-225** : Ajouter à la détection JSON-first (pas de copie de fichier)
-    - Ajouter la validation des données si nécessaire
-
-5. **Ajouter dans `useSubmitLogic.js`** :
-    - Ligne 569 : Ajouter au contournement de merge
-    - Ligne 719 : Ajouter à l'envoi de `ai_content_json`
 
 ### 8.2. Points critiques
 
 - ⚠️ **Le frontend DOIT envoyer `ai_content_json`** sinon les colonnes BDD restent vides
 - ⚠️ **Chaque type a son propre placeholder spécifique** dans le template
-- ⚠️ **La vérification des placeholders doit être conditionnelle** selon le type
+- ⚠️ **Le backend DOIT remplacer le placeholder** lors de la génération du runtime sinon les données ne s'afficheront pas
+- ⚠️ **Toujours tester la mise à jour complète** : génération IA → modification → sauvegarde → vérification BDD
 - ⚠️ **Toujours tester la création complète** : génération IA → fusion → création → BDD
 
-### 7.3. Style différent entre base et runtime
+### 8.3. Explication détaillée : resource_update_router.py
 
-**Solution** : Copier exactement les règles CSS du template de base vers le template runtime
+**Problème identifié** : Lors de la mise à jour d'une ressource, les données JSON ne sont pas injectées dans le template runtime car le placeholder spécifique n'est pas remplacé.
 
----
+**Code à ajouter** dans `resource_update_router.py` ligne ~153 :
 
-*Ce guide sera mis à jour au fur et à mesure de l'ajout de nouveaux types d'activités.*
+```python
+# Support de plusieurs placeholders selon le template
+injected = raw_template.replace('<!--ACTIVITY_DATA_JSON-->', data_str)
+injected = injected.replace('<!--QCM_DATA_JSON-->', data_str)
+injected = injected.replace('<!--CHAMPLEX_DATA_JSON-->', data_str)
+injected = injected.replace('<!--PENDU_DATA_JSON-->', data_str)
+injected = injected.replace('<!--QUISUISJE_DATA_JSON-->', data_str)
+injected = injected.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_str)
+injected = injected.replace('<!--VOCABULAIRE_DATA_JSON-->', data_str)  # ← AJOUTER POUR CHAQUE NOUVEAU TYPE
+injected = injected.replace('<!--NOUVEAU_TYPE_DATA_JSON-->', data_str)  # ← AJOUTER POUR CHAQUE NOUVEAU TYPE
+```
+
+**Pourquoi c'est nécessaire** :
+- Chaque type d'exercice a son propre placeholder dans son template runtime
+- Sans ce remplacement, le JavaScript reçoit `window.VOCABULAIRE_DATA = <!--VOCABULAIRE_DATA_JSON-->` au lieu des vraies données
+- Les données sont perdues et l'activité ne fonctionne pas
+
+**Exemple de symptômes** :
+- Les données sont sauvegardées en BDD mais n'apparaissent pas dans l'activité
+- Console JavaScript : `undefined` pour les données de l'activité
+- Interface vide ou dysfonctionnelle

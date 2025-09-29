@@ -45,7 +45,7 @@ async def merge_ai_resource_content(
     """
     
     # Types qui utilisent le système JSON-first (simple remplacement de placeholder) avec templates runtime existants
-    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue']
+    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']
     
     logger.info(f"[MERGE] Type: {type_key}, Subtype: {subtype_key}")
     logger.info(f"[MERGE] Subtype normalisé: {subtype_key.lower()}")
@@ -104,6 +104,9 @@ async def _merge_json_first_template(
         elif subtype_key.lower() == 'textereconstitue':
             placeholder_present = '<!--TEXTERECONSTITUE_DATA_JSON-->' in template_content
             logger.info(f"[JSON-FIRST] Placeholder TEXTERECONSTITUE présent: {placeholder_present}")
+        elif subtype_key.lower() == 'vocabulaire':
+            placeholder_present = '<!--VOCABULAIRE_DATA_JSON-->' in template_content
+            logger.info(f"[JSON-FIRST] Placeholder VOCABULAIRE présent: {placeholder_present}")
         else:
             placeholder_present = '<!--DATA_JSON-->' in template_content
             logger.info(f"[JSON-FIRST] Placeholder générique présent: {placeholder_present}")
@@ -128,6 +131,10 @@ async def _merge_json_first_template(
             # Pour Texte reconstitué : remplacer <!--TEXTERECONSTITUE_DATA_JSON--> par les données
             html_content = template_content.replace('<!--TEXTERECONSTITUE_DATA_JSON-->', data_json)
             logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--TEXTERECONSTITUE_DATA_JSON-->' in html_content}")
+        elif subtype_key.lower() == 'vocabulaire':
+            # Pour Vocabulaire : remplacer <!--VOCABULAIRE_DATA_JSON--> par les données
+            html_content = template_content.replace('<!--VOCABULAIRE_DATA_JSON-->', data_json)
+            logger.info(f"[JSON-FIRST] Remplacement effectué, placeholder encore présent: {'<!--VOCABULAIRE_DATA_JSON-->' in html_content}")
         else:
             # Fallback générique
             html_content = template_content.replace('<!--DATA_JSON-->', data_json)

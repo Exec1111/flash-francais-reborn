@@ -39,7 +39,7 @@ user_prompt_template: |
    {% endfor %}
    {% endif %}
 
-   Pour chaque mot, fournis une définition courte et adaptée au niveau des apprenants. La sortie doit être une liste d'objets avec les champs "mot" et "definition".
+   Pour chaque mot, fournis une définition courte et adaptée au niveau des apprenants, ainsi qu'un exemple d'utilisation du mot dans une phrase. La sortie doit être une liste d'objets avec les champs "word", "definition" et "exemple".
 
 parameters:
    - name: theme
@@ -72,6 +72,7 @@ constraints:
   - Si une liste de mots est fournie, elle seule doit être utilisée.
   - Sinon, les mots doivent être générés à partir du thème proposé et adaptés au niveau {{ niveau }}.
   - Les définitions doivent être courtes, claires et adaptées au niveau des apprenants.
+  - Les exemples doivent être des phrases complètes et naturelles utilisant le mot de manière appropriée.
   - Respecter les éventuelles instructions personnalisées fournies.
   - La liste sera composée de 5 a 10 mots.
 
