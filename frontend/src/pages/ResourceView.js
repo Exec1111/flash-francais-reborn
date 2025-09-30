@@ -320,6 +320,11 @@ function ResourceView() {
     const mdUrl = resource.docling_md_path
                     ? `${API_BASE_URL}/media/uploads/${resource.docling_md_path.startsWith('/') ? resource.docling_md_path.substring(1) : resource.docling_md_path}`
                     : null;
+    
+    // URL du runtime HTML pour les ressources dynamiques (JSON-first)
+    const runtimeUrl = resource.runtime_html_url
+                    ? `${API_BASE_URL}${resource.runtime_html_url}`
+                    : null;
 
     return (
         <Container maxWidth="md" sx={{ mt: 4 }}>
@@ -379,11 +384,17 @@ function ResourceView() {
                 <Box sx={{ my: 2 }}>
                     <Typography variant="h6">Fichiers</Typography>
                     <Stack spacing={1} sx={{ my: 1 }}>
-                        {/* Ligne 1: fichier associé (PDF ou autre) */}
+                        {/* Ligne 1: fichier associé (PDF, autre, ou runtime HTML) */}
                         {fileUrl ? (
                             <Stack direction="row" spacing={1} alignItems="center">
                                 {isPdf ? <PictureAsPdfIcon color="action" /> : <InsertDriveFileIcon color="action" />}
                                 <Link href={fileUrl} target="_blank" rel="noopener noreferrer">ouvrir le document</Link>
+                                <OpenInNewIcon fontSize="small" color="action" />
+                            </Stack>
+                        ) : runtimeUrl ? (
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <InsertDriveFileIcon color="action" />
+                                <Link href={runtimeUrl} target="_blank" rel="noopener noreferrer">ouvrir le document</Link>
                                 <OpenInNewIcon fontSize="small" color="action" />
                             </Stack>
                         ) : (
