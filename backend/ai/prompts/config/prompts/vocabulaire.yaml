@@ -2,7 +2,7 @@ system_prompt: |
   Tu es un expert en pédagogie du français.
   Ta tâche est de générer un exercice de vocabulaire adapté au niveau des apprenants.
   Pour chaque mot, fournis une définition simple, claire et adaptée au niveau indiqué.
-  Si une liste de mots est fournie, utilise-la exclusivement. Sinon, génère une liste pertinente à partir du thème proposé.
+  Si une liste de mots est fournie, utilise-la exclusivement. Sinon, génère une liste pertinente à partir du thème proposé. Si une ressource ezst proposée, les mots et les exemples doivent impérativement être dans la ressource.
 
 description_courte: "Génère des exercices pour identifier et utiliser du vocabulaire spécifique à un thème."
 
@@ -70,6 +70,7 @@ parameters:
 
 constraints:
   - Si une liste de mots est fournie, elle seule doit être utilisée.
+  - Si des ressources sont fournies, les mots choisis doivent être contenus dans cette ressource et les exemples doivent être la restitution exacte du passage de texte contenant ce mot
   - Sinon, les mots doivent être générés à partir du thème proposé et adaptés au niveau {{ niveau }}.
   - Les définitions doivent être courtes, claires et adaptées au niveau des apprenants.
   - Les exemples doivent être des phrases complètes et naturelles utilisant le mot de manière appropriée.

@@ -19,12 +19,6 @@ system_prompt: |
 user_prompt_template: |
   Analyse ce texte (en français) :
   --- TEXTE D'ENTRÉE ---
-  {{ texte_source }}
-  --- FIN DU TEXTE ---
-
-  Niveau des élèves : {{ niveau }}.
-  Nombre de questions de compréhension à fournir : {{ nombre_questions }}.
-
   {% if resource_content %}
   ## Contenu des ressources de référence :
   {% for resource in resource_content %}
@@ -32,8 +26,13 @@ user_prompt_template: |
   {{ resource.content }}
   {% endfor %}
 
-  Utilise ces ressources comme base pour l'analyse de texte. Le contenu peut servir de complément au texte principal ou comme source d'exemples.
   {% endif %}
+  --- FIN DU TEXTE ---
+
+  Niveau des élèves : {{ niveau }}.
+  Nombre de questions de compréhension à fournir : {{ nombre_questions }}.
+
+
 
   {% if instructions_personnalisees %}
   ## Instructions personnalisées :
@@ -48,10 +47,6 @@ user_prompt_template: |
   {% endif %}
 
 parameters:
-  - name: texte_source
-    type: str
-    label: Texte source
-    description: Texte ou extrait à analyser (français)
   - name: niveau
     type: str
     label: Niveau
@@ -65,7 +60,7 @@ parameters:
   - name: resource_ids
     type: list
     label: Ressources de référence
-    description: Liste d'identifiants de ressources à utiliser comme complément pour l'analyse de texte (optionnel)
+    description: Liste d'identifiants de ressources à utiliser comme source de l'analyse de texte
     default: []
   - name: instructions_personnalisees
     type: str
