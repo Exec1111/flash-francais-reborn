@@ -18,6 +18,7 @@ from ai.services.template_resolver import TemplateResolver
 from .resource_utils import html_to_qcm_json, html_to_champlex_json
 from config import get_settings
 from werkzeug.utils import secure_filename
+from constants import is_json_first_resource, JSON_FIRST_PLACEHOLDERS_SET, JSON_FIRST_SUBTYPES
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -232,8 +233,7 @@ async def create_resource_route(
                 src = Path(html_path)
 
             # JSON-first: ne pas copier le fichier de prévisualisation; on utilisera data_json + runtime
-            if html_path in ('/api/v1/ai/champlex2-json-placeholder', '/api/v1/ai/champlex-json-placeholder', '/api/v1/ai/qcm-json-placeholder', '/api/v1/ai/pendu-json-placeholder', '/api/v1/ai/quisuisje-json-placeholder', '/api/v1/ai/textereconstitue-json-placeholder', '/api/v1/ai/vocabulaire-json-placeholder') or \
-               (t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']):
+            if html_path in JSON_FIRST_PLACEHOLDERS_SET or is_json_first_resource(t_key, st_key):
                 logger.info(f"[AI->Resource] JSON-first détecté pour {t_key}/{st_key}: pas de copie de fichier HTML (html_path={html_path})")
                 dest = None  # Pas de fichier copié
             else:
@@ -259,11 +259,11 @@ async def create_resource_route(
 
                 logger.info(f"[DEBUG_CREATE] ai_content_json reçu: {ai_content_json is not None}")
                 logger.info(f"[DEBUG_CREATE] ai_content_json contenu (100 premiers chars): {str(ai_content_json)[:100] if ai_content_json else 'None'}")
-                if t_key == 'exercice' and st_key in ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']:
+                if is_json_first_resource(t_key, st_key):
                     parsed_data_json = None
 
                     # JSON-first
-                    if st_key in ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire'] and ai_content_json:
+                    if st_key in JSON_FIRST_SUBTYPES and ai_content_json:
                         try:
                             parsed_data_json = jsonlib.loads(ai_content_json)
                             if st_key == 'champlex2':

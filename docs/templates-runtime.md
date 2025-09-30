@@ -51,6 +51,54 @@
 
 Ce document décrit le système d'unification des templates pour les activités interactives et fournit un patron pour créer de nouveaux templates runtime.
 
+## 🆕 Refactoring 2025-09-30 : Centralisation de la détection JSON-first
+
+### ✅ Modifications appliquées
+
+Pour éviter la duplication de code et garantir la cohérence, la détection des ressources JSON-first a été centralisée :
+
+#### Backend (`backend/constants.py` - NOUVEAU)
+```python
+JSON_FIRST_SUBTYPES = ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']
+
+def is_json_first_resource(type_key: str, subtype_key: str) -> bool:
+    return (
+        type_key.lower().strip() == 'exercice' and 
+        subtype_key.lower().strip() in JSON_FIRST_SUBTYPES_SET
+    )
+```
+
+**Fichiers refactorés** :
+- ✅ `routers/resource_create_router.py` - 3 utilisations de la fonction centralisée
+- ✅ `routers/resource_update_router.py` - 1 utilisation de la fonction centralisée
+- ✅ `ai/services/content_merger.py` - Import de `JSON_FIRST_SUBTYPES`
+
+#### Frontend (`frontend/src/utils/resourceFormUtils.js`)
+```javascript
+export const isDynamicResource = (resourceData) => {
+  const subtypeKey = (resourceData?.sub_type?.key || resourceData?.resource_sub_type?.key || '').toLowerCase();
+  const dynamicSubtypes = new Set(['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'vocabulaire', 'textereconstitue']);
+  return dynamicSubtypes.has(subtypeKey);
+};
+```
+
+**Fichiers refactorés** :
+- ✅ `ResourceActionLink.js` - Utilise `isDynamicResource()` pour le bouton "Lancer l'activité"
+- ✅ `useResourceHtmlContent.js` - Utilise `isDynamicResource()` pour l'affichage dynamique
+
+### 🎯 Impact
+
+**Avant** : Liste dupliquée dans **10+ endroits** différents  
+**Après** : **2 sources uniques** (1 backend + 1 frontend)
+
+**Avantages** :
+- ✅ Ajout d'un nouveau type : **2 modifications** au lieu de 10+
+- ✅ Cohérence garantie entre tous les modules
+- ✅ Code plus maintenable et lisible
+- ✅ Réduction drastique du risque d'erreur
+
+---
+
 ## 1. Architecture du système JSON-first
 
 ### 1.1. Types d'exercices JSON-first supportés
@@ -62,6 +110,9 @@ Flash Français Reborn utilise un système "JSON-first" pour les exercices inter
 - `pendu` : Jeu du pendu
 - `quisuisje` : Jeu "Qui suis-je" avec indices progressifs
 - `vocabulaire` : Exercice de vocabulaire avec paires mot-définition
+- `textereconstitue` : Texte à reconstituer (ordre des éléments)
+
+**Note importante** : Cette liste est centralisée dans `backend/constants.py` pour garantir la cohérence entre frontend et backend.
 
 ### 1.2. Principe d'unification
 
@@ -334,15 +385,36 @@ alembic upgrade head
 4. **Content Merger** : Type non géré dans `content_merger.py`
 
 **Solutions** :
-- Vérifier que le type est inclus dans TOUS les endroits critiques :
-  - `useSubmitLogic.js` lignes 569 et 719
-  - `resource_crud_router.py` lignes 253 et 561
-  - `content_merger.py` ligne 48
-  - Template avec placeholder spécifique (ex: `<!--VOCABULAIRE_DATA_JSON-->`, `<!--PENDU_DATA_JSON-->`, etc.)
+- ✅ **Backend** : Vérifier que le type est dans `backend/constants.py` → `JSON_FIRST_SUBTYPES`
+- ✅ **Frontend** : Vérifier que le type est dans `frontend/src/utils/resourceFormUtils.js` → `dynamicSubtypes`
+- ✅ **Template** : Vérifier que le placeholder spécifique existe (ex: `<!--VOCABULAIRE_DATA_JSON-->`)
+- ✅ **Frontend (génération)** : Vérifier que `ai_content_json` est envoyé dans `useSubmitLogic.js`
 
 ## 8. Procédure pour ajouter un nouvel exercice JSON-first
 
-### 8.1. Checklist complète
+### 8.1. ⚡ Modification centralisée (OBLIGATOIRE)
+
+**ÉTAPE 1** : Ajouter le nouveau type dans `backend/constants.py` :
+
+```python
+JSON_FIRST_SUBTYPES = [
+    'champlex2',
+    'champlex',
+    'qcm',
+    'pendu',
+    'quisuisje',
+    'textereconstitue',
+    'vocabulaire',
+    'NOUVEAU_TYPE'  # ← AJOUTER ICI
+]
+```
+
+Cette modification unique met automatiquement à jour :
+- ✅ `resource_create_router.py` - Détection JSON-first lors de la création
+- ✅ `resource_update_router.py` - Validation des données JSON-first
+- ✅ `content_merger.py` - Fusion des données avec le template runtime
+
+### 8.2. Checklist complète
 
 1. **Créer l'éditeur spécialisé** : `{Type}Editor.js` dans `frontend/src/components/resources/editors/`
     - Interface graphique adaptée au format JSON
@@ -351,14 +423,58 @@ alembic upgrade head
 
 2. **Créer le template runtime** : `{type}_runtime_template.html` avec placeholder `<!--{TYPE}_DATA_JSON-->`
 
-3. **Ajouter dans `content_merger.py`** :
-    - Ligne 48 : Ajouter à `json_first_types`
-    - Lignes 84-95 : Ajouter la vérification du placeholder
-    - Logique de remplacement appropriée
+3. **Ajouter dans `frontend/src/utils/resourceFormUtils.js`** :
+    - Ajouter le nouveau type dans le Set `dynamicSubtypes`
+    ```javascript
+    const dynamicSubtypes = new Set(['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'vocabulaire', 'textereconstitue', 'NOUVEAU_TYPE']);
+    ```
 
-4. **Ajouter dans `resource_crud_router.py`** :
+4. **Ajouter dans `backend/constants.py`** (voir étape 1)
 
-### 8.2. Points critiques
+### 8.3. Architecture de détection centralisée
+
+#### Backend (`constants.py`)
+
+```python
+# Liste unique des types JSON-first
+JSON_FIRST_SUBTYPES = ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']
+
+# Fonction utilitaire de détection
+def is_json_first_resource(type_key: str, subtype_key: str) -> bool:
+    return (
+        type_key.lower().strip() == 'exercice' and 
+        subtype_key.lower().strip() in JSON_FIRST_SUBTYPES_SET
+    )
+```
+
+**Utilisée dans** :
+- ✅ `resource_create_router.py` (lignes 236, 262, 266)
+- ✅ `resource_update_router.py` (ligne 130)  
+- ✅ `content_merger.py` (ligne 50)
+
+#### Frontend (`resourceFormUtils.js`)
+
+```javascript
+export const isDynamicResource = (resourceData) => {
+  const subtypeKey = (resourceData?.sub_type?.key || resourceData?.resource_sub_type?.key || '').toLowerCase();
+  const dynamicSubtypes = new Set(['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'vocabulaire', 'textereconstitue']);
+  
+  return dynamicSubtypes.has(subtypeKey);
+};
+```
+
+**Utilisée dans** :
+- ✅ `ResourceActionLink.js` (ligne 29) - Bouton "Lancer l'activité"
+- ✅ `useResourceHtmlContent.js` (ligne 22) - Affichage "Contenu HTML (dynamique)"
+
+#### Avantages de la centralisation
+
+1. ✅ **Source unique de vérité** : Une seule modification pour mettre à jour partout
+2. ✅ **Cohérence garantie** : Impossible d'avoir des listes différentes selon les fichiers
+3. ✅ **Maintenabilité** : Ajout d'un nouveau type en 2 endroits au lieu de 10+
+4. ✅ **Moins d'erreurs** : Réduction drastique du risque d'oubli
+
+### 8.4. Points critiques
 
 - ⚠️ **Le frontend DOIT envoyer `ai_content_json`** sinon les colonnes BDD restent vides
 - ⚠️ **Chaque type a son propre placeholder spécifique** dans le template
@@ -366,7 +482,7 @@ alembic upgrade head
 - ⚠️ **Toujours tester la mise à jour complète** : génération IA → modification → sauvegarde → vérification BDD
 - ⚠️ **Toujours tester la création complète** : génération IA → fusion → création → BDD
 
-### 8.3. Explication détaillée : resource_update_router.py
+### 8.5. Explication détaillée : resource_update_router.py
 
 **Problème identifié** : Lors de la mise à jour d'une ressource, les données JSON ne sont pas injectées dans le template runtime car le placeholder spécifique n'est pas remplacé.
 

@@ -5,6 +5,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import CircularProgress from '@mui/material/CircularProgress';
 import resourceService from '../../services/resourceService';
 import { API_BASE_URL } from '../../services/api';
+import { isDynamicResource } from '../../utils/resourceFormUtils';
 
 function ResourceActionLink({ resource }) {
     const [fileUrl, setFileUrl] = useState(null);
@@ -12,19 +13,6 @@ function ResourceActionLink({ resource }) {
     const [fileName, setFileName] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-
-    // Vérifier si c'est un exercice dynamique
-    const isDynamicExercise = () => {
-        // Vérifier plusieurs sources possibles pour le type et sous-type
-        const typeKey = resource.type?.key?.toLowerCase() || 
-                       resource.resource_type?.key?.toLowerCase() || '';
-        const subtypeKey = resource.sub_type?.key?.toLowerCase() || 
-                          resource.resource_sub_type?.key?.toLowerCase() || '';
-        
-        console.log('[DEBUG ResourceActionLink] Resource:', resource.id, 'Type:', typeKey, 'Subtype:', subtypeKey);
-        
-        return typeKey === 'exercice' && ['champlex2', 'champlex', 'qcm'].includes(subtypeKey);
-    };
 
     useEffect(() => {
         let isMounted = true;
@@ -37,11 +25,8 @@ function ResourceActionLink({ resource }) {
                 console.log('[DEBUG ResourceActionLink] Full resource:', fullResource);
                 if (!isMounted) return;
 
-                // Détection exercice dynamique
-                const typeKey = fullResource.type?.key?.toLowerCase() || fullResource.resource_type?.key?.toLowerCase() || '';
-                const subtypeKey = fullResource.sub_type?.key?.toLowerCase() || fullResource.resource_sub_type?.key?.toLowerCase() || '';
-                const dynamicSubtypes = new Set(['champlex2', 'champlex', 'qcm', 'pendu']);
-                const isExercise = typeKey === 'exercice' || dynamicSubtypes.has(subtypeKey);
+                // Détection exercice dynamique (via fonction centralisée)
+                const isExercise = isDynamicResource(fullResource);
 
                 // Helpers
                 const toFullUrl = (raw) => {

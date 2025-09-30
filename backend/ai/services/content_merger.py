@@ -11,6 +11,7 @@ import re
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
+from constants import JSON_FIRST_SUBTYPES
 
 from ai.prompts.prompt_generator import PromptGenerator
 from ai.services.registry import ResourceGenerationError
@@ -46,7 +47,7 @@ async def merge_ai_resource_content(
     """
     
     # Types qui utilisent le système JSON-first (simple remplacement de placeholder) avec templates runtime existants
-    json_first_types = ['qcm', 'champlex', 'champlex2', 'pendu', 'quisuisje', 'textereconstitue', 'vocabulaire']
+    json_first_types = JSON_FIRST_SUBTYPES
     
     logger.info(f"[MERGE] Type: {type_key}, Subtype: {subtype_key}")
     logger.info(f"[MERGE] Subtype normalisé: {subtype_key.lower()}")

@@ -144,19 +144,19 @@ export const generateObfuscatedFilename = () => {
  * Crée un fichier HTML à partir du contenu
  */
 export const createHtmlFileFromContent = (content, filename) => {
-  const htmlBlob = new Blob([content], { type: 'text/plain' });
-  return new File([htmlBlob], filename, { type: 'text/plain' });
+  const htmlBlob = new Blob([content], { type: 'text/html' });
+  return new File([htmlBlob], filename, { type: 'text/html' });
 };
 
 /**
  * Détermine si une ressource est dynamique
+ * Basé sur la détection métier par type/sous-type
  */
-export const isDynamicResource = (initialData) => {
-  const hasRuntimePath = Boolean(initialData?.runtime_html_path);
-  const hasDataJson = Boolean(initialData?.data_json);
-  const hasRuntimeUrl = Boolean(initialData?.runtime_html_url);
-
-  return hasRuntimePath || hasDataJson || hasRuntimeUrl;
+export const isDynamicResource = (resourceData) => {
+  const subtypeKey = (resourceData?.sub_type?.key || resourceData?.resource_sub_type?.key || '').toLowerCase();
+  const dynamicSubtypes = new Set(['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'vocabulaire', 'textereconstitue']);
+  
+  return dynamicSubtypes.has(subtypeKey);
 };
 
 /**

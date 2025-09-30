@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../services/api';
+import { isDynamicResource } from '../utils/resourceFormUtils';
 
 /**
  * Hook personnalisé pour gérer le contenu HTML des ressources
@@ -17,25 +18,15 @@ export const useResourceHtmlContent = (initialData, resourceId, isEdit) => {
   const [pendingEditMode, setPendingEditMode] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
 
-  // Computed value for dynamic activity detection
-  const isDynamicActivity = (() => {
-    const hasRuntimePath = Boolean(initialData?.runtime_html_path);
-    const hasDataJson = Boolean(initialData?.data_json);
-    const hasRuntimeUrl = Boolean(initialData?.runtime_html_url);
+  // Computed value for dynamic activity detection (via fonction centralisée)
+  const isDynamicActivity = isDynamicResource(initialData);
 
-    const isDynamic = hasRuntimePath || hasDataJson || hasRuntimeUrl;
-
-    console.log('[DEBUG useResourceHtmlContent] isDynamicActivity (technique):', {
-      resourceId: initialData?.id,
-      hasRuntimePath,
-      hasDataJson,
-      hasRuntimeUrl,
-      runtime_html_path: initialData?.runtime_html_path,
-      isDynamic
-    });
-
-    return isDynamic;
-  })();
+  console.log('[DEBUG useResourceHtmlContent] isDynamicActivity (métier):', {
+    resourceId: initialData?.id,
+    typeKey: initialData?.type?.key || initialData?.resource_type?.key,
+    subtypeKey: initialData?.sub_type?.key || initialData?.resource_sub_type?.key,
+    isDynamicActivity
+  });
 
   // Afficher l'éditeur HTML (statique) uniquement pour les ressources NON dynamiques
   const showHtmlEditor = isEdit && !isDynamicActivity;
