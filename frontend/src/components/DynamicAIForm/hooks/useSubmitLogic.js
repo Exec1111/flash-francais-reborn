@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import resourceService from '../../../services/resourceService';
 import api, { API_BASE_URL } from '../../../services/api';
+import { isDynamicResource } from '../../../utils/resourceFormUtils';
 
 /**
  * Hook personnalisé pour gérer la logique de soumission du formulaire
@@ -564,13 +565,14 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
         throw new Error("Aucun jeton d'authentification trouvé");
       }
       
-      // Champlex, Champlex2, QCM, Pendu et Quisuisje utilisent JSON-first: pas besoin de merge réel
-      const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if (subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje' || subtypeKeyNorm === 'textereconstitue' || subtypeKeyNorm === 'vocabulaire') {
-        console.log(`[DEBUG][handleMergeAll] ${subtypeKeyNorm} JSON-first: contournement du merge`);
+      // Types JSON-first: pas besoin de merge réel (détection via fonction centralisée)
+      const isJsonFirst = isDynamicResource({ sub_type: { key: formData.subtypeKey } });
+      if (isJsonFirst) {
+        console.log(`[DEBUG][handleMergeAll] ${formData.subtypeKey} JSON-first: contournement du merge`);
         
         // Simuler une réponse de merge pour les types JSON-first
         const jsonData = editedResults.length > 0 ? editedResults[0] : generationResults[0];
+        const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
         let placeholderUrl;
         switch(subtypeKeyNorm) {
           case 'champlex2':
@@ -741,13 +743,13 @@ const useSubmitLogic = (formData, validateForm, onSuccess) => {
       apiFormData.append('session_ids_json', JSON.stringify(mergedResults.session_ids || []));
       apiFormData.append('objective_ids_json', JSON.stringify(mergedResults.objective_ids || []));
       
-      // JSON-first pour Champlex2, Champlex, QCM, Pendu et Quisuisje: envoyer le contenu généré par l'IA directement
-      const subtypeKeyNorm = (formData.subtypeKey || '').toLowerCase();
-      if ((subtypeKeyNorm === 'champlex2' || subtypeKeyNorm === 'champlex' || subtypeKeyNorm === 'qcm' || subtypeKeyNorm === 'pendu' || subtypeKeyNorm === 'quisuisje' || subtypeKeyNorm === 'textereconstitue' || subtypeKeyNorm === 'vocabulaire') && generationResults.length > 0) {
+      // JSON-first: envoyer le contenu généré par l'IA directement (détection via fonction centralisée)
+      const isJsonFirst = isDynamicResource({ sub_type: { key: formData.subtypeKey } });
+      if (isJsonFirst && generationResults.length > 0) {
         const aiContent = generationResults[0]; // Premier résultat de génération
         if (aiContent && typeof aiContent === 'object') {
           apiFormData.append('ai_content_json', JSON.stringify(aiContent));
-          console.log('[DEBUG][handleFinish] JSON-first: ai_content_json ajouté pour', subtypeKeyNorm);
+          console.log('[DEBUG][handleFinish] JSON-first: ai_content_json ajouté pour', formData.subtypeKey);
         }
       }
       

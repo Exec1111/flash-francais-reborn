@@ -4,6 +4,7 @@
 import resourceService from '../../../services/resourceService';
 import { formatErrorMessage } from '../utils/formatters';
 import { resourceTypeService } from '../../../services/resourceTypeService';
+import { isDynamicResource } from '../../../utils/resourceFormUtils';
 
 /**
  * Sauvegarde une ressource pédagogique
@@ -41,11 +42,10 @@ export const saveResource = async (resource, htmlContent, sessionId, supportId) 
 
   console.log(`[saveResource] Mapping dynamique des IDs: Type '${type_key}' -> ID ${typeId}, Sous-type '${subtype_key || "N/A"}' -> ID ${subTypeId || 'N/A'}`);
 
-  // Vérifier si c'est un type de ressource JSON-first
-  const subtypeKeyNorm = (subtype_key || '').toLowerCase();
-  const isJsonFirstResource = ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue'].includes(subtypeKeyNorm);
+  // Vérifier si c'est un type de ressource JSON-first (via fonction centralisée)
+  const isJsonFirstResource = isDynamicResource({ sub_type: { key: subtype_key } });
 
-  console.log(`[saveResource] Type de ressource: ${subtypeKeyNorm}, JSON-first: ${isJsonFirstResource}`);
+  console.log(`[saveResource] Type de ressource: ${subtype_key}, JSON-first: ${isJsonFirstResource}`);
 
   // Préparation du FormData pour l'API
   const formData = new FormData();
@@ -82,7 +82,7 @@ export const saveResource = async (resource, htmlContent, sessionId, supportId) 
   if (isJsonFirstResource && resource.data) {
     try {
       formData.append('ai_content_json', JSON.stringify(resource.data));
-      console.log(`[saveResource] Contenu JSON-first ajouté pour ${subtypeKeyNorm}:`, resource.data);
+      console.log(`[saveResource] Contenu JSON-first ajouté pour ${subtype_key}:`, resource.data);
     } catch (error) {
       console.error(`[saveResource] Erreur lors de la sérialisation du contenu JSON-first:`, error);
     }

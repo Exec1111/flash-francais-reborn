@@ -3,15 +3,16 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { mergeAllResources } from '../services/mergeService';
+import { isDynamicResource } from '../../../utils/resourceFormUtils';
 
 /**
  * Vérifie si un type de ressource est JSON-first (pas besoin de fusion HTML réelle)
+ * Utilise la fonction centralisée isDynamicResource
  * @param {string} subtypeKey - Clé du sous-type de ressource
  * @returns {boolean} Vrai si c'est un type JSON-first
  */
 const isJsonFirstResource = (subtypeKey) => {
-  const subtypeKeyNorm = (subtypeKey || '').toLowerCase();
-  return ['champlex2', 'champlex', 'qcm', 'pendu', 'quisuisje', 'textereconstitue'].includes(subtypeKeyNorm);
+  return isDynamicResource({ sub_type: { key: subtypeKey } });
 };
 
 /**
@@ -114,6 +115,9 @@ export const useMerging = (activeStep) => {
               break;
             case 'textereconstitue':
               placeholderUrl = '/api/v1/ai/textereconstitue-json-placeholder';
+              break;
+            case 'vocabulaire':
+              placeholderUrl = '/api/v1/ai/vocabulaire-json-placeholder';
               break;
             default:
               placeholderUrl = '/api/v1/ai/json-placeholder';
