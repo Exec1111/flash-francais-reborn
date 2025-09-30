@@ -76,5 +76,6 @@ constraints:
   - Les exemples doivent être des phrases complètes et naturelles utilisant le mot de manière appropriée.
   - Respecter les éventuelles instructions personnalisées fournies.
   - La liste sera composée de 5 a 10 mots.
+  - IMPORTANT - Les définitions seront mélangées aléatoirement dans l'interface pour éviter que l'ordre des mots et des définitions soit identique (ce qui rendrait l'exercice trivial).
 
 response_schema: "vocabulaire.schema.json"

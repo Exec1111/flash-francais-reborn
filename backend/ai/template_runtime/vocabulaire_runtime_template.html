@@ -372,16 +372,16 @@
             // Colonne des définitions (éléments draggable)
             const definitionsColumn = document.createElement('div');
             definitionsColumn.className = 'definitions-column';
-
             const definitionsTitle = document.createElement('h3');
             definitionsTitle.textContent = 'Définitions disponibles';
             definitionsColumn.appendChild(definitionsTitle);
 
-            // Mélanger les définitions
-            const shuffledVocab = shuffleArray(vocabulaire);
+            // Mélanger les mots et les définitions SÉPARÉMENT pour éviter l'ordre identique
+            const shuffledWords = shuffleArray(vocabulaire);
+            const shuffledDefinitions = shuffleArray([...vocabulaire]); // Copie indépendante mélangée différemment
 
             // Créer les zones de drop (mots)
-            shuffledVocab.forEach((item, index) => {
+            shuffledWords.forEach((item, index) => {
                 const wordZone = document.createElement('div');
                 wordZone.className = 'word-zone drop-zone';
                 wordZone.dataset.wordIndex = index;
@@ -422,8 +422,8 @@
                 wordZone.appendChild(exampleText);
             });
 
-            // Créer les éléments draggable (définitions)
-            shuffledVocab.forEach((item, index) => {
+            // Créer les éléments draggable (définitions) - ordre différent des mots
+            shuffledDefinitions.forEach((item, index) => {
                 const definitionItem = document.createElement('div');
                 definitionItem.className = 'draggable-item';
                 definitionItem.dataset.definition = item.definition;
