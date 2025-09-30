@@ -85,7 +85,7 @@ const ResourceList = () => {
     { 
       field: 'title', 
       headerName: 'Titre', 
-      minWidth: 250,
+      minWidth: 200,
       flex: 1,
       renderCell: (params) => (
         <Box sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
@@ -110,7 +110,7 @@ const ResourceList = () => {
     { 
       field: 'type', 
       headerName: 'Type', 
-      width: 130,
+      width: 110,
       valueGetter: (params) => {
         return resourceTypes[params.row.type_id]?.value || params.row.type?.value || '';
       },
@@ -119,57 +119,32 @@ const ResourceList = () => {
     {
       field: 'subtype',
       headerName: 'Sous-type',
-      width: 130,
+      width: 120,
       valueGetter: (params) => {
         return resourceSubtypes[params.row.sub_type_id]?.value || params.row.sub_type?.value || '';
       },
       valueFormatter: (params) => params.value ? (params.value.charAt(0).toUpperCase() + params.value.slice(1)) : 'Non spécifié'
     },
     { 
-      field: 'description', 
-      headerName: 'Description', 
-      width: 300
-    },
-    {
-      field: 'document',
-      headerName: 'Document',
-      width: 160,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => <ResourceActionLink resource={params.row} />
-    },
-    {
-      field: 'docling',
-      headerName: 'Extraction PDF',
-      width: 140,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <PdfExtractionStatusChip
-          resourceId={params.row.id}
-          fileType={params.row.file_type}
-          filePath={params.row.file_path}
-          autoFetch
-        />
-      )
-    },
-    { 
       field: 'actions', 
       headerName: 'Actions', 
-      width: 220, 
+      width: 180,
+      sortable: false,
+      filterable: false,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+          <ResourceActionLink resource={params.row} iconOnly={true} />
           <IconButton size="small" title="Voir" data-action="view" onClick={() => handleViewResource(params.row.id)}>
-            <VisibilityIcon />
+            <VisibilityIcon fontSize="small" />
           </IconButton>
           <IconButton size="small" title="Modifier" data-action="edit" onClick={(event) => {
             event.stopPropagation();
             handleEditResource(params.row.id);
           }}>
-            <EditIcon />
+            <EditIcon fontSize="small" />
           </IconButton>
           <IconButton size="small" title="Supprimer" color="error" data-action="delete" onClick={() => handleDeleteResource(params.row.id)}>
-            <DeleteIcon />
+            <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
       )

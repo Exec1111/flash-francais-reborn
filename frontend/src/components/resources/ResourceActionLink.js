@@ -7,7 +7,7 @@ import resourceService from '../../services/resourceService';
 import { API_BASE_URL } from '../../services/api';
 import { isDynamicResource } from '../../utils/resourceFormUtils';
 
-function ResourceActionLink({ resource }) {
+function ResourceActionLink({ resource, iconOnly = false }) {
     const [fileUrl, setFileUrl] = useState(null);
     const [runtimeUrl, setRuntimeUrl] = useState(null);
     const [fileName, setFileName] = useState(null);
@@ -115,6 +115,7 @@ function ResourceActionLink({ resource }) {
               href={runtimeUrl} 
               target="_blank" 
               rel="noopener noreferrer"
+              title="Lancer l'activité"
               sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -125,8 +126,8 @@ function ResourceActionLink({ resource }) {
                 }
               }}
             >
-              <RocketLaunchIcon fontSize="small" sx={{ mr: 0.5 }} />
-              Lancer l'activité
+              <RocketLaunchIcon fontSize="small" sx={{ mr: iconOnly ? 0 : 0.5 }} />
+              {!iconOnly && 'Lancer l\'activité'}
             </MuiLink>
         );
     }
@@ -138,10 +139,11 @@ function ResourceActionLink({ resource }) {
               href={fileUrl} 
               target="_blank" 
               rel="noopener noreferrer"
+              title="Ouvrir le document"
               sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
             >
-              <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
-              Ouvrir le document
+              <LinkIcon fontSize="small" sx={{ mr: iconOnly ? 0 : 0.5 }} />
+              {!iconOnly && 'Ouvrir le document'}
             </MuiLink>
         );
     }
