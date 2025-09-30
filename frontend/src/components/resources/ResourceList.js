@@ -40,6 +40,7 @@ import ResourceActionLink from './ResourceActionLink';
 import { saveViewPreference, getViewPreference } from '../../utils/userPreferences';
 import paginationConfig from '../../config/pagination';
 import PdfExtractionStatusChip from '../pdf/PdfExtractionStatusChip';
+import InlineTitleEditor from './InlineTitleEditor';
 
 const ResourceList = () => {
   const { user } = useAuth();
@@ -67,16 +68,43 @@ const ResourceList = () => {
   const navigate = useNavigate();
   const debounceTimer = useRef(null);
 
+  // Gestionnaire de sauvegarde du titre après édition inline
+  const handleTitleSave = (resourceId, newTitle) => {
+    // Mettre à jour la ressource dans l'état local
+    setResources(prevResources => 
+      prevResources.map(resource => 
+        resource.id === resourceId 
+          ? { ...resource, title: newTitle }
+          : resource
+      )
+    );
+  };
+
   // Colonnes pour la DataGrid (vue tabulaire)
   const columns = [
     { 
       field: 'title', 
       headerName: 'Titre', 
-      width: 200, 
+      minWidth: 250,
+      flex: 1,
       renderCell: (params) => (
-        <span style={{ color: '#5a47d1', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate(`/resources/view/${params.row.id}`)}>
-          {params.value}
-        </span>
+        <Box sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+          <InlineTitleEditor
+            title={params.value || params.row.title || ''}
+            resourceId={params.row.id}
+            onSave={handleTitleSave}
+            titleProps={{
+              sx: { 
+                color: '#5a47d1', 
+                cursor: 'pointer', 
+                textDecoration: 'underline',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word'
+              }
+            }}
+            onClick={() => navigate(`/resources/view/${params.row.id}`)}
+          />
+        </Box>
       )
     },
     { 
@@ -100,8 +128,7 @@ const ResourceList = () => {
     { 
       field: 'description', 
       headerName: 'Description', 
-      width: 300,
-      flex: 1 
+      width: 300
     },
     {
       field: 'document',
@@ -501,19 +528,25 @@ const ResourceList = () => {
                       }}
                     >
                       <CardHeader 
-                        title={resource.title} 
-                        titleTypographyProps={{
-                          variant: 'h6',
-                          fontWeight: 'bold',
-                          color: 'primary.main',
-                          sx: { cursor: 'pointer' }
-                        }}
+                        title={
+                          <InlineTitleEditor
+                            title={resource.title}
+                            resourceId={resource.id}
+                            onSave={handleTitleSave}
+                            titleProps={{
+                              variant: 'h6',
+                              fontWeight: 'bold',
+                              color: 'primary.main',
+                              sx: { cursor: 'pointer' }
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              console.log('Navigating to resource view from CardHeader, resource.id:', resource.id);
+                              navigate(`/resources/view/${resource.id}`);
+                            }}
+                          />
+                        }
                         sx={{ pb: 0 }}
-                        onClick={(event) => {
-                          event.stopPropagation(); // Prevent event bubbling
-                          console.log('Navigating to resource view from CardHeader, resource.id:', resource.id);
-                          navigate(`/resources/view/${resource.id}`);
-                        }}
                       />
                       <CardContent sx={{ pt: 1, pb: 1, flex: 1 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>

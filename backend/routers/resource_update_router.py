@@ -25,6 +25,51 @@ logger = logging.getLogger(__name__)
 
 resource_update_router = APIRouter()
 
+@resource_update_router.patch("/{resource_id}", response_model=ResourceResponse)
+async def patch_resource_title(
+    resource_id: int,
+    update_data: Dict,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Mise à jour partielle d'une ressource (PATCH).
+    Permet de mettre à jour uniquement le titre ou d'autres champs spécifiques.
+    """
+    logger.info(f"PATCH ressource {resource_id} par utilisateur {current_user.id}")
+    
+    # Vérifier que la ressource existe et appartient à l'utilisateur
+    db_resource = crud.resource.get_resource(db, resource_id=resource_id)
+    if db_resource is None:
+        logger.warning(f"Ressource {resource_id} non trouvée pour PATCH")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    if db_resource.user_id != current_user.id:
+        logger.error(f"Accès non autorisé PATCH ressource {resource_id} par utilisateur {current_user.id}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this resource")
+    
+    # Appliquer uniquement les champs fournis
+    update_dict = {}
+    if 'title' in update_data and update_data['title'] is not None:
+        update_dict['title'] = update_data['title'].strip()
+        logger.info(f"Mise à jour titre ressource {resource_id}: '{update_dict['title']}'")
+    
+    if 'description' in update_data and update_data['description'] is not None:
+        update_dict['description'] = update_data['description']
+    
+    # Mettre à jour la ressource directement via SQLAlchemy
+    try:
+        for key, value in update_dict.items():
+            setattr(db_resource, key, value)
+        
+        db.commit()
+        db.refresh(db_resource)
+        logger.info(f"Ressource {resource_id} mise à jour avec succès (PATCH)")
+        return db_resource
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erreur lors de la mise à jour PATCH de la ressource {resource_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
 @resource_update_router.put("/{resource_id}", response_model=ResourceResponse)
 async def update_resource_route(
     resource_id: int,
