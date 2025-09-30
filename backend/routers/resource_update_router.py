@@ -4,8 +4,8 @@ from typing import List, Optional, Dict
 import re
 import json
 import os
-from pathlib import Path
 import logging
+from pathlib import Path
 from schemas.resource import ResourceUpdate, ResourceResponse
 from database import get_db
 import crud.resource
@@ -13,6 +13,7 @@ from dependencies import get_current_active_user
 from models import User as UserModel
 from ai.services.template_resolver import TemplateResolver
 from ai.utils.html_cleaner import clean_html, remove_empty_blocks_and_breaks
+from ai.utils.cartemental_fixer import fix_cartemental_html
 from .resource_utils import html_to_qcm_json, html_to_champlex_json
 from config import get_settings
 from werkzeug.utils import secure_filename
@@ -91,6 +92,14 @@ async def update_resource_route(
                 html_content = remove_empty_blocks_and_breaks(html_content)
                 cleaned_length = len(html_content)
                 logger.info(f"HTML nettoyé : {original_length} -> {mid_length} -> {cleaned_length} caractères")
+                
+                # Réparer les cartes mentales sans JavaScript si nécessaire
+                st = getattr(db_resource_check, 'sub_type', None)
+                st_key = (getattr(st, 'key', '') or '').strip().lower()
+                if st_key == 'cartemental':
+                    html_content, was_fixed = fix_cartemental_html(html_content)
+                    if was_fixed:
+                        logger.info(f"[CARTEMENTAL] JavaScript ajouté à la carte mentale (ressource {resource_id})")
 
             full_path.write_text(html_content, encoding="utf-8")
             logger.info(f"Fichier HTML {full_path} mis à jour avec succès pour la ressource {resource_id}.")

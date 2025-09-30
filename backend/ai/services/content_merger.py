@@ -15,6 +15,7 @@ from google.genai.errors import ServerError
 from ai.prompts.prompt_generator import PromptGenerator
 from ai.services.registry import ResourceGenerationError
 from ai.utils.html_cleaner import preserve_content_spaces
+from ai.utils.cartemental_fixer import fix_cartemental_html
 from config import get_settings
 from database import SessionLocal
 from models.llm_interaction_log import LLMInteractionLog
@@ -277,6 +278,12 @@ async def _merge_ai_template(
             cleaned_length = len(html_generated)
             if original_length != cleaned_length:
                 logger.debug(f"HTML fusionné nettoyé : {original_length} -> {cleaned_length} caractères")
+        
+        # Réparer les cartes mentales sans JavaScript si nécessaire
+        if html_generated and subtype_key.lower() == 'cartemental':
+            html_generated, was_fixed = fix_cartemental_html(html_generated)
+            if was_fixed:
+                logger.info(f"[CARTEMENTAL] JavaScript ajouté à la carte mentale générée par l'IA")
         
         # Logging LLMInteractionLog
         try:

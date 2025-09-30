@@ -56,37 +56,6 @@
             font-size: 2.2em;
             font-weight: 300;
         }
-        .controls {
-            text-align: center;
-            margin: 15px 0;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            color: white;
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-            color: white;
-        }
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
         .mind-map-container {
             background: #f8f9fa;
             border-radius: 15px;
@@ -109,7 +78,7 @@
             margin-left: 0;
         }
         .branch-item {
-            margin-bottom: 8px;
+            margin-bottom: 15px;
             border-left: 3px solid transparent;
             padding-left: 15px;
         }
@@ -117,87 +86,39 @@
             background: white;
             padding: 10px 15px;
             border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
             border: 2px solid;
             font-weight: 600;
             font-size: 1em;
-        }
-        .branch-header:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .branch-icon {
-            font-size: 0.8em;
-            transition: transform 0.2s ease;
-            color: #6c757d;
-        }
-        .branch-item.expanded .branch-icon {
-            transform: rotate(90deg);
+            margin-bottom: 10px;
         }
         .sub-branches {
-            display: none;
             margin-top: 8px;
             margin-left: 15px;
             padding-left: 12px;
             border-left: 2px dashed #dee2e6;
         }
-        .branch-item.expanded .sub-branches {
-            display: block;
-            animation: slideDown 0.2s ease;
-        }
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                max-height: 0;
-            }
-            to {
-                opacity: 1;
-                max-height: 1000px;
-            }
-        }
         .sub-branch-item {
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .sub-branch-header {
             background: rgba(255,255,255,0.8);
             padding: 6px 10px;
             border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             border-left: 3px solid;
             font-weight: 500;
             font-size: 0.9em;
-            transition: all 0.2s ease;
-        }
-        .sub-branch-header:hover {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 5px;
         }
         .elements-list {
-            display: none;
             margin-top: 4px;
             margin-left: 12px;
-        }
-        .sub-branch-item.expanded .elements-list {
-            display: block;
-            animation: fadeIn 0.2s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
         .element-item {
             background: #f8f9fa;
             padding: 4px 8px;
             margin: 3px 0;
             border-radius: 4px;
-            border-left: 2px solid;
             font-size: 0.85em;
             line-height: 1.3;
             transition: all 0.2s ease;
@@ -243,70 +164,37 @@
             font-size: 0.9em;
             line-height: 1.4;
         }
-            @media (max-width: 768px) {
-                .carte-container {
-                    padding: 15px;
-                }
-                .mind-map-container {
-                    padding: 15px;
-                }
-                .central-theme {
-                    font-size: 1.1em;
-                    padding: 10px 15px;
-                }
-                .controls {
-                    flex-direction: column;
-                    gap: 8px;
-                }
-                .btn {
-                    margin: 2px 0;
-                    padding: 6px 12px;
-                    font-size: 0.8em;
-                }
-                .branch-header {
-                    font-size: 0.9em;
-                    padding: 8px 12px;
-                }
-                .sub-branch-header {
-                    font-size: 0.85em;
-                    padding: 5px 8px;
-                }
-                .element-item {
-                    font-size: 0.8em;
-                    padding: 3px 6px;
-                }
+        @media (max-width: 768px) {
+            .carte-container {
+                padding: 15px;
             }
-        .print-button {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
-            font-weight: bold;
-            cursor: pointer;
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
-            transition: all 0.3s ease;
-        }
-        .print-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,123,255,0.4);
+            .mind-map-container {
+                padding: 15px;
+            }
+            .central-theme {
+                font-size: 1.1em;
+                padding: 10px 15px;
+            }
+            .branch-header {
+                font-size: 0.9em;
+                padding: 8px 12px;
+            }
+            .sub-branch-header {
+                font-size: 0.85em;
+                padding: 5px 8px;
+            }
+            .element-item {
+                font-size: 0.8em;
+                padding: 3px 6px;
+            }
         }
         @media print {
             body { background: white; }
-            .print-button { display: none; }
             .carte-container { box-shadow: none; }
-            .controls { display: none; }
-            .branch-item.expanded .sub-branches { display: block; }
-            .sub-branch-item.expanded .elements-list { display: block; }
         }
     </style>
 </head>
 <body>
-    <button class="print-button" onclick="window.print()">🖨️ Imprimer</button>
-    
     <div class="carte-container">
         <div class="carte-header">
             <div class="carte-type">🧠 Carte Mentale</div>
@@ -317,12 +205,6 @@
             <strong>💡 Mode d'emploi :</strong> {{ carte.consignes_utilisation }}
         </div>
 
-        <div class="controls">
-            <button class="btn btn-primary" onclick="expandAll()">📖 Tout développer</button>
-            <button class="btn btn-secondary" onclick="collapseAll()">📑 Tout réduire</button>
-            <button class="btn btn-primary" onclick="resetView()">🔄 Vue initiale</button>
-        </div>
-
         <div class="mind-map-container">
             <div class="central-theme">
                 {{ carte.theme_central }}
@@ -330,27 +212,19 @@
             
             <div class="tree-structure">
                 {% for branch in carte.branches %}
-                <div class="branch-item" data-branch="{{ loop.index0 }}" 
-                     style="border-left-color: {{ branch.couleur }}">
-                    <div class="branch-header" 
-                         style="border-color: {{ branch.couleur }}; color: {{ branch.couleur }};" 
-                         onclick="toggleBranch({{ loop.index0 }})">
-                        <span>{{ branch.titre }}</span>
-                        <span class="branch-icon">▶</span>
+                <div class="branch-item" style="border-left-color: {{ branch.couleur }}">
+                    <div class="branch-header" style="border-color: {{ branch.couleur }}; color: {{ branch.couleur }};">
+                        {{ branch.titre }}
                     </div>
                     <div class="sub-branches">
                         {% for sub_branch in branch.sous_branches %}
-                        <div class="sub-branch-item" data-sub="{{ loop.index0 }}">
-                            <div class="sub-branch-header" 
-                                 style="border-left-color: {{ branch.couleur }};" 
-                                 onclick="toggleSubBranch({{ loop.parent.loop.index0 }}, {{ loop.index0 }})">
-                                <span>{{ sub_branch.titre }}</span>
-                                <span class="branch-icon">▶</span>
+                        <div class="sub-branch-item">
+                            <div class="sub-branch-header" style="border-left-color: {{ branch.couleur }};">
+                                {{ sub_branch.titre }}
                             </div>
                             <div class="elements-list">
                                 {% for element in sub_branch.elements %}
-                                <div class="element-item" 
-                                     style="border-left-color: {{ branch.couleur }};">
+                                <div class="element-item" style="border-left-color: {{ branch.couleur }};">
                                     {{ element }}
                                 </div>
                                 {% endfor %}
@@ -379,41 +253,5 @@
         </div>
         {% endif %}
     </div>
-
-    <script>
-        function toggleBranch(branchIndex) {
-            const branchElement = document.querySelector(`[data-branch="${branchIndex}"]`);
-            branchElement.classList.toggle('expanded');
-        }
-
-        function toggleSubBranch(branchIndex, subBranchIndex) {
-            const subBranchElement = document.querySelector(
-                `[data-branch="${branchIndex}"] [data-sub="${subBranchIndex}"]`
-            );
-            subBranchElement.classList.toggle('expanded');
-        }
-
-        function expandAll() {
-            document.querySelectorAll('.branch-item').forEach(branch => {
-                branch.classList.add('expanded');
-            });
-            document.querySelectorAll('.sub-branch-item').forEach(subBranch => {
-                subBranch.classList.add('expanded');
-            });
-        }
-
-        function collapseAll() {
-            document.querySelectorAll('.branch-item.expanded').forEach(branch => {
-                branch.classList.remove('expanded');
-            });
-            document.querySelectorAll('.sub-branch-item.expanded').forEach(subBranch => {
-                subBranch.classList.remove('expanded');
-            });
-        }
-
-        function resetView() {
-            collapseAll();
-        }
-    </script>
 </body>
 </html>
