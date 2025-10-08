@@ -1,0 +1,88 @@
+description_courte: "Génère une fiche d'activités orales variées adaptée au niveau des apprenants avec consignes et axes d'évaluation"
+
+system_prompt: |
+  Tu es un professeur de français expert dans la création d'activités d'expression orale adaptées pour des apprenants de différents niveaux.
+  Ta mission est de créer une fiche proposant plusieurs exercices d'oral pertinents qui répondent aux critères spécifiés.
+  Les exercices doivent être adaptés au niveau des apprenants et être en lien avec le contexte de la séance.
+  Chaque exercice doit être accompagné de consignes claires, d'exemples si nécessaire, des résultats attendus et des axes d'évaluation précis pour guider l'enseignant.
+
+user_prompt_template: |
+  Je souhaite créer une fiche d'activités orales pour des apprenants de niveau {{ niveau }}.
+  {% if nombre_exercices %}
+  Nombre d'activités souhaités : {{ nombre_exercices }}
+  {% endif %}
+  {% if types_oral %}
+  Types d'activités orales à privilégier : {{ types_oral }}
+  {% endif %}
+  {% if competences %}
+  Compétences orales à travailler : {{ competences }}
+  {% endif %}
+  {% if duree_estimee %}
+  Durée estimée pour l'ensemble des activités : {{ duree_estimee }}
+  {% endif %}
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+  
+  Utilise ces ressources comme contexte pour créer les activités orales. Les exercices doivent s'appuyer sur le contenu fourni (œuvre étudiée, notions abordées, vocabulaire vu, etc.).
+  {% endif %}
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  Contraintes :
+  {% for c in constraints %}
+  - {{ c }}
+  {% endfor %}
+
+parameters:
+  - name: niveau
+    type: str
+    label: Niveau
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+  - name: nombre_exercices
+    type: str
+    label: Nombre d'activités
+    description: Nombre d'activités orales à proposer (optionnel)
+    default: "3-5"
+  - name: types_oral
+    type: str
+    label: Types d'activités orales
+    description: Types d'activités à privilégier parmi la liste exhaustive (ex "lecture à voix haute, débat mouvant, improvisation courte")
+    default: ""
+  - name: competences
+    type: str
+    label: Compétences
+    description: Compétences orales à travailler (ex "parler en continu, interagir, lire à voix haute, oral d'interprétation")
+    default: ""
+  - name: resource_ids
+    type: list
+    label: Ressources de référence
+    description: Liste d'identifiants de ressources à utiliser comme contexte pour les exercices (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    label: Instructions personnalisées
+    description: Instructions personnalisées pour la génération des activités orales (optionnel)
+    default: ""
+
+constraints:
+  - "Les exercices doivent être adaptés au niveau des apprenants (complexité des consignes, durée, exigences)."
+  - "Chaque exercice doit appartenir à l'une des catégories suivantes : I. Prendre la parole, s'exprimer clairement (lecture à voix haute, présentation d'un objet/image, portrait chinois oral), II. Jouer, interpréter, incarner (jeux de rôles, lecture théâtralisée, improvisation courte), III. Écouter, reformuler, interagir (entretien croisé, reformulation orale, débat mouvant), IV. Organiser un discours, argumenter (exposé oral, discours d'éloquence, plaidoyer/réquisitoire oral), V. Oral réflexif et métacognitif (retour oral sur un travail, lecture commentée, podcast/capsule audio), VI. Activités collectives et coopératives (table ronde, lecture chorale, improvisation collective)."
+  - "Les exercices doivent être variés et complémentaires pour développer différentes compétences orales."
+  - "Si des ressources de référence sont fournies, les exercices doivent s'en inspirer et créer du lien avec le contenu étudié."
+  - "Chaque exercice doit comporter : un titre explicite, la catégorie d'activité orale, une consigne claire et détaillée, des exemples ou amorces si nécessaire, la durée estimée, le type d'organisation (individuel, binôme, groupe, collectif)."
+  - "Pour chaque exercice, fournir les résultats attendus précis (ce que l'élève doit produire à l'oral, les critères de réussite)."
+  - "Pour chaque exercice, fournir les axes d'évaluation pour l'enseignant (compétences orales travaillées, points à observer, critères d'évaluation)."
+  - "Les consignes doivent être formulées de manière à encourager la prise de parole tout en donnant un cadre structurant."
+  - "La fiche doit être immédiatement utilisable par l'enseignant sans nécessiter de préparation supplémentaire."
+  - "Privilégier des activités qui favorisent l'écoute active, l'interaction et le respect de la parole d'autrui."
+
+response_schema: "oral.schema.json"

@@ -1,0 +1,222 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schéma pour la fiche d'activités orales",
+    "description": "Définit la structure attendue pour une fiche d'activités orales avec consignes et axes d'évaluation",
+    "type": "object",
+    "properties": {
+        "fiche_oral": {
+            "type": "object",
+            "properties": {
+                "titre": {
+                    "type": "string",
+                    "description": "Le titre de la fiche d'activités orales"
+                },
+                "niveau": {
+                    "type": "string",
+                    "description": "Le niveau des apprenants"
+                },
+                "theme": {
+                    "type": "string",
+                    "description": "Le thème principal de la fiche"
+                },
+                "duree_estimee": {
+                    "type": "string",
+                    "description": "Durée estimée pour l'ensemble des activités"
+                },
+                "objectifs_globaux": {
+                    "type": "array",
+                    "description": "Objectifs pédagogiques globaux de la fiche",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "exercices": {
+                    "type": "array",
+                    "description": "Liste des activités orales proposées",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "numero": {
+                                "type": "integer",
+                                "description": "Numéro de l'exercice"
+                            },
+                            "titre": {
+                                "type": "string",
+                                "description": "Titre de l'activité orale"
+                            },
+                            "categorie": {
+                                "type": "string",
+                                "description": "Catégorie d'activité orale",
+                                "enum": [
+                                    "Prendre la parole, s'exprimer clairement",
+                                    "Jouer, interpréter, incarner",
+                                    "Écouter, reformuler, interagir",
+                                    "Organiser un discours, argumenter",
+                                    "Oral réflexif et métacognitif",
+                                    "Activités collectives et coopératives"
+                                ]
+                            },
+                            "type_specifique": {
+                                "type": "string",
+                                "description": "Type spécifique de l'activité (ex: lecture à voix haute, débat mouvant, improvisation, etc.)"
+                            },
+                            "consigne": {
+                                "type": "string",
+                                "description": "Consigne claire et détaillée pour l'élève"
+                            },
+                            "format_attendu": {
+                                "type": "object",
+                                "description": "Format et organisation de l'activité",
+                                "properties": {
+                                    "type_production": {
+                                        "type": "string",
+                                        "description": "Type de production orale attendue (exposé, dialogue, improvisation, lecture, etc.)"
+                                    },
+                                    "organisation": {
+                                        "type": "string",
+                                        "description": "Type d'organisation (individuel, binôme, petit groupe, collectif)",
+                                        "enum": ["Individuel", "Binôme", "Petit groupe", "Collectif", "Variable"]
+                                    },
+                                    "duree": {
+                                        "type": "string",
+                                        "description": "Durée estimée pour cette activité (préparation + passage)"
+                                    },
+                                    "materiel": {
+                                        "type": "array",
+                                        "description": "Matériel nécessaire (optionnel)",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": ["type_production", "organisation", "duree"]
+                            },
+                            "exemples_amorces": {
+                                "type": "array",
+                                "description": "Exemples ou amorces pour aider l'élève à démarrer (optionnel)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "deroulement": {
+                                "type": "array",
+                                "description": "Étapes du déroulement de l'activité (optionnel)",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "etape": {
+                                            "type": "string",
+                                            "description": "Nom de l'étape"
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "description": "Description de l'étape"
+                                        }
+                                    },
+                                    "required": ["etape", "description"]
+                                }
+                            },
+                            "resultats_attendus": {
+                                "type": "object",
+                                "description": "Description précise des résultats attendus",
+                                "properties": {
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Description générale de ce que l'élève doit produire à l'oral"
+                                    },
+                                    "criteres_reussite": {
+                                        "type": "array",
+                                        "description": "Critères de réussite pour l'élève",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": ["description", "criteres_reussite"]
+                            },
+                            "axes_evaluation": {
+                                "type": "object",
+                                "description": "Axes d'évaluation pour l'enseignant",
+                                "properties": {
+                                    "competences_travaillees": {
+                                        "type": "array",
+                                        "description": "Compétences orales travaillées dans cette activité",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "points_observation": {
+                                        "type": "array",
+                                        "description": "Points à observer lors de l'évaluation",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "criteres_correction": {
+                                        "type": "array",
+                                        "description": "Critères d'évaluation pour l'enseignant",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "critere": {
+                                                    "type": "string",
+                                                    "description": "Nom du critère d'évaluation"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "description": "Description ou barème du critère"
+                                                }
+                                            },
+                                            "required": ["critere", "description"]
+                                        }
+                                    }
+                                },
+                                "required": ["competences_travaillees", "points_observation", "criteres_correction"]
+                            },
+                            "conseils_differenciation": {
+                                "type": "array",
+                                "description": "Conseils pour adapter l'activité aux différents niveaux d'élèves (optionnel)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "variantes": {
+                                "type": "array",
+                                "description": "Variantes possibles de l'activité (optionnel)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "numero",
+                            "titre",
+                            "categorie",
+                            "type_specifique",
+                            "consigne",
+                            "format_attendu",
+                            "resultats_attendus",
+                            "axes_evaluation"
+                        ]
+                    }
+                },
+                "conseils_mise_en_oeuvre": {
+                    "type": "array",
+                    "description": "Conseils généraux pour la mise en œuvre des activités orales (optionnel)",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ressources_complementaires": {
+                    "type": "array",
+                    "description": "Ressources complémentaires ou documents à fournir aux élèves (optionnel)",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": ["titre", "niveau", "theme", "duree_estimee", "objectifs_globaux", "exercices"]
+        }
+    },
+    "required": ["fiche_oral"]
+}
