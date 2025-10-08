@@ -373,7 +373,14 @@ async def get_resource_type_schema(
             if "enum" in p:
                 field_type = "enum"  # Utiliser le type enum pour les champs avec énumération
             else:
-                field_type = "number" if str(p.get("type")).lower() in ("int", "integer") else "string"
+                # Gérer les différents types de paramètres
+                param_type = str(p.get("type", "string")).lower()
+                if param_type in ("int", "integer"):
+                    field_type = "number"
+                elif param_type in ("list", "array"):
+                    field_type = "list"
+                else:
+                    field_type = "string"
 
             # Validations et valeurs par défaut
             validations = {}

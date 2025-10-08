@@ -16,14 +16,17 @@ import {
   Button,
   Switch,
   InputAdornment,
-  IconButton
+  IconButton,
+  Stack
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { AttachFile as AttachFileIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { AttachFile as AttachFileIcon, Clear as ClearIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
 // Importer notre composant spécifique pour le niveau
 import NiveauSelect from './NiveauSelect';
+// Importer la modale de sélection de ressources
+import ResourceSelectorModal from '../../resources/ResourceSelectorModal';
 
 /**
  * Composant générique pour afficher un champ de formulaire selon son type
@@ -47,6 +50,21 @@ const FormField = ({
 }) => {
   const theme = useTheme();
   const [filePreview, setFilePreview] = useState(null);
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
+  const [selectedResources, setSelectedResources] = useState([]);
+
+  // Effet pour synchroniser les ressources sélectionnées avec les IDs (pour resource_ids uniquement)
+  React.useEffect(() => {
+    if (field?.name === 'resource_ids') {
+      if (Array.isArray(value) && value.length > 0) {
+        // Si on a des IDs, on garde juste les IDs pour l'affichage
+        // Les détails complets seront récupérés lors de l'ouverture de la modale
+        setSelectedResources(value.map(id => ({ id, title: `Ressource #${id}` })));
+      } else {
+        setSelectedResources([]);
+      }
+    }
+  }, [value, field?.name]);
 
   // Fonction auxiliaire pour vérifier si un champ est de type liste
   const isListField = (field) => {
@@ -289,6 +307,73 @@ const FormField = ({
 
     case 'array':
     case 'list':
+      // Traitement spécial pour resource_ids : utiliser la modale de recherche
+      if (field.name === 'resource_ids') {
+        const handleSaveResources = (resources) => {
+          setSelectedResources(resources);
+          onChange(resources.map(res => res.id));
+          setResourceModalOpen(false);
+        };
+
+        const handleRemoveResource = (resourceId) => {
+          const newResources = selectedResources.filter(res => res.id !== resourceId);
+          setSelectedResources(newResources);
+          onChange(newResources.map(res => res.id));
+        };
+
+        return (
+          <Box mt={2} mb={2}>
+            <Typography variant="subtitle1" gutterBottom>
+              {field.label || field.name}
+            </Typography>
+            
+            <Stack spacing={2}>
+              <Button
+                variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={() => setResourceModalOpen(true)}
+                disabled={disabled}
+              >
+                Rechercher des ressources
+              </Button>
+
+              {selectedResources.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {selectedResources.map((resource) => (
+                    <Chip
+                      key={resource.id}
+                      label={resource.title || `Ressource #${resource.id}`}
+                      onDelete={disabled ? undefined : () => handleRemoveResource(resource.id)}
+                      color="primary"
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              )}
+
+              {!selectedResources.length && (
+                <Typography variant="body2" color="text.secondary">
+                  Aucune ressource sélectionnée
+                </Typography>
+              )}
+            </Stack>
+
+            {(error || field.description) && (
+              <FormHelperText error={!!error}>
+                {error || field.description}
+              </FormHelperText>
+            )}
+
+            <ResourceSelectorModal
+              open={resourceModalOpen}
+              onClose={() => setResourceModalOpen(false)}
+              initialSelectedResources={selectedResources}
+              onSave={handleSaveResources}
+            />
+          </Box>
+        );
+      }
+
       // Si les éléments sont des objets complexes
       if (field.items && field.items.type === 'object') {
         // Logique pour les listes d'objets complexes - à implémenter

@@ -133,6 +133,8 @@ def seed_reference_data(db: Session):
     {'key': 'CHAMPLEX', 'parent_type_key': 'EXERCICE', 'value': 'Champs lexicaux multiples'},
     {'key': 'PENDU', 'parent_type_key': 'EXERCICE', 'value': 'Jeu du pendu'},
     {'key': 'QUISUISJE', 'parent_type_key': 'EXERCICE', 'value': 'Qui suis-je ?'},
+    {'key': 'ECRITURE', 'parent_type_key': 'EXERCICE', 'value': 'Activité d\'écriture'},
+    {'key': 'ORAL', 'parent_type_key': 'EXERCICE', 'value': 'Activité de travail de l\'oral'},
     {'key': 'CHAMPLEX2', 'parent_type_key': 'EXERCICE', 'value': 'Champ lexical simple'},
     {'key': 'MOTS-CROISES', 'parent_type_key': 'EXERCICE', 'value': 'Mots croisés'},
     {'key': 'ANALYSE_TEXTE', 'parent_type_key': 'EXERCICE', 'value': 'Analyse de texte'},

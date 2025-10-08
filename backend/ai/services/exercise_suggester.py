@@ -21,6 +21,92 @@ def _norm_key(value: str) -> str:
     """Normalise une clé en minuscules et remplace '-' par '_' pour éviter les mismatches."""
     return (value or "").strip().lower().replace('-', '_')
 
+def _enrich_suggestions_with_context(
+    suggestions: Dict[str, Any],
+    session_title: str,
+    session_description: str,
+    session_objectives: List[str],
+    support: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Enrichit automatiquement chaque suggestion avec le contexte de la séance 
+    dans le paramètre 'instructions_personnalisees'.
+    
+    Cette fonction garantit que chaque exercice suggéré possède le contexte nécessaire
+    pour être généré de manière cohérente avec la séance.
+    
+    Args:
+        suggestions: Dictionnaire contenant les suggestions de l'IA
+        session_title: Titre de la séance
+        session_description: Description de la séance
+        session_objectives: Liste des objectifs pédagogiques
+        support: Informations sur le support pédagogique (optionnel)
+    
+    Returns:
+        Dictionnaire enrichi avec le contexte dans instructions_personnalisees
+    """
+    context_parts = []
+    
+    # Construire le contexte de manière structurée
+    if session_title:
+        context_parts.append(f"Séance : {session_title}")
+    
+    if session_description:
+        context_parts.append(f"Description : {session_description}")
+    
+    if session_objectives and len(session_objectives) > 0:
+        # Limiter à 3 objectifs pour éviter un texte trop long
+        objectives_text = ", ".join(session_objectives[:3])
+        if len(session_objectives) > 3:
+            objectives_text += f" (+ {len(session_objectives) - 3} autres)"
+        context_parts.append(f"Objectifs : {objectives_text}")
+    
+    if support and support.get("title"):
+        context_parts.append(f"Support pédagogique : {support.get('title')}")
+    
+    # Construire le texte final du contexte
+    context_text = "\n".join(context_parts)
+    
+    logger.info(f"Contexte généré pour enrichissement : {context_text[:200]}...")
+    
+    # Enrichir chaque suggestion
+    if "suggestions" in suggestions:
+        enriched_count = 0
+        for idx, suggestion in enumerate(suggestions["suggestions"]):
+            if "parameters" not in suggestion:
+                suggestion["parameters"] = []
+            
+            # Chercher si instructions_personnalisees existe déjà
+            instructions_param = next(
+                (p for p in suggestion["parameters"] if p["name"] == "instructions_personnalisees"),
+                None
+            )
+            
+            if instructions_param:
+                # Compléter les instructions existantes de l'IA
+                existing = instructions_param.get("value", "")
+                if existing and existing.strip():
+                    instructions_param["value"] = f"{context_text}\n\n{existing}"
+                    logger.debug(f"Suggestion {idx}: instructions existantes complétées avec le contexte")
+                else:
+                    instructions_param["value"] = context_text
+                    logger.debug(f"Suggestion {idx}: instructions vides remplacées par le contexte")
+            else:
+                # Ajouter le paramètre instructions_personnalisees
+                suggestion["parameters"].append({
+                    "name": "instructions_personnalisees",
+                    "value": context_text
+                })
+                logger.debug(f"Suggestion {idx}: paramètre instructions_personnalisees ajouté")
+            
+            enriched_count += 1
+        
+        logger.info(f"✓ {enriched_count} suggestion(s) enrichie(s) avec le contexte de la séance")
+    else:
+        logger.warning("Aucune clé 'suggestions' trouvée dans la réponse de l'IA")
+    
+    return suggestions
+
 async def suggest_exercise_types_for_session(
     session_title: str,
     session_description: str,
@@ -222,6 +308,17 @@ async def suggest_exercise_types_for_session(
         duration_ms = int((time.perf_counter() - start_time) * 1000)    
 
         logger.info(f"Suggestions d'exercices générées avec succès pour la session '{session_title}'.")
+        
+        # Enrichir les suggestions avec le contexte de la séance
+        logger.info("Enrichissement des suggestions avec le contexte de la séance...")
+        suggestions = _enrich_suggestions_with_context(
+            suggestions=suggestions,
+            session_title=session_title,
+            session_description=session_description,
+            session_objectives=session_objectives,
+            support=support
+        )
+        
         return suggestions
     except ResourceGenerationError as e:
         logger.error(f"Erreur (ResourceGenerationError) lors de la génération des suggestions d'exercices pour la session '{session_title}': {e}", exc_info=True)

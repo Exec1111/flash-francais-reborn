@@ -1,0 +1,182 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schéma pour la fiche d'exercices d'écriture",
+    "description": "Définit la structure attendue pour une fiche d'exercices d'écriture avec consignes et axes d'évaluation",
+    "type": "object",
+    "properties": {
+        "fiche_ecriture": {
+            "type": "object",
+            "properties": {
+                "titre": {
+                    "type": "string",
+                    "description": "Le titre de la fiche d'exercices"
+                },
+                "niveau": {
+                    "type": "string",
+                    "description": "Le niveau des apprenants"
+                },
+                "theme": {
+                    "type": "string",
+                    "description": "Le thème principal de la fiche"
+                },
+                "duree_estimee": {
+                    "type": "string",
+                    "description": "Durée estimée pour l'ensemble des activités"
+                },
+                "objectifs_globaux": {
+                    "type": "array",
+                    "description": "Objectifs pédagogiques globaux de la fiche",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "exercices": {
+                    "type": "array",
+                    "description": "Liste des exercices d'écriture proposés",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "numero": {
+                                "type": "integer",
+                                "description": "Numéro de l'exercice"
+                            },
+                            "titre": {
+                                "type": "string",
+                                "description": "Titre de l'exercice"
+                            },
+                            "categorie": {
+                                "type": "string",
+                                "description": "Catégorie d'exercice d'écriture",
+                                "enum": [
+                                    "Écriture courte et quotidienne",
+                                    "Écriture d'invention",
+                                    "Écriture théâtrale et dialoguée",
+                                    "Écriture argumentative",
+                                    "Écriture d'imagination ou descriptive",
+                                    "Écriture réflexive et métacognitive"
+                                ]
+                            },
+                            "type_specifique": {
+                                "type": "string",
+                                "description": "Type spécifique de l'exercice (ex: journal de bord, lettre fictive, etc.)"
+                            },
+                            "consigne": {
+                                "type": "string",
+                                "description": "Consigne claire et détaillée pour l'élève"
+                            },
+                            "format_attendu": {
+                                "type": "object",
+                                "description": "Format et longueur attendus",
+                                "properties": {
+                                    "type_production": {
+                                        "type": "string",
+                                        "description": "Type de production attendue (texte narratif, dialogue, poème, etc.)"
+                                    },
+                                    "longueur": {
+                                        "type": "string",
+                                        "description": "Longueur attendue (nombre de mots, lignes, paragraphes)"
+                                    },
+                                    "duree": {
+                                        "type": "string",
+                                        "description": "Durée estimée pour cet exercice"
+                                    }
+                                },
+                                "required": ["type_production", "longueur"]
+                            },
+                            "exemples_amorces": {
+                                "type": "array",
+                                "description": "Exemples ou amorces pour aider l'élève à démarrer (optionnel)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "resultats_attendus": {
+                                "type": "object",
+                                "description": "Description précise des résultats attendus",
+                                "properties": {
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Description générale de ce que l'élève doit produire"
+                                    },
+                                    "criteres_reussite": {
+                                        "type": "array",
+                                        "description": "Critères de réussite pour l'élève",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": ["description", "criteres_reussite"]
+                            },
+                            "axes_evaluation": {
+                                "type": "object",
+                                "description": "Axes d'évaluation pour l'enseignant",
+                                "properties": {
+                                    "competences_travaillees": {
+                                        "type": "array",
+                                        "description": "Compétences d'écriture travaillées dans cet exercice",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "points_observation": {
+                                        "type": "array",
+                                        "description": "Points à observer lors de l'évaluation",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "criteres_correction": {
+                                        "type": "array",
+                                        "description": "Critères de correction pour l'enseignant",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "critere": {
+                                                    "type": "string",
+                                                    "description": "Nom du critère d'évaluation"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "description": "Description ou barème du critère"
+                                                }
+                                            },
+                                            "required": ["critere", "description"]
+                                        }
+                                    }
+                                },
+                                "required": ["competences_travaillees", "points_observation", "criteres_correction"]
+                            },
+                            "conseils_differenciation": {
+                                "type": "array",
+                                "description": "Conseils pour adapter l'exercice aux différents niveaux d'élèves (optionnel)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "numero",
+                            "titre",
+                            "categorie",
+                            "type_specifique",
+                            "consigne",
+                            "format_attendu",
+                            "resultats_attendus",
+                            "axes_evaluation"
+                        ]
+                    }
+                },
+                "ressources_complementaires": {
+                    "type": "array",
+                    "description": "Ressources complémentaires ou documents à fournir aux élèves (optionnel)",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": ["titre", "niveau", "theme", "duree_estimee", "objectifs_globaux", "exercices"]
+        }
+    },
+    "required": ["fiche_ecriture"]
+}

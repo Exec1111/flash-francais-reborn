@@ -1,0 +1,87 @@
+description_courte: "Génère une fiche d'exercices d'écriture variés adaptée au niveau des apprenants avec consignes et axes d'évaluation"
+
+system_prompt: |
+  Tu es un professeur de français expert dans la création d'activités d'écriture adaptées pour des apprenants de différents niveaux.
+  Ta mission est de créer une fiche proposant plusieurs exercices d'écriture pertinents qui répondent aux critères spécifiés.
+  Les exercices doivent être adaptés au niveau des apprenants et être en lien avec le contexte de la séance.
+  Chaque exercice doit être accompagné de consignes claires, d'exemples si nécessaire, des résultats attendus et des axes d'évaluation précis pour guider l'enseignant.
+
+user_prompt_template: |
+  Je souhaite créer une fiche d'exercices d'écriture pour des apprenants de niveau {{ niveau }}.
+  {% if nombre_exercices %}
+  Nombre d'exercices souhaités : {{ nombre_exercices }}
+  {% endif %}
+  {% if types_ecriture %}
+  Types d'exercices d'écriture à privilégier : {{ types_ecriture }}
+  {% endif %}
+  {% if competences %}
+  Compétences d'écriture à travailler : {{ competences }}
+  {% endif %}
+  {% if duree_estimee %}
+  Durée estimée pour l'ensemble des activités : {{ duree_estimee }}
+  {% endif %}
+  
+  {% if resource_content %}
+  ## Contenu des ressources de référence :
+  {% for resource in resource_content %}
+  ### Ressource : {{ resource.title }}
+  {{ resource.content }}
+  {% endfor %}
+  
+  Utilise ces ressources comme contexte pour créer les exercices d'écriture. Les exercices doivent s'appuyer sur le contenu fourni (œuvre étudiée, notions abordées, vocabulaire vu, etc.).
+  {% endif %}
+  
+  {% if instructions_personnalisees %}
+  ## Instructions personnalisées :
+  {{ instructions_personnalisees }}
+  {% endif %}
+  
+  Contraintes :
+  {% for c in constraints %}
+  - {{ c }}
+  {% endfor %}
+
+parameters:
+  - name: niveau
+    type: str
+    label: Niveau
+    enum: [6ème faible, 6ème, 6ème élevé, 5ème faible, 5ème, 5ème élevé, 4ème faible, 4ème, 4ème élevé, 3ème faible, 3ème, 3ème élevé]
+    description: Niveau des apprenants
+  - name: nombre_exercices
+    type: str
+    label: Nombre d'exercices
+    description: Nombre d'exercices d'écriture à proposer (optionnel)
+    default: "3-5"
+  - name: types_ecriture
+    type: str
+    label: Types d'écriture
+    description: Types d'exercices à privilégier parmi la liste exhaustive (ex "journal de bord, lettre fictive, écriture poétique")
+    default: ""
+  - name: competences
+    type: str
+    label: Compétences
+    description: Compétences d'écriture à travailler (ex "description, argumentation, narration")
+    default: ""
+  - name: resource_ids
+    type: list
+    label: Ressources de référence
+    description: Liste d'identifiants de ressources à utiliser comme contexte pour les exercices (optionnel)
+    default: []
+  - name: instructions_personnalisees
+    type: str
+    label: Instructions personnalisées
+    description: Instructions personnalisées pour la génération des exercices d'écriture (optionnel)
+    default: ""
+
+constraints:
+  - "Les exercices doivent être adaptés au niveau des apprenants (longueur attendue, complexité des consignes, exigences)."
+  - "Chaque exercice doit appartenir à l'une des catégories suivantes : I. Écriture courte et quotidienne (journal de bord, phrase du jour, écriture contrainte Oulipo), II. Écriture d'invention (poursuivre un texte, changer de point de vue, lettre fictive, suite/fin alternative), III. Écriture théâtrale et dialoguée (mettre en scène un conflit, transformer récit en scène), IV. Écriture argumentative (tribune/opinion, plaidoyer/réquisitoire), V. Écriture d'imagination ou descriptive (décrire un lieu, inventer un monde, écriture poétique), VI. Écriture réflexive et métacognitive (autoportrait d'auteur, carnet de lecture)."
+  - "Les exercices doivent être variés et complémentaires pour développer différentes compétences d'écriture."
+  - "Si des ressources de référence sont fournies, les exercices doivent s'en inspirer et créer du lien avec le contenu étudié."
+  - "Chaque exercice doit comporter : un titre explicite, la catégorie d'exercice, une consigne claire et détaillée, des exemples ou amorces si nécessaire, la longueur/format attendu (nombre de mots, de lignes, de paragraphes)."
+  - "Pour chaque exercice, fournir les résultats attendus précis (ce que l'élève doit produire, les critères de réussite)."
+  - "Pour chaque exercice, fournir les axes d'évaluation pour l'enseignant (compétences travaillées, points à observer, critères de correction)."
+  - "Les consignes doivent être formulées de manière à stimuler la créativité tout en donnant un cadre clair."
+  - "La fiche doit être immédiatement utilisable par l'enseignant sans nécessiter de préparation supplémentaire."
+
+response_schema: "ecriture.schema.json"
