@@ -19,16 +19,12 @@ from .resource_utils import html_to_qcm_json, html_to_champlex_json
 from config import get_settings
 from werkzeug.utils import secure_filename
 from constants import is_json_first_resource, JSON_FIRST_PLACEHOLDERS_SET, JSON_FIRST_SUBTYPES
+from ai.services.docling_background import run_docling_extraction
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
 resource_create_router = APIRouter()
-
-async def run_docling_extraction(resource_id: int, user_id: int, ocr: bool):
-    """Fonction d'extraction Docling en arrière-plan."""
-    # TODO: Implémenter l'intégration Docling réelle
-    logger.info(f"Docling extraction would be run for resource_id={resource_id}, user_id={user_id}, ocr={ocr}")
 
 @resource_create_router.post("/", response_model=ResourceResponse)
 async def create_resource_route(

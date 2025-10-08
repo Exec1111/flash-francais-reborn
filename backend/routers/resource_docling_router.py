@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from typing import Dict, List
-import re
 from pathlib import Path
 import logging
 from database import get_db
@@ -10,13 +9,12 @@ from models import User as UserModel
 from schemas.docling import DoclingStatusResponse, DoclingTable
 from config import get_settings
 import crud.resource
-from .resource_utils import run_docling_extraction
+from ai.services.docling_background import run_docling_extraction
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
 resource_docling_router = APIRouter()
-
 @resource_docling_router.get("/{resource_id}/docling", response_model=DoclingStatusResponse)
 def get_resource_docling(
     resource_id: int,

@@ -129,6 +129,9 @@ const ResourceForm = ({
     resetFileState
   } = useResourceFileUpload(ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_FILE_TYPES_LABEL, MAX_UPLOAD_SIZE_MB);
 
+  // --- Additional State (déplacé ici pour être disponible avant son utilisation) ---
+  const [sourceType, setSourceType] = React.useState(initialSourceType);
+
   const {
     submitting,
     error,
@@ -139,7 +142,7 @@ const ResourceForm = ({
     handleSaveAsHtmlContent
   } = useResourceFormSubmission(
     formData,
-    initialSourceType, // We'll need to manage sourceType separately
+    sourceType, // CORRECTION: utiliser sourceType (état actuel) au lieu de initialSourceType
     selectedFile,
     fileError,
     htmlContent,
@@ -153,9 +156,6 @@ const ResourceForm = ({
     onClose,
     disableNavigation
   );
-
-  // --- Additional State ---
-  const [sourceType, setSourceType] = React.useState(initialSourceType);
 
   // --- Computed Values ---
   const subtypeKey = ((selectedSubType?.key) || (initialData?.sub_type?.key) || '').toLowerCase();

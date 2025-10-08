@@ -258,6 +258,10 @@ export const useResourceForm = ({
   };
 
   const handleSourceTypeChange = (e) => {
+    console.log('[useResourceForm] handleSourceTypeChange:', {
+      oldValue: sourceType,
+      newValue: e.target.value
+    });
     setSourceType(e.target.value);
     if (e.target.value === 'file') {
       setSelectedFile(null);
@@ -337,6 +341,15 @@ export const useResourceForm = ({
     if (!Number.isNaN(subTypeId)) dataToSend.append('sub_type_id', subTypeId);
 
     const backendSourceType = sourceType === 'url' ? 'ai' : sourceType;
+    
+    // DEBUG: Log source type avant envoi
+    console.log('[useResourceForm] DEBUG handleSubmit:', {
+      sourceType,
+      backendSourceType,
+      selectedFile: selectedFile ? selectedFile.name : 'null',
+      isEdit
+    });
+    
     dataToSend.append('source_type', backendSourceType);
 
     const sessionIds = Array.isArray(formData.session_ids)

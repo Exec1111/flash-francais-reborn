@@ -19,12 +19,6 @@ def html_to_champlex_json(html_content: str) -> dict:
     # Pour l'instant, retourner une structure basique
     return {"champs": []}
 
-# Fonction d'extraction Docling (sera implémentée plus tard)
-async def run_docling_extraction(resource_id: int, user_id: int, ocr: bool):
-    """Fonction d'extraction Docling en arrière-plan."""
-    # TODO: Implémenter l'intégration Docling réelle
-    logger.info(f"Docling extraction would be run for resource_id={resource_id}, user_id={user_id}, ocr={ocr}")
-
 # Route de test
 @resource_utils_router.get("/by_session/{session_id}/test")
 async def test_route_for_session(session_id: int):
